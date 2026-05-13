@@ -40,6 +40,7 @@ type Ingredient = {
   proteinG?: number;
   carbohydrateG?: number;
   fatG?: number;
+  picUrl?: string;
 };
 
 type MealRecipe = {
@@ -123,6 +124,7 @@ type ShoppingItem = {
   sourceMs?: string;
   mealId: string;
   checked: boolean;
+  picUrl?: string;
 };
 
 type CalendarNutritionStatus = 'tooMuch' | 'good' | 'tooLittle' | 'none';
@@ -534,6 +536,7 @@ function normalizeAiMeal(meal: any): MealRecipe {
           proteinG: safeNumber(item.proteinG),
           carbohydrateG: safeNumber(item.carbohydrateG),
           fatG: safeNumber(item.fatG),
+          picUrl: item.picUrl || '',
         }))
       : [],
   };
@@ -656,6 +659,7 @@ async function generateShoppingListByOwner(
               sourceMs,
               mealId: meal.idMeal,
               checked: checkedMap.get(id) || false,
+              picUrl: ingredient.picUrl || '',
             });
           });
         });
