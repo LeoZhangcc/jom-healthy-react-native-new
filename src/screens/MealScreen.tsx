@@ -1330,11 +1330,11 @@ export default function MealScreen() {
           <View style={styles.mealButtonRow}>
             <Pressable style={[styles.actionButton, styles.viewButton]} onPress={() => openRecipeDetail(meal)}>
               <Ionicons name="book-outline" size={16} color="#3BA76D" />
-              <Text style={[styles.actionButtonText, { color: '#3BA76D' }]}>{getText('View Recipe', '查看食谱', 'Lihat Resipi')}</Text>
+              <Text style={[styles.actionButtonText, { color: '#3BA76D' }]} numberOfLines={1}>{getText('View', '查看', 'Lihat')}</Text>
             </Pressable>
             <Pressable style={[styles.actionButton, styles.watchButton]} onPress={() => openYoutube(meal.strYoutube)}>
               <Ionicons name="logo-youtube" size={16} color="#FF3B30" />
-              <Text style={[styles.actionButtonText, { color: '#FF3B30' }]}>{getText('Watch Tutorial', '观看教程', 'Tonton Tutorial')}</Text>
+              <Text style={[styles.actionButtonText, { color: '#FF3B30' }]} numberOfLines={1}>{getText('Watch', '观看', 'Tonton')}</Text>
             </Pressable>
           </View>
           {suggestions.length > 0 && (
@@ -1742,7 +1742,7 @@ const styles = StyleSheet.create({
   actionButton: { flex: 1, minHeight: 42, borderRadius: 999, borderWidth: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFFFFF', paddingHorizontal: 8 },
   viewButton: { borderColor: '#3BA76D' },
   watchButton: { borderColor: '#FF3B30' },
-  actionButtonText: { fontSize: 13, fontWeight: '700' },
+  actionButtonText: { fontSize: 12, fontWeight: '700', flexShrink: 1 },
   replaceLink: { marginTop: 10, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6 },
   replaceLinkText: { color: colors.primaryDark, fontSize: 13, fontWeight: '700' },
   aiModalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
