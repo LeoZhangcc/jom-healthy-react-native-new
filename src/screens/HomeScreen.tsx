@@ -695,13 +695,14 @@ export default function HomeScreen() {
                 </View>
               </Card>
 
-              <DigitalTwin
+              {/* <DigitalTwin
                 tip={getTwinTip()}
                 nickname={getTwinNickname()}
                 isComplete={allGoalsMet}
-              />
+              /> */}
             </>
-          )}
+          )
+          }
 
           {/* Insert this right ABOVE the Growth Overview Card */}
           {activeChild && (
