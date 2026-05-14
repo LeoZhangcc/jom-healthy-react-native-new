@@ -107,7 +107,7 @@ type MealRecipe = {
 };
 
 type MealSlotKey = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
-type MealPlanForDay = Partial<Record<MealSlotKey, MealRecipe>>;
+type MealPlanForDay = Partial<Record<MealSlotKey, MealRecipe[]>>;
 type ShoppingCategory = 'vegetables' | 'protein' | 'carbs' | 'others';
 
 type ShoppingItem = {
@@ -202,7 +202,8 @@ function getMonthDays(monthDate: Date) {
 }
 
 function getMealPlanTotals(dayPlan: MealPlanForDay) {
-  const meals = SLOT_ORDER.map((slot) => dayPlan[slot]).filter(Boolean) as MealRecipe[];
+  const meals = SLOT_ORDER.flatMap((slot) => dayPlan[slot] || []);
+
   return meals.reduce(
     (acc, meal) => {
       acc.carbs += safeNumber(meal.totalCarbohydrateG);
@@ -543,6 +544,16 @@ function normalizeAiMeal(meal: any): MealRecipe {
 }
 
 
+function normalizeSlotMeals(value: any): MealRecipe[] {
+  if (!value) return [];
+
+  const rawMeals = Array.isArray(value) ? value : [value];
+
+  return rawMeals
+    .filter(Boolean)
+    .map((meal) => normalizeAiMeal(meal));
+}
+
 function normalizeDayPlan(dayPlan: any): MealPlanForDay {
   const normalized: MealPlanForDay = {};
 
@@ -550,21 +561,15 @@ function normalizeDayPlan(dayPlan: any): MealPlanForDay {
     return normalized;
   }
 
-  if (dayPlan.Breakfast || dayPlan.breakfast) {
-    normalized.Breakfast = normalizeAiMeal(dayPlan.Breakfast || dayPlan.breakfast);
-  }
+  const breakfastMeals = normalizeSlotMeals(dayPlan.Breakfast || dayPlan.breakfast);
+  const lunchMeals = normalizeSlotMeals(dayPlan.Lunch || dayPlan.lunch);
+  const dinnerMeals = normalizeSlotMeals(dayPlan.Dinner || dayPlan.dinner);
+  const snackMeals = normalizeSlotMeals(dayPlan.Snack || dayPlan.snack);
 
-  if (dayPlan.Lunch || dayPlan.lunch) {
-    normalized.Lunch = normalizeAiMeal(dayPlan.Lunch || dayPlan.lunch);
-  }
-
-  if (dayPlan.Dinner || dayPlan.dinner) {
-    normalized.Dinner = normalizeAiMeal(dayPlan.Dinner || dayPlan.dinner);
-  }
-
-  if (dayPlan.Snack || dayPlan.snack) {
-    normalized.Snack = normalizeAiMeal(dayPlan.Snack || dayPlan.snack);
-  }
+  if (breakfastMeals.length > 0) normalized.Breakfast = breakfastMeals;
+  if (lunchMeals.length > 0) normalized.Lunch = lunchMeals;
+  if (dinnerMeals.length > 0) normalized.Dinner = dinnerMeals;
+  if (snackMeals.length > 0) normalized.Snack = snackMeals;
 
   return normalized;
 }
@@ -615,51 +620,54 @@ async function generateShoppingListByOwner(
 
       Object.entries(mealPlans).forEach(([dateKey, dayPlan]) => {
         SLOT_ORDER.forEach((slot) => {
-          const meal = dayPlan?.[slot];
-          if (!meal || !Array.isArray(meal.ingredients)) return;
+          const slotMeals = dayPlan?.[slot] || [];
 
-          meal.ingredients.forEach((ingredient: any) => {
-            const nameEn = getIngredientNameByLanguage(ingredient, 'en');
-            const nameCn = getIngredientNameByLanguage(ingredient, 'zh');
-            const nameMs = getIngredientNameByLanguage(ingredient, 'ms');
-            const name = nameEn;
-            const quantity = normalizeIngredientQuantity(ingredient);
-            const category = classifyIngredientCategory(ingredient);
-            const id = `${name.toLowerCase()}-${category}`.replace(/\s+/g, '-');
-            const existing = mergedMap.get(id);
-            const mealNameEn = getMealName(meal, 'en');
-            const mealNameCn = getMealName(meal, 'zh');
-            const mealNameMs = getMealName(meal, 'ms');
-            const sourceEn = `${dateKey} · ${slot}: ${mealNameEn}`;
-            const sourceCn = `${dateKey} · ${slot}: ${mealNameCn}`;
-            const sourceMs = `${dateKey} · ${slot}: ${mealNameMs}`;
+          slotMeals.forEach((meal) => {
+            if (!meal || !Array.isArray(meal.ingredients)) return;
 
-            if (existing) {
-              existing.quantity = [existing.quantity, quantity].filter(Boolean).join(' + ');
-              if (!existing.source.includes(mealNameEn)) {
-                existing.source += `, ${sourceEn}`;
-                existing.sourceEn = [existing.sourceEn, sourceEn].filter(Boolean).join(', ');
-                existing.sourceCn = [existing.sourceCn, sourceCn].filter(Boolean).join(', ');
-                existing.sourceMs = [existing.sourceMs, sourceMs].filter(Boolean).join(', ');
+            meal.ingredients.forEach((ingredient: any) => {
+              const nameEn = getIngredientNameByLanguage(ingredient, 'en');
+              const nameCn = getIngredientNameByLanguage(ingredient, 'zh');
+              const nameMs = getIngredientNameByLanguage(ingredient, 'ms');
+              const name = nameEn;
+              const quantity = normalizeIngredientQuantity(ingredient);
+              const category = classifyIngredientCategory(ingredient);
+              const id = `${name.toLowerCase()}-${category}`.replace(/\s+/g, '-');
+              const existing = mergedMap.get(id);
+              const mealNameEn = getMealName(meal, 'en');
+              const mealNameCn = getMealName(meal, 'zh');
+              const mealNameMs = getMealName(meal, 'ms');
+              const sourceEn = `${dateKey} · ${slot}: ${mealNameEn}`;
+              const sourceCn = `${dateKey} · ${slot}: ${mealNameCn}`;
+              const sourceMs = `${dateKey} · ${slot}: ${mealNameMs}`;
+
+              if (existing) {
+                existing.quantity = [existing.quantity, quantity].filter(Boolean).join(' + ');
+                if (!existing.source.includes(mealNameEn)) {
+                  existing.source += `, ${sourceEn}`;
+                  existing.sourceEn = [existing.sourceEn, sourceEn].filter(Boolean).join(', ');
+                  existing.sourceCn = [existing.sourceCn, sourceCn].filter(Boolean).join(', ');
+                  existing.sourceMs = [existing.sourceMs, sourceMs].filter(Boolean).join(', ');
+                }
+                return;
               }
-              return;
-            }
 
-            mergedMap.set(id, {
-              id,
-              name,
-              nameEn,
-              nameCn,
-              nameMs,
-              quantity,
-              category,
-              source: sourceEn,
-              sourceEn,
-              sourceCn,
-              sourceMs,
-              mealId: meal.idMeal,
-              checked: checkedMap.get(id) || false,
-              picUrl: ingredient.picUrl || '',
+              mergedMap.set(id, {
+                id,
+                name,
+                nameEn,
+                nameCn,
+                nameMs,
+                quantity,
+                category,
+                source: sourceEn,
+                sourceEn,
+                sourceCn,
+                sourceMs,
+                mealId: meal.idMeal,
+                checked: checkedMap.get(id) || false,
+                picUrl: ingredient.picUrl || '',
+              });
             });
           });
         });
@@ -855,6 +863,8 @@ export default function MealScreen() {
   const [mealPlansLoaded, setMealPlansLoaded] = useState(false);
   const [copySourceKey, setCopySourceKey] = useState<string | null>(null);
   const [copyTargetKeys, setCopyTargetKeys] = useState<string[]>([]);
+  const [mealToAdd, setMealToAdd] = useState<MealRecipe | null>(null);
+  const [showMealSlotPicker, setShowMealSlotPicker] = useState(false);
 
   const selectedKey = formatDateKey(selectedDate);
   const todayKey = formatDateKey(today);
@@ -1027,7 +1037,7 @@ export default function MealScreen() {
 
   const dayHasMealPlan = useCallback((dateKey: string) => {
     const dayPlan = mealPlans[dateKey];
-    return SLOT_ORDER.some((slot) => !!dayPlan?.[slot]);
+    return SLOT_ORDER.some((slot) => (dayPlan?.[slot]?.length || 0) > 0);
   }, [mealPlans]);
 
   const startCopyMealPlan = useCallback((date: Date) => {
@@ -1089,7 +1099,7 @@ export default function MealScreen() {
 
     const sourcePlan = mealPlans[copySourceKey];
 
-    if (!SLOT_ORDER.some((slot) => !!sourcePlan?.[slot])) {
+    if (!SLOT_ORDER.some((slot) => (sourcePlan?.[slot]?.length || 0) > 0)) {
       Alert.alert(
         getText('No Meal Plan', '没有膳食计划', 'Tiada Pelan Makanan'),
         getText('The source date does not have a meal plan to copy.', '来源日期没有可以复制的膳食计划。', 'Tarikh sumber tiada pelan makanan untuk disalin.')
@@ -1177,40 +1187,76 @@ export default function MealScreen() {
     addCopyTargetByKey(targetKey);
   }, [addCopyTargetByKey, copySourceKey, findDateKeyFromScreenPoint]);
 
+  const closeMealSlotPicker = () => {
+    setShowMealSlotPicker(false);
+    setMealToAdd(null);
+  };
+
   const addMealToPlan = (meal: MealRecipe) => {
-    const normalizedMeal = normalizeAiMeal(meal);
+    setMealToAdd(normalizeAiMeal(meal));
+    setShowMealSlotPicker(true);
+  };
+
+  const addMealToSelectedSlot = (slot: MealSlotKey) => {
+    if (!mealToAdd) return;
 
     updateCurrentOwnerMealPlans((prev) => {
       const current = prev[selectedKey] || {};
-      const existingMealIds = SLOT_ORDER.map((slot) => current[slot]?.idMeal).filter(Boolean);
-      if (existingMealIds.includes(normalizedMeal.idMeal)) {
-        Alert.alert(getText('Already Added', '已添加', 'Sudah Ditambah'), getText('This recipe is already in your meal plan.', '这个食谱已经在你的膳食计划里。', 'Resipi ini sudah ada dalam pelan makanan anda.'));
-        return prev;
-      }
-      const emptySlot = SLOT_ORDER.find((slot) => !current[slot]);
-      if (!emptySlot) {
-        Alert.alert(getText('Meal Plan Full', '膳食计划已满', 'Pelan Makanan Penuh'), getText('You already have 4 meals for this day.', '这一天已经有 4 餐了。', 'Anda sudah mempunyai 4 hidangan untuk hari ini.'));
-        return prev;
-      }
-      return { ...prev, [selectedKey]: { ...current, [emptySlot]: normalizedMeal } };
+      const currentSlotMeals = current[slot] || [];
+
+      return {
+        ...prev,
+        [selectedKey]: {
+          ...current,
+          [slot]: [...currentSlotMeals, mealToAdd],
+        },
+      };
     });
+
+    closeMealSlotPicker();
     setKeyword('');
     setSuggestions([]);
     setShowSuggestions(false);
     setSearchError('');
   };
 
-  const deleteMealFromPlan = (slot: MealSlotKey) => {
+  const deleteMealFromPlan = (slot: MealSlotKey, mealIndex: number) => {
     updateCurrentOwnerMealPlans((prev) => {
       const current = { ...(prev[selectedKey] || {}) };
-      delete current[slot];
+      const slotMeals = [...(current[slot] || [])];
+
+      slotMeals.splice(mealIndex, 1);
+
+      if (slotMeals.length > 0) {
+        current[slot] = slotMeals;
+      } else {
+        delete current[slot];
+      }
+
       return { ...prev, [selectedKey]: current };
     });
   };
 
-  const replaceMealInSlot = (slot: MealSlotKey, meal: MealRecipe) => {
+  const replaceMealInSlot = (slot: MealSlotKey, mealIndex: number, meal: MealRecipe) => {
     const normalizedMeal = normalizeAiMeal(meal);
-    updateCurrentOwnerMealPlans((prev) => ({ ...prev, [selectedKey]: { ...(prev[selectedKey] || {}), [slot]: normalizedMeal } }));
+
+    updateCurrentOwnerMealPlans((prev) => {
+      const current = prev[selectedKey] || {};
+      const slotMeals = [...(current[slot] || [])];
+
+      if (!slotMeals[mealIndex]) return prev;
+
+      slotMeals[mealIndex] = normalizedMeal;
+
+      return {
+        ...prev,
+        [selectedKey]: {
+          ...current,
+          [slot]: slotMeals,
+        },
+      };
+    });
+
     setKeyword('');
     setSuggestions([]);
     setShowSuggestions(false);
@@ -1218,7 +1264,7 @@ export default function MealScreen() {
   };
 
   const clearSelectedDayPlan = () => {
-    const hasMeals = SLOT_ORDER.some((slot) => !!selectedDayPlan[slot]);
+    const hasMeals = SLOT_ORDER.some((slot) => (selectedDayPlan[slot]?.length || 0) > 0);
 
     if (!hasMeals) {
       Alert.alert(getText('No Meals', '没有餐食', 'Tiada Hidangan'), getText('There are no meals to clear for this date.', '这个日期没有可以清空的餐食。', 'Tiada hidangan untuk dikosongkan pada tarikh ini.'));
@@ -1296,20 +1342,22 @@ export default function MealScreen() {
         </Pressable>
         <Pressable style={styles.suggestionAddButton} onPress={() => addMealToPlan(meal)}>
           <Ionicons name="add" size={16} color="#FFFFFF" />
-          <Text style={styles.suggestionAddText}>{getText('Add', '添加', 'Tambah')}</Text>
+          <Text style={styles.suggestionAddText}>{getText('Add to meal', '加入餐次', 'Tambah ke hidangan')}</Text>
         </Pressable>
       </View>
     </View>
   );
 
-  const renderMealCard = (slot: MealSlotKey, meal: MealRecipe) => (
-    <View key={`${slot}-${meal.idMeal}`} style={styles.mealSection}>
-      <View style={styles.mealSectionHeader}>
-        <View>
-          <Text style={styles.mealSectionTitle}>{getSlotLabel(slot)}</Text>
-          <Text style={styles.mealSectionSub}>{getText('1 meal', '1 餐', '1 hidangan')}</Text>
+  const renderMealCard = (slot: MealSlotKey, meal: MealRecipe, mealIndex: number) => (
+    <View key={`${slot}-${meal.idMeal}-${mealIndex}`} style={styles.mealCardBlock}>
+      <View style={styles.mealItemHeaderRow}>
+        <View style={styles.mealItemBadge}>
+          <Text style={styles.mealItemBadgeText}>
+            {getText('Meal', '餐食', 'Hidangan')} {mealIndex + 1}
+          </Text>
         </View>
-        <Pressable style={styles.smallIconButton} onPress={() => deleteMealFromPlan(slot)}>
+
+        <Pressable style={styles.smallIconButton} onPress={() => deleteMealFromPlan(slot, mealIndex)}>
           <Ionicons name="trash-outline" size={18} color="#EF4444" />
         </Pressable>
       </View>
@@ -1342,7 +1390,7 @@ export default function MealScreen() {
               style={styles.replaceLink}
               onPress={() => {
                 const candidate = suggestions.find((item) => item.idMeal !== meal.idMeal);
-                if (candidate) replaceMealInSlot(slot, candidate);
+                if (candidate) replaceMealInSlot(slot, mealIndex, candidate);
                 else Alert.alert(getText('No Alternative', '没有替代食谱', 'Tiada Alternatif'), getText('Search another recipe to replace this one.', '请搜索另一个食谱来替换。', 'Cari resipi lain untuk menggantikannya.'));
               }}
             >
@@ -1352,6 +1400,25 @@ export default function MealScreen() {
           )}
         </View>
       </View>
+    </View>
+  );
+
+  const renderMealSlotSection = (slot: MealSlotKey, meals: MealRecipe[]) => (
+    <View key={slot} style={styles.mealSection}>
+      <View style={styles.mealSectionHeader}>
+        <View>
+          <Text style={styles.mealSectionTitle}>{getSlotLabel(slot)}</Text>
+          <Text style={styles.mealSectionSub}>
+            {getText(
+              `${meals.length} meal${meals.length === 1 ? '' : 's'}`,
+              `${meals.length} 餐`,
+              `${meals.length} hidangan`
+            )}
+          </Text>
+        </View>
+      </View>
+
+      {meals.map((meal, mealIndex) => renderMealCard(slot, meal, mealIndex))}
     </View>
   );
 
@@ -1527,8 +1594,10 @@ export default function MealScreen() {
               <Text style={styles.generatingTitle}>{getText('Generating your meal plan...', '正在生成你的膳食计划...', 'Sedang menjana pelan makanan anda...')}</Text>
               <Text style={styles.generatingText}>{getText('AI is choosing suitable recipes based on the child profile, nutrition targets and your food preference.', 'AI 正在根据儿童档案、营养目标和食物偏好选择合适的食谱。', 'AI sedang memilih resipi yang sesuai berdasarkan profil kanak-kanak, sasaran nutrisi dan pilihan makanan anda.')}</Text>
             </View>
-          ) : SLOT_ORDER.some((slot) => !!selectedDayPlan[slot]) ? (
-            SLOT_ORDER.filter((slot) => !!selectedDayPlan[slot]).map((slot) => renderMealCard(slot, selectedDayPlan[slot] as MealRecipe))
+          ) : SLOT_ORDER.some((slot) => (selectedDayPlan[slot]?.length || 0) > 0) ? (
+            SLOT_ORDER
+              .filter((slot) => (selectedDayPlan[slot]?.length || 0) > 0)
+              .map((slot) => renderMealSlotSection(slot, selectedDayPlan[slot] as MealRecipe[]))
           ) : (
             <View style={styles.emptyMealPlanCard}>
               <Text style={styles.emptyMealPlanEmoji}>🍽️</Text>
@@ -1542,6 +1611,85 @@ export default function MealScreen() {
           )}
         </View>
       </ScrollView>
+
+      <Modal visible={showMealSlotPicker} transparent animationType="fade" onRequestClose={closeMealSlotPicker}>
+        <Pressable style={styles.mealSlotPickerBackdrop} onPress={closeMealSlotPicker}>
+          <Pressable style={styles.mealSlotPickerCard} onPress={() => {}}>
+            <View style={styles.mealSlotPickerHeader}>
+              <View style={styles.mealSlotPickerIcon}>
+                <Ionicons name="restaurant-outline" size={20} color="#FFFFFF" />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.mealSlotPickerTitle}>
+                  {getText('Choose a meal time', '选择加入哪一餐', 'Pilih waktu hidangan')}
+                </Text>
+                <Text style={styles.mealSlotPickerSubtitle}>
+                  {getText(
+                    'You can add multiple recipes to the same meal time.',
+                    '同一个餐次可以加入多个食谱。',
+                    'Anda boleh menambah beberapa resipi pada waktu hidangan yang sama.'
+                  )}
+                </Text>
+              </View>
+
+              <Pressable style={styles.mealSlotPickerClose} onPress={closeMealSlotPicker}>
+                <Ionicons name="close" size={20} color="#64748B" />
+              </Pressable>
+            </View>
+
+            {mealToAdd && (
+              <View style={styles.mealSlotPickerPreview}>
+                {mealToAdd.strMealThumb ? (
+                  <Image source={{ uri: mealToAdd.strMealThumb }} style={styles.mealSlotPickerPreviewImage} />
+                ) : (
+                  <View style={styles.mealSlotPickerPreviewFallback}>
+                    <Text style={styles.mealSlotPickerPreviewEmoji}>
+                      {mealToAdd.mealIconEmoji || guessMealEmoji(getMealName(mealToAdd, language), getMealCategory(mealToAdd, language, ''))}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.mealSlotPickerPreviewTitle} numberOfLines={2}>
+                    {getMealName(mealToAdd, language)}
+                  </Text>
+                  <Text style={styles.mealSlotPickerPreviewMeta}>
+                    {round(mealToAdd.totalEnergyKcal)} kcal · {getText('Selected date', '所选日期', 'Tarikh dipilih')}: {selectedDate.toLocaleDateString(locale, { day: 'numeric', month: 'short' })}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.mealSlotPickerOptions}>
+              {SLOT_ORDER.map((slot) => {
+                const count = selectedDayPlan[slot]?.length || 0;
+                return (
+                  <Pressable key={slot} style={styles.mealSlotPickerOption} onPress={() => addMealToSelectedSlot(slot)}>
+                    <View style={styles.mealSlotPickerOptionLeft}>
+                      <View style={styles.mealSlotPickerOptionIconWrap}>
+                        <Ionicons name="add-circle-outline" size={20} color={colors.primaryDark} />
+                      </View>
+                      <View>
+                        <Text style={styles.mealSlotPickerOptionTitle}>{getSlotLabel(slot)}</Text>
+                        <Text style={styles.mealSlotPickerOptionSub}>
+                          {getText(
+                            count === 0 ? 'No recipes yet' : `${count} recipe${count === 1 ? '' : 's'} already added`,
+                            count === 0 ? '还没有食谱' : `已有 ${count} 个食谱`,
+                            count === 0 ? 'Belum ada resipi' : `${count} resipi sudah ditambah`
+                          )}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal visible={showCalendar} transparent animationType="fade" onRequestClose={() => setShowCalendar(false)}>
         <Pressable style={styles.calendarBackdrop} onPress={() => setShowCalendar(false)}>
@@ -1723,6 +1871,10 @@ const styles = StyleSheet.create({
   emptyMealPlanText: { marginTop: 6, fontSize: 13, color: '#6B7280', textAlign: 'center', lineHeight: 20 },
   mealSection: { marginTop: 18 },
   mealSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  mealCardBlock: { marginTop: 12 },
+  mealItemHeaderRow: { marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  mealItemBadge: { minHeight: 28, borderRadius: 14, backgroundColor: '#EAF7F0', paddingHorizontal: 11, alignItems: 'center', justifyContent: 'center' },
+  mealItemBadgeText: { color: colors.primaryDark, fontSize: 12, fontWeight: '900' },
   mealSectionTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
   mealSectionSub: { marginTop: 2, fontSize: 13, color: '#64748B' },
   smallIconButton: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEF2F2' },
@@ -1765,6 +1917,26 @@ const styles = StyleSheet.create({
   generateHomeButtonLoading: { opacity: 0.85 },
   generateHomeButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   aiMealPlanError: { marginTop: 10, color: '#B91C1C', fontSize: 12, fontWeight: '700', textAlign: 'center' },
+
+  mealSlotPickerBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  mealSlotPickerCard: { width: '100%', maxWidth: 430, backgroundColor: '#FFFFFF', borderRadius: 28, padding: 18, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 28, shadowOffset: { width: 0, height: 14 }, elevation: 8 },
+  mealSlotPickerHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  mealSlotPickerIcon: { width: 46, height: 46, borderRadius: 17, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
+  mealSlotPickerTitle: { color: '#0F172A', fontSize: 18, fontWeight: '900', lineHeight: 24 },
+  mealSlotPickerSubtitle: { marginTop: 4, color: '#64748B', fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  mealSlotPickerClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  mealSlotPickerPreview: { marginTop: 16, borderRadius: 18, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  mealSlotPickerPreviewImage: { width: 58, height: 58, borderRadius: 16, backgroundColor: '#E5E7EB' },
+  mealSlotPickerPreviewFallback: { width: 58, height: 58, borderRadius: 16, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+  mealSlotPickerPreviewEmoji: { fontSize: 28 },
+  mealSlotPickerPreviewTitle: { color: '#0F172A', fontSize: 15, fontWeight: '900', lineHeight: 21 },
+  mealSlotPickerPreviewMeta: { marginTop: 4, color: '#64748B', fontSize: 12, fontWeight: '700', lineHeight: 17 },
+  mealSlotPickerOptions: { marginTop: 16, gap: 10 },
+  mealSlotPickerOption: { minHeight: 62, borderRadius: 18, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  mealSlotPickerOptionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  mealSlotPickerOptionIconWrap: { width: 38, height: 38, borderRadius: 14, backgroundColor: '#EAF7F0', alignItems: 'center', justifyContent: 'center' },
+  mealSlotPickerOptionTitle: { color: '#0F172A', fontSize: 15, fontWeight: '900' },
+  mealSlotPickerOptionSub: { marginTop: 3, color: '#64748B', fontSize: 12, fontWeight: '700' },
 
   calendarBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
   calendarModal: { width: '100%', maxWidth: 392, backgroundColor: '#FFFFFF', borderRadius: 30, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 28, shadowOffset: { width: 0, height: 14 }, elevation: 8 },

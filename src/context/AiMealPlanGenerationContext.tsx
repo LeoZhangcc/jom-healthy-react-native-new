@@ -55,7 +55,7 @@ type MealRecipe = {
 };
 
 type MealSlotKey = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
-type MealPlanForDay = Partial<Record<MealSlotKey, MealRecipe>>;
+type MealPlanForDay = Partial<Record<MealSlotKey, MealRecipe[]>>;
 type ShoppingCategory = 'vegetables' | 'protein' | 'carbs' | 'others';
 
 type ShoppingItem = {
@@ -273,6 +273,58 @@ function normalizeAiMeal(meal: any): MealRecipe {
   };
 }
 
+function normalizeSlotMeals(value: any): MealRecipe[] {
+  if (!value) return [];
+
+  const rawMeals = Array.isArray(value) ? value : [value];
+
+  return rawMeals
+    .filter(Boolean)
+    .map((meal) => normalizeAiMeal(meal));
+}
+
+function normalizeDayPlan(dayPlan: any): MealPlanForDay {
+  const normalized: MealPlanForDay = {};
+
+  if (!dayPlan || typeof dayPlan !== 'object') {
+    return normalized;
+  }
+
+  const breakfastMeals = normalizeSlotMeals(dayPlan.Breakfast || dayPlan.breakfast);
+  const lunchMeals = normalizeSlotMeals(dayPlan.Lunch || dayPlan.lunch);
+  const dinnerMeals = normalizeSlotMeals(dayPlan.Dinner || dayPlan.dinner);
+  const snackMeals = normalizeSlotMeals(dayPlan.Snack || dayPlan.snack);
+
+  if (breakfastMeals.length > 0) normalized.Breakfast = breakfastMeals;
+  if (lunchMeals.length > 0) normalized.Lunch = lunchMeals;
+  if (dinnerMeals.length > 0) normalized.Dinner = dinnerMeals;
+  if (snackMeals.length > 0) normalized.Snack = snackMeals;
+
+  return normalized;
+}
+
+function normalizeMealPlansByOwner(raw: any): Record<string, Record<string, MealPlanForDay>> {
+  const normalized: Record<string, Record<string, MealPlanForDay>> = {};
+
+  if (!raw || typeof raw !== 'object') {
+    return normalized;
+  }
+
+  Object.entries(raw).forEach(([ownerKey, ownerPlans]) => {
+    if (!ownerPlans || typeof ownerPlans !== 'object') {
+      return;
+    }
+
+    normalized[ownerKey] = {};
+
+    Object.entries(ownerPlans as Record<string, any>).forEach(([dateKey, dayPlan]) => {
+      normalized[ownerKey][dateKey] = normalizeDayPlan(dayPlan);
+    });
+  });
+
+  return normalized;
+}
+
 function normalizeIngredientName(item: any) {
   return String(item.foodNameEn || item.ingredientName || item.normalizedName || 'Ingredient').trim();
 }
@@ -354,33 +406,36 @@ async function generateShoppingListByOwner(allMealPlans: Record<string, Record<s
 
       Object.entries(mealPlans).forEach(([dateKey, dayPlan]) => {
         SLOT_ORDER.forEach((slot) => {
-          const meal = dayPlan?.[slot];
-          if (!meal || !Array.isArray(meal.ingredients)) return;
+          const slotMeals = dayPlan?.[slot] || [];
 
-          meal.ingredients.forEach((ingredient: any) => {
-            const name = normalizeIngredientName(ingredient);
-            const quantity = normalizeIngredientQuantity(ingredient);
-            const category = classifyIngredientCategory(ingredient);
-            const id = `${name.toLowerCase()}-${category}`.replace(/\s+/g, '-');
-            const existing = mergedMap.get(id);
+          slotMeals.forEach((meal) => {
+            if (!meal || !Array.isArray(meal.ingredients)) return;
 
-            if (existing) {
-              existing.quantity = [existing.quantity, quantity].filter(Boolean).join(' + ');
-              if (!existing.source.includes(meal.strMeal)) {
-                existing.source += `, ${dateKey} · ${slot}: ${meal.strMeal}`;
+            meal.ingredients.forEach((ingredient: any) => {
+              const name = normalizeIngredientName(ingredient);
+              const quantity = normalizeIngredientQuantity(ingredient);
+              const category = classifyIngredientCategory(ingredient);
+              const id = `${name.toLowerCase()}-${category}`.replace(/\s+/g, '-');
+              const existing = mergedMap.get(id);
+
+              if (existing) {
+                existing.quantity = [existing.quantity, quantity].filter(Boolean).join(' + ');
+                if (!existing.source.includes(meal.strMeal)) {
+                  existing.source += `, ${dateKey} · ${slot}: ${meal.strMeal}`;
+                }
+                return;
               }
-              return;
-            }
 
-            mergedMap.set(id, {
-              id,
-              name,
-              quantity,
-              category,
-              source: `${dateKey} · ${slot}: ${meal.strMeal}`,
-              mealId: meal.idMeal,
-              checked: checkedMap.get(id) || false,
-              picUrl: ingredient.picUrl || '',
+              mergedMap.set(id, {
+                id,
+                name,
+                quantity,
+                category,
+                source: `${dateKey} · ${slot}: ${meal.strMeal}`,
+                mealId: meal.idMeal,
+                checked: checkedMap.get(id) || false,
+                picUrl: ingredient.picUrl || '',
+              });
             });
           });
         });
@@ -441,7 +496,7 @@ export function AiMealPlanGenerationProvider({
 
     try {
       const raw = await AsyncStorage.getItem(MEAL_PLANS_STORAGE_KEY);
-      const allMealPlans: Record<string, Record<string, MealPlanForDay>> = raw ? JSON.parse(raw) : {};
+      const allMealPlans: Record<string, Record<string, MealPlanForDay>> = normalizeMealPlansByOwner(raw ? JSON.parse(raw) : {});
       const ownerPlans = allMealPlans[ownerKey] || {};
 
       for (let i = 0; i < days; i += 1) {
@@ -474,12 +529,12 @@ export function AiMealPlanGenerationProvider({
         const plan = data.plan || data.mealPlan || data;
         const nextDayPlan: MealPlanForDay = {};
 
-        if (plan.breakfast) nextDayPlan.Breakfast = normalizeAiMeal(plan.breakfast);
-        if (plan.lunch) nextDayPlan.Lunch = normalizeAiMeal(plan.lunch);
-        if (plan.dinner) nextDayPlan.Dinner = normalizeAiMeal(plan.dinner);
-        if (plan.snack) nextDayPlan.Snack = normalizeAiMeal(plan.snack);
+        if (plan.breakfast) nextDayPlan.Breakfast = normalizeSlotMeals(plan.breakfast);
+        if (plan.lunch) nextDayPlan.Lunch = normalizeSlotMeals(plan.lunch);
+        if (plan.dinner) nextDayPlan.Dinner = normalizeSlotMeals(plan.dinner);
+        if (plan.snack) nextDayPlan.Snack = normalizeSlotMeals(plan.snack);
 
-        const hasAnyMeal = SLOT_ORDER.some((slot) => !!nextDayPlan[slot]);
+        const hasAnyMeal = SLOT_ORDER.some((slot) => (nextDayPlan[slot]?.length || 0) > 0);
         if (!hasAnyMeal) {
           throw new Error('AI did not return a valid meal plan.');
         }
