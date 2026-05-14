@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   Alert,
   Image,
@@ -8,6 +8,11 @@ import {
   StyleSheet,
   Text,
   View,
+  Modal,
+  TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -35,6 +40,7 @@ type Ingredient = {
   carbohydrateG?: number;
   fatG?: number;
   category?: string;
+  picUrl?: string;
 };
 
 type MealRecipe = {
@@ -446,20 +452,49 @@ export default function RecipeDetailScreen() {
   const youtubeUrl = isValidYoutubeUrl(meal?.strYoutube || meal?.youtubeUrl) ? String(meal?.strYoutube || meal?.youtubeUrl) : '';
   const mealEmoji = meal?.mealIconEmoji || guessMealEmoji(mealName, category);
 
-  const calories = safeNumber(meal?.totalEnergyKcal || meal?.calories);
-  const protein = safeNumber(meal?.totalProteinG || meal?.protein);
-  const carbs = safeNumber(meal?.totalCarbohydrateG || meal?.carbs);
-  const fat = safeNumber(meal?.totalFatG || meal?.fat);
-
   const instructions = useMemo(
     () => splitInstructions(instructionsText, meal?.steps),
     [instructionsText, meal?.steps]
   );
 
-  const ingredients = useMemo(() => {
-    if (!Array.isArray(meal?.ingredients)) return [];
-    return meal.ingredients;
+  const [localIngredients, setLocalIngredients] = useState<Ingredient[]>([]);
+
+  useEffect(() => {
+    if (Array.isArray(meal?.ingredients)) {
+      const parsed = meal.ingredients
+        .filter((item: Ingredient) => safeNumber(item.gramsEstimated) > 0)
+        .sort((a: Ingredient, b: Ingredient) => safeNumber(b.gramsEstimated) - safeNumber(a.gramsEstimated));
+      setLocalIngredients(parsed);
+    }
   }, [meal?.ingredients]);
+
+  const localNutrition = useMemo(() => {
+    if (!meal || !Array.isArray(meal.ingredients) || meal.ingredients.length === 0) {
+      return {
+        calories: safeNumber(meal?.totalEnergyKcal || meal?.calories),
+        protein: safeNumber(meal?.totalProteinG || meal?.protein),
+        carbs: safeNumber(meal?.totalCarbohydrateG || meal?.carbs),
+        fat: safeNumber(meal?.totalFatG || meal?.fat),
+      };
+    }
+    
+    let calories = 0;
+    let protein = 0;
+    let carbs = 0;
+    let fat = 0;
+    
+    localIngredients.forEach(item => {
+      const g = safeNumber(item.gramsEstimated);
+      if (g > 0) {
+        calories += safeNumber(item.energyKcal) * (g / 100);
+        protein += safeNumber(item.proteinG) * (g / 100);
+        carbs += safeNumber(item.carbohydrateG) * (g / 100);
+        fat += safeNumber(item.fatG) * (g / 100);
+      }
+    });
+    
+    return { calories, protein, carbs, fat };
+  }, [localIngredients, meal]);
 
   const saveableMeal = useMemo(() => {
     return {
@@ -490,15 +525,88 @@ export default function RecipeDetailScreen() {
       imageUrl: imageUrl || undefined,
       strMealThumb: imageUrl || meal?.strMealThumb || '',
       mealIconEmoji: mealEmoji,
-      carbs,
-      protein,
-      fat,
-      totalCarbohydrateG: carbs,
-      totalProteinG: protein,
-      totalFatG: fat,
-      totalEnergyKcal: calories,
+      carbs: localNutrition.carbs,
+      protein: localNutrition.protein,
+      fat: localNutrition.fat,
+      totalCarbohydrateG: localNutrition.carbs,
+      totalProteinG: localNutrition.protein,
+      totalFatG: localNutrition.fat,
+      totalEnergyKcal: localNutrition.calories,
     };
-  }, [meal, mealId, mealName, mealNameEn, mealNameCn, mealNameMs, categoryEn, categoryCn, categoryMs, areaEn, areaCn, areaMs, instructionsEn, instructionsCn, instructionsMs, imageUrl, mealEmoji, carbs, protein, fat, calories]);
+  }, [meal, mealId, mealName, mealNameEn, mealNameCn, mealNameMs, categoryEn, categoryCn, categoryMs, areaEn, areaCn, areaMs, instructionsEn, instructionsCn, instructionsMs, imageUrl, mealEmoji, localNutrition]);
+
+  const [selectedIngredientIndex, setSelectedIngredientIndex] = useState<number | null>(null);
+  const [ingredientDetailModalVisible, setIngredientDetailModalVisible] = useState(false);
+  const [editWeightValue, setEditWeightValue] = useState('');
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const closeIngredientEditor = () => {
+    setIngredientDetailModalVisible(false);
+    setSearchQuery('');
+    setDebouncedQuery('');
+    setSuggestions([]);
+    setIsSearching(false);
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchSuggestions = async () => {
+      if (!ingredientDetailModalVisible || !debouncedQuery.trim()) {
+        setSuggestions([]);
+        setIsSearching(false);
+        return;
+      }
+
+      setIsSearching(true);
+
+      try {
+        const response = await fetch(
+          `https://jom-healthy-java.onrender.com/food/getFoodNutrition?name=${encodeURIComponent(debouncedQuery)}`,
+          {
+            method: 'POST',
+            headers: { Accept: 'application/json' },
+          }
+        );
+
+        if (response.ok) {
+          const payload = await response.json();
+
+          if (!cancelled) {
+            setSuggestions(Array.isArray(payload.data) ? payload.data : []);
+          }
+        } else if (!cancelled) {
+          setSuggestions([]);
+        }
+      } catch (err) {
+        console.log('Search replacement food failed:', err);
+
+        if (!cancelled) {
+          setSuggestions([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSearching(false);
+        }
+      }
+    };
+
+    fetchSuggestions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery, ingredientDetailModalVisible]);
+
 
   const saved = typeof isRecipeSaved === 'function' ? isRecipeSaved(saveableMeal.id) : false;
 
@@ -543,6 +651,78 @@ export default function RecipeDetailScreen() {
       getText('This recipe has been added to your Saved Recipes in Profile.', '这个食谱已保存到 Profile 的 Saved Recipes。', 'Resipi ini telah ditambah ke Resipi Tersimpan dalam Profil.')
     );
   };
+
+  const handleUpdateWeight = () => {
+    if (selectedIngredientIndex === null) return;
+
+    const newWeight = parseInt(editWeightValue, 10);
+
+    if (isNaN(newWeight) || newWeight < 0) {
+      Alert.alert(
+        getText('Invalid weight', '无效重量', 'Berat tidak sah'),
+        getText(
+          'Please enter a valid weight in grams.',
+          '请输入有效的克数。',
+          'Sila masukkan berat dalam gram yang sah.'
+        )
+      );
+      return;
+    }
+
+    setLocalIngredients(prev => {
+      const next = [...prev];
+
+      next[selectedIngredientIndex] = {
+        ...next[selectedIngredientIndex],
+        gramsEstimated: newWeight,
+      };
+
+      return newWeight === 0
+        ? next.filter(i => safeNumber(i.gramsEstimated) > 0)
+        : next.sort((a, b) => safeNumber(b.gramsEstimated) - safeNumber(a.gramsEstimated));
+    });
+
+    closeIngredientEditor();
+  };
+
+  const handleReplaceIngredient = (foodData: any) => {
+    if (selectedIngredientIndex === null) return;
+
+    setLocalIngredients(prev => {
+      const next = [...prev];
+      const oldWeight = safeNumber(next[selectedIngredientIndex].gramsEstimated) || 100;
+
+      next[selectedIngredientIndex] = {
+        ...next[selectedIngredientIndex],
+        ingredientName: foodData.foodNameEn || foodData.foodNameOriginal || next[selectedIngredientIndex].ingredientName,
+        foodNameEn: foodData.foodNameEn || foodData.foodNameOriginal,
+        foodNameCn: foodData.foodNameCn,
+        foodNameMs: foodData.foodNameMs,
+        name: foodData.foodNameEn || foodData.foodNameOriginal,
+        measure: `${Math.round(oldWeight)}g`,
+        picUrl: foodData.picUrl,
+        energyKcal: foodData.energyKcal || foodData.calories,
+        proteinG: foodData.proteinG || foodData.protein,
+        carbohydrateG: foodData.carbohydrateG || foodData.carbs,
+        fatG: foodData.fatG || foodData.fat,
+        gramsEstimated: oldWeight,
+      };
+
+      return next.sort((a, b) => safeNumber(b.gramsEstimated) - safeNumber(a.gramsEstimated));
+    });
+
+    closeIngredientEditor();
+
+    Alert.alert(
+      getText('Food replaced', '食物已替换', 'Makanan telah diganti'),
+      getText(
+        'The ingredient was replaced and the original weight was kept.',
+        '食材已替换，并自动保留原来的重量。',
+        'Bahan telah diganti dan berat asal dikekalkan.'
+      )
+    );
+  };
+
 
   const openYoutube = async () => {
     if (!youtubeUrl) {
@@ -663,22 +843,22 @@ export default function RecipeDetailScreen() {
 
           <View style={styles.nutritionGrid}>
             <View style={styles.nutritionItem}>
-              <Text style={styles.nutritionValue}>{round(calories)}</Text>
+              <Text style={styles.nutritionValue}>{round(localNutrition.calories)}</Text>
               <Text style={styles.nutritionLabel}>kcal</Text>
             </View>
 
             <View style={styles.nutritionItem}>
-              <Text style={styles.nutritionValue}>{round(carbs)}g</Text>
+              <Text style={styles.nutritionValue}>{round(localNutrition.carbs)}g</Text>
               <Text style={styles.nutritionLabel}>{getText('Carbs', '碳水', 'Karbo')}</Text>
             </View>
 
             <View style={styles.nutritionItem}>
-              <Text style={styles.nutritionValue}>{round(protein)}g</Text>
+              <Text style={styles.nutritionValue}>{round(localNutrition.protein)}g</Text>
               <Text style={styles.nutritionLabel}>{getText('Protein', '蛋白质', 'Protein')}</Text>
             </View>
 
             <View style={styles.nutritionItem}>
-              <Text style={styles.nutritionValue}>{round(fat)}g</Text>
+              <Text style={styles.nutritionValue}>{round(localNutrition.fat)}g</Text>
               <Text style={styles.nutritionLabel}>{getText('Fat', '脂肪', 'Lemak')}</Text>
             </View>
           </View>
@@ -687,30 +867,49 @@ export default function RecipeDetailScreen() {
         <View style={styles.infoCard}>
           <Text style={styles.sectionTitle}>{getText('Ingredients', '食材', 'Bahan-bahan')}</Text>
 
-          {ingredients.length > 0 ? (
-            ingredients.map((item, index) => {
-              const name = getIngredientName(item);
-              const measure = getIngredientMeasure(item);
-              const color = getFoodGroupColor(item.foodGroup || item.category);
+            {localIngredients.length > 0 ? (
+              localIngredients.map((item, index) => {
+                const name = getIngredientName(item);
+                const measure = getIngredientMeasure(item);
+                const color = getFoodGroupColor(item.foodGroup || item.category);
 
-              return (
-                <View key={`${name}-${index}`} style={styles.ingredientRow}>
-                  <View style={[styles.ingredientDot, { backgroundColor: color }]} />
+                return (
+                  <Pressable
+                    key={`${name}-${index}`}
+                    style={styles.ingredientRow}
+                    onPress={() => {
+                      setSelectedIngredientIndex(index);
+                      setEditWeightValue(String(item.gramsEstimated || '100'));
+                      setSearchQuery('');
+                      setDebouncedQuery('');
+                      setSuggestions([]);
+                      setIngredientDetailModalVisible(true);
+                    }}
+                  >
+                    {item.picUrl ? (
+                      <Image source={{ uri: item.picUrl }} style={styles.ingredientImage} />
+                    ) : (
+                      <View style={[styles.ingredientIconFallback, { backgroundColor: color }]}>
+                        <Text style={styles.ingredientIconText}>🍽️</Text>
+                      </View>
+                    )}
 
-                  <View style={styles.ingredientTextWrap}>
-                    <Text style={styles.ingredientName}>{name}</Text>
-                    {!!measure && <Text style={styles.ingredientMeasure}>{measure}</Text>}
-                  </View>
+                    <View style={styles.ingredientTextWrap}>
+                      <Text style={styles.ingredientName}>{name}</Text>
+                      {!!measure && <Text style={styles.ingredientMeasure}>{measure}</Text>}
+                    </View>
 
-                  {safeNumber(item.gramsEstimated) > 0 && (
-                    <Text style={styles.ingredientGram}>{round(item.gramsEstimated)}g</Text>
-                  )}
-                </View>
-              );
-            })
-          ) : (
-            <Text style={styles.emptyText}>{getText('No ingredients available.', '暂无食材信息。', 'Tiada bahan tersedia.')}</Text>
-          )}
+                    {safeNumber(item.gramsEstimated) > 0 && (
+                      <View style={styles.ingredientWeightTag}>
+                        <Text style={styles.ingredientGram}>{round(item.gramsEstimated)}g</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })
+            ) : (
+              <Text style={styles.emptyText}>{getText('No ingredients available.', '暂无食材信息。', 'Tiada bahan tersedia.')}</Text>
+            )}
         </View>
 
         <View style={styles.infoCard}>
@@ -730,6 +929,272 @@ export default function RecipeDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Ingredient Edit & Replace Modal */}
+      <Modal
+        visible={ingredientDetailModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeIngredientEditor}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.detailModalCard}>
+            <View style={styles.detailModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.detailModalTitle}>
+                  {getText('Edit Ingredient', '编辑食材', 'Edit Bahan')}
+                </Text>
+                <Text style={styles.detailModalSubtitle}>
+                  {getText(
+                    'Adjust the weight or search another food to replace it.',
+                    '可以调整重量，也可以搜索其他食物来替换。',
+                    'Laraskan berat atau cari makanan lain untuk menggantikannya.'
+                  )}
+                </Text>
+              </View>
+
+              <Pressable onPress={closeIngredientEditor} hitSlop={10}>
+                <Ionicons name="close" size={24} color="#94A3B8" />
+              </Pressable>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.detailModalScrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              {(() => {
+                if (selectedIngredientIndex === null) return null;
+
+                const ing = localIngredients[selectedIngredientIndex];
+
+                if (!ing) return null;
+
+                const dispWeight = safeNumber(editWeightValue) || 0;
+                const cals = round(safeNumber(ing.energyKcal) * (dispWeight / 100));
+                const carbs = round(safeNumber(ing.carbohydrateG) * (dispWeight / 100));
+                const protein = round(safeNumber(ing.proteinG) * (dispWeight / 100));
+                const fat = round(safeNumber(ing.fatG) * (dispWeight / 100));
+                const nameText = getIngredientName(ing);
+
+                return (
+                  <>
+                    <View style={styles.detailHero}>
+                      {ing.picUrl ? (
+                        <Image source={{ uri: ing.picUrl }} style={styles.detailHeroImage} />
+                      ) : (
+                        <View
+                          style={[
+                            styles.detailHeroIcon,
+                            {
+                              backgroundColor: getFoodGroupColor(ing.foodGroup || ing.category),
+                            },
+                          ]}
+                        >
+                          <Text style={styles.detailHeroEmoji}>🍽️</Text>
+                        </View>
+                      )}
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.detailHeroName}>{nameText}</Text>
+                        <Text style={styles.detailHeroHint}>
+                          {getText(
+                            'Nutrition updates as the weight changes.',
+                            '修改重量后，营养会自动重新计算。',
+                            'Nutrisi akan dikira semula apabila berat diubah.'
+                          )}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.macroGrid}>
+                      <View style={styles.macroBox}>
+                        <Text style={styles.macroValue}>{cals}</Text>
+                        <Text style={styles.macroLabel}>kcal</Text>
+                      </View>
+
+                      <View style={styles.macroBox}>
+                        <Text style={styles.macroValue}>{carbs}g</Text>
+                        <Text style={styles.macroLabel}>
+                          {getText('Carbs', '碳水', 'Karbo')}
+                        </Text>
+                      </View>
+
+                      <View style={styles.macroBox}>
+                        <Text style={styles.macroValue}>{protein}g</Text>
+                        <Text style={styles.macroLabel}>
+                          {getText('Protein', '蛋白质', 'Protein')}
+                        </Text>
+                      </View>
+
+                      <View style={styles.macroBox}>
+                        <Text style={styles.macroValue}>{fat}g</Text>
+                        <Text style={styles.macroLabel}>
+                          {getText('Fat', '脂肪', 'Lemak')}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.editWeightSection}>
+                      <Text style={styles.editWeightSubtitle}>
+                        {getText(
+                          'Weight in grams. Enter 0 to remove this ingredient.',
+                          '输入克数。输入 0 可以删除这个食材。',
+                          'Masukkan berat dalam gram. Masukkan 0 untuk membuang bahan ini.'
+                        )}
+                      </Text>
+
+                      <TextInput
+                        style={styles.detailWeightInput}
+                        keyboardType="number-pad"
+                        value={editWeightValue}
+                        onChangeText={setEditWeightValue}
+                        maxLength={5}
+                        returnKeyType="done"
+                        onSubmitEditing={handleUpdateWeight}
+                      />
+                    </View>
+
+                    <View style={styles.inlineReplaceSection}>
+                      <Text style={styles.inlineReplaceTitle}>
+                        {getText(
+                          'Search food to replace',
+                          '搜索食物进行替换',
+                          'Cari makanan untuk diganti'
+                        )}
+                      </Text>
+
+                      <Text style={styles.inlineReplaceHint}>
+                        {getText(
+                          'The selected replacement will keep the current weight automatically.',
+                          '替换后会自动保留当前重量，不需要重新输入。',
+                          'Makanan gantian akan mengekalkan berat semasa secara automatik.'
+                        )}
+                      </Text>
+
+                      <View style={styles.inlineSearchBar}>
+                        <Ionicons name="search" size={18} color="#64748B" />
+
+                        <TextInput
+                          style={styles.inlineSearchInput}
+                          placeholder={getText(
+                            'Try chicken, tofu, milk...',
+                            '例如：鸡肉、豆腐、牛奶...',
+                            'Contoh: ayam, tauhu, susu...'
+                          )}
+                          value={searchQuery}
+                          onChangeText={setSearchQuery}
+                          autoCorrect={false}
+                          returnKeyType="search"
+                        />
+
+                        {searchQuery.length > 0 && (
+                          <Pressable onPress={() => setSearchQuery('')}>
+                            <Ionicons name="close-circle" size={20} color="#94A3B8" />
+                          </Pressable>
+                        )}
+                      </View>
+
+                      {isSearching ? (
+                        <View style={styles.inlineSearchLoading}>
+                          <ActivityIndicator size="small" color={colors.primaryDark} />
+                          <Text style={styles.inlineSearchLoadingText}>
+                            {getText(
+                              'Searching foods...',
+                              '正在搜索食物...',
+                              'Sedang mencari makanan...'
+                            )}
+                          </Text>
+                        </View>
+                      ) : suggestions.length > 0 ? (
+                        <ScrollView
+                          style={styles.inlineSuggestionScroll}
+                          nestedScrollEnabled
+                          keyboardShouldPersistTaps="handled"
+                        >
+                          {suggestions.map((food, i) => (
+                            <Pressable
+                              key={`${food.id || food.foodNameEn || food.foodNameCn || i}-${i}`}
+                              style={styles.suggestionRow}
+                              onPress={() => handleReplaceIngredient(food)}
+                            >
+                              {food.picUrl ? (
+                                <Image
+                                  source={{ uri: food.picUrl }}
+                                  style={styles.suggestionImage}
+                                />
+                              ) : (
+                                <View style={styles.suggestionFallback}>
+                                  <Text>🍽️</Text>
+                                </View>
+                              )}
+
+                              <View style={styles.suggestionInfo}>
+                                <Text style={styles.suggestionName} numberOfLines={1}>
+                                  {language === 'zh'
+                                    ? food.foodNameCn ||
+                                      food.foodNameOriginal ||
+                                      food.foodNameEn
+                                    : language === 'ms'
+                                    ? food.foodNameMs ||
+                                      food.foodNameOriginal ||
+                                      food.foodNameEn
+                                    : food.foodNameEn ||
+                                      food.foodNameOriginal ||
+                                      food.foodNameCn}
+                                </Text>
+
+                                <Text style={styles.suggestionMacros}>
+                                  {round(food.energyKcal || food.calories)} kcal / 100g
+                                </Text>
+                              </View>
+
+                              <View style={styles.replacePickTag}>
+                                <Text style={styles.replacePickTagText}>
+                                  {getText('Use', '替换', 'Pilih')}
+                                </Text>
+                              </View>
+                            </Pressable>
+                          ))}
+                        </ScrollView>
+                      ) : searchQuery.trim().length > 0 ? (
+                        <Text style={styles.noResultsTextInline}>
+                          {getText(
+                            'No matching food found. Try a simpler keyword.',
+                            '没有找到匹配食物，可以试试更简单的关键词。',
+                            'Tiada makanan sepadan ditemui. Cuba kata kunci yang lebih ringkas.'
+                          )}
+                        </Text>
+                      ) : (
+                        <View style={styles.searchHelpCard}>
+                          <Ionicons name="bulb-outline" size={18} color={colors.primaryDark} />
+                          <Text style={styles.searchHelpText}>
+                            {getText(
+                              'Tip: search by common food names, such as “chicken”, “rice”, or “tofu”.',
+                              '提示：可以输入常见食物名，例如“chicken”“rice”“tofu”。',
+                              'Tip: cari nama makanan biasa seperti “chicken”, “rice”, atau “tofu”.'
+                            )}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <Pressable style={styles.detailSaveBtn} onPress={handleUpdateWeight}>
+                      <Text style={styles.detailSaveText}>
+                        {getText('Save Weight', '保存重量', 'Simpan Berat')}
+                      </Text>
+                    </Pressable>
+                  </>
+                );
+              })()}
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
     </Screen>
   );
 }
@@ -1042,5 +1507,510 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '900',
+  },
+
+  ingredientImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#E5E7EB',
+    marginRight: 10,
+  },
+
+  ingredientIconFallback: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+
+  ingredientIconText: {
+    fontSize: 20,
+  },
+
+  ingredientWeightTag: {
+    backgroundColor: '#EAF7F0',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.5)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+
+  detailModalCard: {
+    width: '92%',
+    maxHeight: '88%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    overflow: 'hidden',
+    marginBottom: 'auto',
+    marginTop: 'auto',
+    alignSelf: 'center',
+  },
+  detailModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    gap: 12,
+  },
+  detailModalTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  detailModalSubtitle: {
+    marginTop: 4,
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 18,
+    paddingRight: 12,
+  },
+  detailModalScrollContent: {
+    padding: 20,
+    paddingBottom: 24,
+  },
+  detailModalContent: {
+    padding: 20,
+  },
+  detailHero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  detailHeroImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    marginRight: 16,
+  },
+  detailHeroIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    marginRight: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailHeroEmoji: {
+    fontSize: 24,
+  },
+  detailHeroName: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    flex: 1,
+  },
+  detailHeroHint: {
+    marginTop: 4,
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  macroGrid: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 16,
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  macroBox: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  macroValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  macroLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 4,
+  },
+  editWeightSection: {
+    marginBottom: 24,
+  },
+  editWeightSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 8,
+  },
+  detailWeightInput: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  replaceFullButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EEF2FF',
+    paddingVertical: 14,
+    borderRadius: 16,
+    marginBottom: 16,
+    gap: 8,
+  },
+  replaceFullBtnText: {
+    color: colors.primaryDark,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  detailSaveBtn: {
+    backgroundColor: colors.primaryDark,
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
+  },
+  detailSaveText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  inlineReplaceSection: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  inlineReplaceTitle: {
+    color: '#0F172A',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  inlineReplaceHint: {
+    marginTop: 5,
+    marginBottom: 12,
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  inlineSearchBar: {
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  inlineSearchInput: {
+    flex: 1,
+    height: 48,
+    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  inlineSearchLoading: {
+    marginTop: 14,
+    minHeight: 44,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  inlineSearchLoadingText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  inlineSuggestionScroll: {
+    marginTop: 12,
+    maxHeight: 260,
+  },
+  replacePickTag: {
+    backgroundColor: '#EAF7F0',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginLeft: 8,
+  },
+  replacePickTagText: {
+    color: colors.primaryDark,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  noResultsTextInline: {
+    textAlign: 'center',
+    marginTop: 16,
+    color: '#94A3B8',
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: '700',
+  },
+  searchHelpCard: {
+    marginTop: 12,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  searchHelpText: {
+    flex: 1,
+    color: '#64748B',
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  actionModalSheet: {
+
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+
+  modalSheetTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+
+  modalActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 30,
+  },
+
+  sheetActionButton: {
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  sheetActionIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+
+  sheetActionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+  },
+
+  editWeightCard: {
+    width: '90%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 24,
+    marginBottom: 'auto',
+    marginTop: 'auto',
+  },
+
+  editWeightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+
+  editWeightIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#EAF7F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  editWeightTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+
+  editWeightSubtitleOld: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+    marginTop: 2,
+    maxWidth: 200,
+  },
+
+  weightInput: {
+    height: 60,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#0F172A',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+
+  modalCancelButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  modalConfirmButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: colors.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#475569',
+  },
+
+  modalConfirmText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+
+  searchModalContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    paddingTop: Platform.OS === 'ios' ? 44 : 20,
+  },
+
+  searchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+
+  searchCloseBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  searchInput: {
+    flex: 1,
+    height: 44,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: '#0F172A',
+    marginLeft: 8,
+  },
+
+  searchClearBtn: {
+    position: 'absolute',
+    right: 28,
+  },
+
+  suggestionList: {
+    padding: 16,
+    gap: 12,
+  },
+
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+
+  suggestionImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#E5E7EB',
+  },
+
+  suggestionFallback: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  suggestionInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+
+  suggestionName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+
+  suggestionMacros: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 4,
+  },
+
+  noResultsText: {
+    textAlign: 'center',
+    marginTop: 40,
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '600',
   },
 });

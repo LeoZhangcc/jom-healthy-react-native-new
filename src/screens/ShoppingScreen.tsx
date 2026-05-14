@@ -409,7 +409,7 @@ export default function ShoppingScreen() {
 
   const selectedShoppingList = useMemo<DisplayShoppingItem[]>(() => {
     if (selectedOwnerKey === ALL_OWNER_KEY) {
-      return childOwnerKeys.flatMap((owner) =>
+      return childOwnerKeys.flatMap((owner: string) =>
         normalizeShoppingList(shoppingByOwner[owner]).map((item) => ({
           ...item,
           ownerKey: owner,
@@ -443,7 +443,7 @@ export default function ShoppingScreen() {
     const nextByOwner = { ...shoppingByOwner };
 
     if (selectedOwnerKey === ALL_OWNER_KEY) {
-      childOwnerKeys.forEach((owner) => {
+      childOwnerKeys.forEach((owner: string) => {
         nextByOwner[owner] = normalizeShoppingList(nextByOwner[owner]).filter((item) => !item.checked);
       });
     } else {
@@ -457,7 +457,7 @@ export default function ShoppingScreen() {
     const nextByOwner = { ...shoppingByOwner };
 
     if (selectedOwnerKey === ALL_OWNER_KEY) {
-      childOwnerKeys.forEach((owner) => {
+      childOwnerKeys.forEach((owner: string) => {
         nextByOwner[owner] = normalizeShoppingList(nextByOwner[owner]).map((item) => ({
           ...item,
           checked: false,
@@ -794,7 +794,7 @@ export default function ShoppingScreen() {
               const selected = selectedOwnerKey === option.key;
               const listCount = option.key === ALL_OWNER_KEY
                 ? childOwnerKeys.reduce(
-                    (sum, owner) => sum + normalizeShoppingList(shoppingByOwner[owner]).length,
+                    (sum: number, owner: string) => sum + normalizeShoppingList(shoppingByOwner[owner]).length,
                     0
                   )
                 : normalizeShoppingList(shoppingByOwner[option.key]).length;
