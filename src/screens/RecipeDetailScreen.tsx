@@ -234,21 +234,51 @@ function getFoodGroupColor(group?: string | null) {
 }
 
 function splitInstructions(value?: string | null, steps?: string[]) {
+  // Regex to strip step markers at the beginning of a string.
+  // Handles: "Step 1", "1", "1.", "1)", "Title:\n"
+  const markerRegex = /^(?:\*\*|)[\s]*(?:(?:step|langkah|步骤)\s*\d+[:.)-]?|\d+[:.)-]?)(?:\*\*|)[\s]*|.*(?::|：)\s*\n/i;
+
   if (Array.isArray(steps) && steps.length > 0) {
-    return steps.filter(Boolean).map((item) => String(item).trim()).filter(Boolean);
+    return steps
+      .filter(Boolean)
+      .map((item) => String(item).replace(markerRegex, '').trim())
+      .filter(Boolean);
   }
 
   if (!value) return [];
 
-  const normalized = String(value)
+  const text = String(value).trim();
+  
+  // Try to split by explicit markers like "Step 1", "1", "1.", "2)", etc. at the start of lines,
+  // OR a short title ending with a colon that acts as a step heading.
+  const splitRegex = /(?:\n|^)(?:\*\*|)[\s]*(?:(?:step|langkah|步骤)\s*\d+[:.)-]?|\d+[:.)-]?)\s*(?:\*\*|)[\s]*|(?:\n|^)[^\n:：]{1,40}(?::|：)[\s]*\n/i;
+  
+  if (splitRegex.test(text)) {
+    let parts = text.split(splitRegex);
+    
+    // Some engines include the split match if there are capture groups, but we don't have capturing groups.
+    // However, if the text STARTS with the split pattern, the first element is empty.
+    let validParts = parts.map(p => p.trim()).filter(p => p.length > 0);
+    
+    // Optionally ignore a leading "Instructions:" or "Directions:" title if it gets isolated
+    if (validParts.length > 0) {
+      if (validParts.length > 1 && /^(instructions|directions|method|做法|arahan)[:\s]*$/i.test(validParts[0])) {
+         validParts.shift();
+      }
+      return validParts;
+    }
+  }
+
+  // Fallback to splitting by paragraphs (newlines)
+  const normalized = text
     .replace(/\r/g, '\n')
-    .split(/\n+|(?<=\.)\s+(?=[A-Z0-9])/)
-    .map((item) => item.trim())
+    .split(/\n+/)
+    .map((item) => item.replace(markerRegex, '').trim())
     .filter((item) => item.length > 0);
 
   if (normalized.length > 0) return normalized;
 
-  return [String(value).trim()];
+  return [text.replace(markerRegex, '').trim()];
 }
 
 function normalizeLanguageCode(language?: string | null) {
