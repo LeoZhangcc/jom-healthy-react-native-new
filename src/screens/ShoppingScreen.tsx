@@ -3,6 +3,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Image,
   Linking,
   Modal,
   Pressable,
@@ -46,6 +47,7 @@ type ShoppingItem = {
   sourceMs?: string;
   mealId: string;
   checked: boolean;
+  picUrl?: string;
 };
 
 type DisplayShoppingItem = ShoppingItem & {
@@ -267,6 +269,7 @@ function normalizeShoppingList(value: any): ShoppingItem[] {
       sourceMs: item.sourceMs || '',
       mealId: String(item.mealId || ''),
       checked: Boolean(item.checked),
+      picUrl: item.picUrl || '',
     }));
 }
 
@@ -702,11 +705,19 @@ export default function ShoppingScreen() {
                         ]}
                       >
                         <View style={styles.itemIcon}>
-                          <Ionicons
-                            name={categoryIcons[category]}
-                            color={colors.primaryDark}
-                            size={18}
-                          />
+                          {item.picUrl ? (
+                            <Image
+                              source={{ uri: item.picUrl }}
+                              style={styles.itemImage}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <Ionicons
+                              name={categoryIcons[category]}
+                              color={colors.primaryDark}
+                              size={18}
+                            />
+                          )}
                         </View>
 
                         <View style={styles.itemInfo}>
@@ -1324,6 +1335,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+
+  itemImage: {
+    width: '100%',
+    height: '100%',
   },
 
   itemInfo: {

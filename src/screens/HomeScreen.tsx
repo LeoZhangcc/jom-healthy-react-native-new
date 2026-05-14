@@ -46,6 +46,16 @@ import { useActivity } from '../context/PhysicalActivityContext';
 type FoodSuggestion = {
   label: string;
   query: string;
+  foodNameEn?: string;
+  foodNameCn?: string;
+  foodNameMs?: string;
+};
+
+type HistoryItem = {
+  query: string;
+  foodNameEn?: string;
+  foodNameCn?: string;
+  foodNameMs?: string;
 };
 
 const BASE_URL = 'https://jom-healthy-java.onrender.com';
@@ -74,7 +84,7 @@ export default function HomeScreen() {
   const currentLanguage = language; 
 
   const [searchText, setSearchText] = useState('');
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [searchHistory, setSearchHistory] = useState<HistoryItem[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [suggestions, setSuggestions] = useState<FoodSuggestion[]>([]);
@@ -297,6 +307,9 @@ export default function HomeScreen() {
           return {
             label: label || query,
             query: backendQuery || query,
+            foodNameEn: item.foodNameEn,
+            foodNameCn: item.foodNameCn,
+            foodNameMs: item.foodNameMs,
           };
         });
 
@@ -327,24 +340,42 @@ export default function HomeScreen() {
   const habitTopics = allTopics.filter(t => t.category === 'HABIT');
   const displayTopics = [...reportTopics, ...habitTopics, ...sportTopics, ...dietTopics];
 
-  const handleFoodSearch = (value?: string) => {
-    const foodName = (value ?? searchText).trim();
+  const handleFoodSearch = (itemOrText?: string | HistoryItem | FoodSuggestion) => {
+    let foodQuery = '';
+    let newItem: HistoryItem | null = null;
+    
+    if (!itemOrText) {
+      foodQuery = searchText.trim();
+      if (foodQuery) {
+        newItem = { query: foodQuery };
+      }
+    } else if (typeof itemOrText === 'string') {
+      foodQuery = itemOrText.trim();
+      newItem = { query: foodQuery };
+    } else {
+      foodQuery = itemOrText.query.trim();
+      newItem = {
+        query: foodQuery,
+        foodNameEn: itemOrText.foodNameEn,
+        foodNameCn: itemOrText.foodNameCn,
+        foodNameMs: itemOrText.foodNameMs,
+      };
+    }
 
-    if (!foodName) {
+    if (!foodQuery) {
       Alert.alert(
         getText('Enter a food name', '请输入食物名称', 'Masukkan nama makanan')
       );
       return;
     }
 
-    setSearchHistory((prev) =>
-      [
-        foodName,
-        ...prev.filter(
-          (item) => item.toLowerCase() !== foodName.toLowerCase()
-        ),
-      ].slice(0, 6)
-    );
+    setSearchHistory((prev) => {
+      if (!newItem) return prev;
+      const filtered = prev.filter(
+        (h) => h.query.toLowerCase() !== foodQuery.toLowerCase()
+      );
+      return [newItem, ...filtered].slice(0, 6);
+    });
 
     setSearchText('');
     setSuggestions([]);
@@ -352,7 +383,7 @@ export default function HomeScreen() {
     setSearchError('');
 
     navigation.navigate('FoodInfo', {
-      foodName,
+      foodName: foodQuery,
       source: 'search',
     });
   };
@@ -470,7 +501,7 @@ export default function HomeScreen() {
                         styles.suggestionItem,
                         index === suggestions.length - 1 && styles.suggestionItemLast,
                       ]}
-                      onPress={() => handleFoodSearch(item.query)}
+                      onPress={() => handleFoodSearch(item)}
                     >
                       <Ionicons
                         name="restaurant-outline"
@@ -513,13 +544,22 @@ export default function HomeScreen() {
                   showsHorizontalScrollIndicator={false}
                   style={styles.suggestionsRow}
                 >
-                  {searchHistory.map((food) => (
-                    <Chip
-                      key={food}
-                      label={food}
-                      onPress={() => handleFoodSearch(food)}
-                    />
-                  ))}
+                  {searchHistory.map((food, idx) => {
+                    const itemLabel =
+                      language === 'zh'
+                        ? food.foodNameCn || food.foodNameEn || food.foodNameMs || food.query
+                        : language === 'ms'
+                          ? food.foodNameMs || food.foodNameEn || food.foodNameCn || food.query
+                          : food.foodNameEn || food.foodNameMs || food.foodNameCn || food.query;
+
+                    return (
+                      <Chip
+                        key={`${food.query}-${idx}`}
+                        label={itemLabel}
+                        onPress={() => handleFoodSearch(food)}
+                      />
+                    );
+                  })}
                 </ScrollView>
               </>
             )}
@@ -632,13 +672,14 @@ export default function HomeScreen() {
                 </View>
               </Card>
 
-              <DigitalTwin
+              {/* <DigitalTwin
                 tip={getTwinTip()}
                 nickname={getTwinNickname()}
                 isComplete={allGoalsMet}
-              />
+              /> */}
             </>
-          )}
+          )
+          }
 
           {/* Insert this right ABOVE the Growth Overview Card */}
           {activeChild && (
