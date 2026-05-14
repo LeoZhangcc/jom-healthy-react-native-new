@@ -235,6 +235,16 @@ const translations = {
     drinkQuestion: 'did your child drink?',
     needsMore: 'needs',
     moreToReach: 'mL more to reach today\'s goal. Keep drinking water!',
+
+    "nutritionalAnalysis": "Nutritional Analysis (per 100g)",
+    "energy": "Energy",
+    "carbohydrates": "Carbohydrates",
+    "sugar": "Sugar",
+    "highSugarAlert": "High Sugar Alert",
+    "highSugarDescPart1": "This drink contains",
+    "highSugarDescPart2": "g of sugar. Frequent consumption may exceed",
+    "highSugarDescPart3": "'s recommended daily limits.",
+    
   },
   zh: {
     // Header
@@ -311,6 +321,17 @@ const translations = {
     needsMore: '还需要',
     moreToReach: 'mL 才能达到今天的目标。继续喝水吧！',
 
+    "nutritionalAnalysis": "营养分析 (每100克)",
+    "energy": "能量",
+    "carbohydrates": "碳水化合物",
+    "sugar": "糖分",
+    "protein": "蛋白质",
+    "highSugarAlert": "高糖警告",
+    "highSugarDescPart1": "这款饮料含有",
+    "highSugarDescPart2": "克糖。频繁饮用可能超过",
+    "highSugarDescPart3": "的每日建议限额。",
+
+    
     // Meal Page
     mealPlan: '膳食计划',
     searchRecipes: '搜索食谱...',
@@ -328,7 +349,6 @@ const translations = {
     shoppingList: '购物清单',
     itemsToBuy: '项待购买',
     vegetables: '蔬菜',
-    protein: '蛋白质',
     carbs: '碳水化合物',
     nearbySupermarkets: '附近超市',
     openNow: '营业中',
@@ -519,6 +539,16 @@ const translations = {
     needsMore: 'perlu',
     moreToReach: 'mL lagi untuk mencapai sasaran hari ini. Terus minum air!',
 
+    "nutritionalAnalysis": "Analisis Nutrisi (setiap 100g)",
+    "energy": "Tenaga",
+    "carbohydrates": "Karbohidrat",
+    "sugar": "Gula",
+    "protein": "Protein",
+    "highSugarAlert": "Amaran Gula Tinggi",
+    "highSugarDescPart1": "Minuman ini mengandungi",
+    "highSugarDescPart2": "g gula. Pengambilan yang kerap mungkin melebihi had harian yang disyorkan untuk",
+    "highSugarDescPart3": ".",
+
     // Meal Page
     mealPlan: 'Rancangan Makanan',
     searchRecipes: 'Cari resipi...',
@@ -536,7 +566,6 @@ const translations = {
     shoppingList: 'Senarai Belian',
     itemsToBuy: 'barang untuk dibeli',
     vegetables: 'Sayur-sayuran',
-    protein: 'Protein',
     carbs: 'Karbohidrat',
     nearbySupermarkets: 'Pasar Raya Berdekatan',
     openNow: 'Buka sekarang',
