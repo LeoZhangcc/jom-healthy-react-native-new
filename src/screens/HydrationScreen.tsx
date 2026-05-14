@@ -191,7 +191,10 @@ export default function HydrationScreen({ navigation }: any) {
                     title: drink.title,
                     type: drink.type,
                     sugar: drink.sugar,
-                    amountValue: drink.amountValue,
+                    energy: drink.energy,
+                    carbs: drink.carbs,
+                    protein: drink.protein,
+                    amountValue: drink.amountValue
                   });
                   setSearchResults([]); // Hide list
                   setSearchQuery(''); // Clear text
@@ -426,10 +429,25 @@ export default function HydrationScreen({ navigation }: any) {
 
               <View style={styles.analysisCard}>
                 <Text style={styles.cardTitle}>Nutritional Analysis (per 100g)</Text>
+                
+                <View style={styles.analysisRow}>
+                  <Text style={styles.analysisLabel}>Energy</Text>
+                  <Text style={styles.analysisValue}>{selectedDrink.energy || 0} kcal</Text>
+                </View>
+
+                <View style={styles.analysisRow}>
+                  <Text style={styles.analysisLabel}>Carbohydrates</Text>
+                  <Text style={styles.analysisValue}>{selectedDrink.carbs || 0}g</Text>
+                </View>
+
                 <View style={styles.analysisRow}>
                   <Text style={styles.analysisLabel}>Sugar</Text>
-                  {/* Pulls real sugar data from your database! */}
                   <Text style={styles.analysisValue}>{selectedDrink.sugar || 0}g</Text>
+                </View>
+
+                <View style={styles.analysisRow}>
+                  <Text style={styles.analysisLabel}>Protein</Text>
+                  <Text style={styles.analysisValue}>{selectedDrink.protein || 0}g</Text>
                 </View>
               </View>
 
