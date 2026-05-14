@@ -201,11 +201,10 @@ const translations = {
     clearAll: "Clear All",
     clearConfirmTitle: "Clear Records",
     clearConfirmMsg: "Are you sure you want to clear today's activity records?",
-    generalLogDisclaimer: "Uses average MET for calorie estimation. For better accuracy, log specific activities below."
+    generalLogDisclaimer: "Uses average MET for calorie estimation. For better accuracy, log specific activities below.",
 
     // Home Screen Cards
     hydration: 'Hydration',
-    activity: 'Activity',
 
     // Hydration Screen
     logHydration: 'Log Hydration',
@@ -216,7 +215,6 @@ const translations = {
     needsMoreWater: 'Needs More Water',
     wellHydrated: '✓ Well Hydrated',
     of: 'of',
-    dailyGoal: 'daily goal',
     completed: 'completed',
     goalAchieved: 'Goal achieved!',
     remaining: 'remaining',
@@ -281,7 +279,6 @@ const translations = {
     mins: '分钟',
     // Home Screen Cards
     hydration: '水分',
-    activity: '活动',
 
     // Hydration Screen
     logHydration: '记录水分',
@@ -433,7 +430,6 @@ const translations = {
     watchVideo: "观看视频",
     tapToLog: "点击记录",
     todaysTotal: "今日总计",
-    dailyGoal: "每日目标",
     caloriesBurned: "燃烧的卡路里",
     kcal: "千卡",
     logIt: "记录",
@@ -491,7 +487,6 @@ const translations = {
     mins: 'mins',
     // Home Screen Cards
     hydration: 'Hidrasi',
-    activity: 'Aktiviti',
 
     // Hydration Screen
     logHydration: 'Rekod Hidrasi',
@@ -643,7 +638,6 @@ const translations = {
     watchVideo: "Tonton Video",
     tapToLog: "Ketik untuk Log",
     todaysTotal: "Jumlah Hari Ini",
-    dailyGoal: "Tujuan Harian",
     caloriesBurned: "Kalori Terbakar",
     kcal: "kcal",
     logIt: "Log",
