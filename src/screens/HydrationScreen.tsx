@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, G } from 'react-native-svg';
@@ -29,6 +29,8 @@ export default function HydrationScreen({ navigation }: any) {
   const [amount, setAmount] = useState(200);
   const [customAmount, setCustomAmount] = useState('200');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [selectedDrink, setSelectedDrink] = useState<any>(null);
   const [customDrinkName, setCustomDrinkName] = useState('');
@@ -95,15 +97,31 @@ export default function HydrationScreen({ navigation }: any) {
     }
   };
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      const drink = drinkOptions.find(d => d.title.toLowerCase().includes(searchQuery.toLowerCase()));
-      if (drink) {
-        setSelectedDrink(drink);
-        setShowAnalysis(true);
-      }
+  useEffect(() => {
+    // If the search bar is empty, clear the results and do nothing
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
     }
-  };
+
+    // Search timer
+    const delayDebounceFn = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const API_URL = `https://jom-healthy-java-drink.onrender.com/api/drinks/search?q=${searchQuery}`;
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        setSearchResults(data);
+      } catch (error) {
+        console.error("Failed to fetch drinks:", error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 0); // enter time delay
+
+    // Cleanup function: If the user types another letter before 500ms is up, cancel the previous timer!
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]); // This tells React to run this effect every time searchQuery changes
 
   const handleBackFromAnalysis = () => {
     setShowAnalysis(false);
@@ -153,13 +171,42 @@ export default function HydrationScreen({ navigation }: any) {
           <TextInput
             style={styles.searchInput}
             value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
+            onChangeText={setSearchQuery} // This instantly updates the state, which triggers the useEffect!
             placeholder={t('searchDrinks')}
             placeholderTextColor="#9CA3AF"
             returnKeyType="search"
           />
         </View>
+        
+        {searchResults.length > 0 && !showAnalysis && (
+          <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 8, marginBottom: 24, borderWidth: 1, borderColor: '#E5E7EB' }}>
+            {searchResults.map((drink, index) => (
+              <Pressable 
+                key={drink.id || index}
+                style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: index === searchResults.length - 1 ? 0 : 1, borderBottomColor: '#F3F4F6' }}
+                onPress={() => {
+                  // Set the selected database drink and open Analysis!
+                  setSelectedDrink({
+                    emoji: drink.emoji,
+                    title: drink.title,
+                    type: drink.type,
+                    sugar: drink.sugar,
+                    energy: drink.energy,
+                    carbs: drink.carbs,
+                    protein: drink.protein,
+                    amountValue: drink.amountValue
+                  });
+                  setSearchResults([]); // Hide list
+                  setSearchQuery(''); // Clear text
+                  setShowAnalysis(true); // Open analysis view
+                }}
+              >
+                <Text style={{ fontSize: 24, marginRight: 12 }}>{drink.emoji}</Text>
+                <Text style={{ fontSize: 16, fontWeight: '500', color: '#1F2937' }}>{drink.title}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
         {!showAnalysis ? (
           <>
@@ -371,7 +418,7 @@ export default function HydrationScreen({ navigation }: any) {
             <View style={{ paddingBottom: 40 }}>
               <Pressable onPress={handleBackFromAnalysis} style={styles.backBtn}>
                 <Ionicons name="arrow-back" size={16} color="#4B5563" />
-                <Text style={styles.backBtnText}>Back to Hydration</Text>
+                <Text style={styles.backBtnText}>{t('back') || 'Back to Hydration'}</Text>
               </Pressable>
 
               <View style={styles.analysisHeader}>
@@ -381,10 +428,44 @@ export default function HydrationScreen({ navigation }: any) {
               </View>
 
               <View style={styles.analysisCard}>
-                <Text style={styles.cardTitle}>Nutritional Analysis</Text>
-                <View style={styles.analysisRow}><Text style={styles.analysisLabel}>Energy</Text><Text style={styles.analysisValue}>{selectedDrink.title === 'Water' ? '0' : '150'} kcal</Text></View>
-                <View style={styles.analysisRow}><Text style={styles.analysisLabel}>Sugar</Text><Text style={styles.analysisValue}>{selectedDrink.title === 'Water' ? '0g' : '12g'}</Text></View>
+                <Text style={styles.cardTitle}>Nutritional Analysis (per 100g)</Text>
+                
+                <View style={styles.analysisRow}>
+                  <Text style={styles.analysisLabel}>Energy</Text>
+                  <Text style={styles.analysisValue}>{selectedDrink.energy || 0} kcal</Text>
+                </View>
+
+                <View style={styles.analysisRow}>
+                  <Text style={styles.analysisLabel}>Carbohydrates</Text>
+                  <Text style={styles.analysisValue}>{selectedDrink.carbs || 0}g</Text>
+                </View>
+
+                <View style={styles.analysisRow}>
+                  <Text style={styles.analysisLabel}>Sugar</Text>
+                  <Text style={styles.analysisValue}>{selectedDrink.sugar || 0}g</Text>
+                </View>
+
+                <View style={styles.analysisRow}>
+                  <Text style={styles.analysisLabel}>Protein</Text>
+                  <Text style={styles.analysisValue}>{selectedDrink.protein || 0}g</Text>
+                </View>
               </View>
+
+              {/* --- NEW: HIGH SUGAR WARNING ALERT --- */}
+              {selectedDrink.sugar > 8 && (
+                <View style={[styles.tipBox, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
+                  <View style={[styles.tipIconBox, { backgroundColor: '#FEE2E2' }]}>
+                    <Text style={{ fontSize: 20 }}>⚠️</Text>
+                  </View>
+                  <View style={styles.tipContent}>
+                    <Text style={[styles.tipTitle, { color: '#991B1B' }]}>High Sugar Alert</Text>
+                    <Text style={[styles.tipDesc, { color: '#B91C1C' }]}>
+                      This drink contains {selectedDrink.sugar}g of sugar. Frequent consumption may exceed {activeChild?.nickname || 'your child'}'s recommended daily sugar limits.
+                    </Text>
+                  </View>
+                </View>
+              )}
+              {/* --------------------------------------- */}
 
               <Pressable onPress={() => handleDrinkCardClick(selectedDrink)} style={styles.logBtn}>
                 <Text style={styles.logBtnText}>Add to Log</Text>
