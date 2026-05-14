@@ -8,10 +8,10 @@ import {
   Text,
   TextInput,
   View,
-  Image, //Health Insights, JJ
-  Modal, //Health Insights, JJ
+  Image, 
+  Modal, 
   Linking,
-  TouchableOpacity, //Health Insights, JJ
+  TouchableOpacity, 
   FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,12 +37,11 @@ import LanguageModal from '../components/LanguageModal';
 import AddChildModal from '../components/AddChildModal';
 import ChildrenProfilesModal from '../components/ChildrenProfilesModal';
 import { useAiMealPlanGeneration } from '../context/AiMealPlanGenerationContext';
-// Use for Markdown format of Health Insights, JJ
 import Markdown from 'react-native-markdown-display';
-// Use for details of each type of health insights, JJ
 import { FileText, X, ExternalLink } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FloatingAIChat from "../components/FloatingAIChat";
+import { useActivity } from '../context/PhysicalActivityContext';
 
 type FoodSuggestion = {
   label: string;
@@ -72,7 +71,7 @@ export default function HomeScreen() {
   const [showLanguage, setShowLanguage] = useState(false);
   const [showAddChild, setShowAddChild] = useState(false);
   const [showChildren, setShowChildren] = useState(false);
-  const currentLanguage = language; // Record the current language for API calls, JJ
+  const currentLanguage = language; 
 
   const [searchText, setSearchText] = useState('');
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -100,14 +99,11 @@ export default function HomeScreen() {
     React.useCallback(() => {
       const fetchLatestRecord = async () => {
         const records = await loadHealthRecords();
-        if (records && records.length > 0) {
-          // Find latest record for activeChild
-          const childRecords = records.filter(r => r.nickname === activeChild?.nickname || !activeChild);
+        if (records && records.length > 0 && activeChild) {
+          const childRecords = records.filter(r => r.nickname === activeChild.nickname);
           if (childRecords.length > 0) {
             const sorted = [...childRecords].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-            // sorted is ascending (oldest to newest)
             setLatestRecord(sorted[sorted.length - 1]);
-            // Keep up to 6 records for the sparkline
             setChartRecords(sorted.slice(-6));
           } else {
             setLatestRecord(null);
@@ -118,12 +114,6 @@ export default function HomeScreen() {
           setChartRecords([]);
         }
       };
-      if (activeChild) {
-         fetchLatestRecord(); 
-         // Actually we might want to filter by activeChild's nickname, but the original implementation seems to show any latest check.
-         // Let's filter by activeChild nickname to match the child profile context.
-         // Wait, the GrowthScreen filters by records? Let's check GrowthScreen.tsx filtering logic.
-      }
       fetchLatestRecord();
     }, [activeChild])
   );
@@ -149,7 +139,6 @@ export default function HomeScreen() {
   const getChildChipLabel = (child: any) => {
     return child.avatarImageUri ? child.nickname : `${child.avatar} ${child.nickname}`;
   };
-
 
   const getStatusLabel = (status?: string | null) => {
     const value = String(status || 'Normal').toLowerCase();
@@ -230,24 +219,19 @@ export default function HomeScreen() {
     const fetchRecommendedTopics = async () => {
       setTopicsLoading(true);
       try {
-        // 1. 获取宝宝状态
         let currentStatus = 'NORMAL';
         if (activeChild && activeChild.status) {
           currentStatus = activeChild.status.toUpperCase(); 
         }
 
-        // 💡 2. 获取当前系统/应用选择的语言 (这里以你的实际变量名为准)
-        // 如果你没用插件，可以从全局 state 或 AsyncStorage 获取，例如 'en'
         const lang = currentLanguage || 'en'; 
 
-        // 💡 3. 调用接口时带上 &lang 参数
         const response = await fetch(
           `${BASE_URL}/api/topics/recommend?status=${currentStatus}&lang=${lang}`
         );
 
         if (response.ok) {
           const data = await response.json();
-          // 因为后端用了 DTO，data 里的每个 item 现在只有唯一的 title, summary, content
           setAllTopics(data);
         }
       } catch (error) {
@@ -258,9 +242,6 @@ export default function HomeScreen() {
     };
 
     fetchRecommendedTopics();
-
-    // 💡 4. 依赖项必须加上 currentLanguage！
-    // 这样当用户在设置里切换语言时，首页的文章会立刻重新请求后端，变更为对应语言。
   }, [activeChild?.status, currentLanguage]);
 
   useEffect(() => {
@@ -339,9 +320,6 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, [searchText, language]);
 
-  // ==========================================
-  // 3. 辅助函数与变量计算
-  // ==========================================
   const reportTopics = allTopics.filter(t => t.category === 'REPORT');
   const dietTopics = allTopics.filter(t => t.category === 'DIET');
   const sportTopics = allTopics.filter(t => t.category === 'SPORT');
@@ -377,6 +355,7 @@ export default function HomeScreen() {
       source: 'search',
     });
   };
+
   const bmiChartData = useMemo(() => {
     if (chartRecords.length < 2) return null;
     const values = chartRecords.map(r => r.bmiValue);
@@ -398,6 +377,8 @@ export default function HomeScreen() {
     return { points, pointsString, width, height };
   }, [chartRecords]);
   
+  const { todayTotal, dailyGoal } = useActivity();
+  const progressPercent = (todayTotal / dailyGoal) * 100;
 
   return (
     <>
@@ -600,7 +581,7 @@ export default function HomeScreen() {
 
                   <View style={styles.statusBadge}>
                     <Text style={styles.statusBadgeText}>
-                      {getStatusLabel(latestRecord?.status || 'Normal')}
+                      {getStatusLabel(activeChild?.status || 'Normal')}
                     </Text>
                   </View>
                 </View>
@@ -648,113 +629,105 @@ export default function HomeScreen() {
                   </Pressable>
                 </View>
               </Card>
+
+              <DigitalTwin
+                tip={getTwinTip()}
+                nickname={getTwinNickname()}
+                isComplete={allGoalsMet}
+              />
             </>
           )}
 
-          {/* --- NEW HYDRATION CARD --- */}
           {activeChild && (
-            <Pressable 
-              style={({ pressed }) => [
-                styles.hydrationCard,
-                pressed && { transform: [{ scale: 0.98 }] }
-              ]}
-              onPress={() => navigation.navigate('Hydration')}
-            >
-              <View style={styles.hydrationHeaderRow}>
-                <View style={styles.hydrationHeaderLeft}>
-                  {/* Blue Droplet Icon Box */}
-                  <View style={styles.hydrationIconBox}>
-                    <Ionicons name="water" size={22} color="#3B82F6" />
-                  </View>
-                  
-                  <View>
-                    <Text style={styles.activityTitle}>{t('hydration')}</Text>
-                    {/* Status Badge */}
-                    <View style={[
-                      styles.statusBadge2, 
-                      todayWaterIntake >= dailyWaterGoal ? styles.statusBadgeGood : styles.statusBadgeNeeds
-                    ]}>
-                      <Text style={[
-                        styles.statusText, 
-                        todayWaterIntake >= dailyWaterGoal ? styles.statusTextGood : styles.statusTextNeeds
-                      ]}>
-                        {todayWaterIntake >= dailyWaterGoal ? t('wellHydrated') : t('needsMoreWater')}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Green Chevron Right Box */}
-                <View style={styles.chevronBox}>
-                  <Ionicons name="chevron-forward" size={14} color="#4CAF7A" />
-                </View>
-              </View>
-
-              {/* Progress Bar Section */}
-              <View style={styles.progressSection}>
-                <View style={styles.progressLabels}>
-                  <Text style={styles.progressLabelText}>Progress</Text>
-                  <Text style={styles.progressValueText}>
-                    {todayWaterIntake} / {dailyWaterGoal} mL
-                  </Text>
-                </View>
-                
-                <View style={styles.progressBarBg}>
-                  <View 
-                    style={[
-                      styles.progressBarFill, 
-                      { width: `${Math.min((todayWaterIntake / dailyWaterGoal) * 100, 100)}%` },
-                      { backgroundColor: todayWaterIntake >= dailyWaterGoal ? '#3B82F6' : '#60A5FA' }
-                    ]} 
-                  />
-                </View>
-              </View>
-            </Pressable>
-          )}
-
-          {activeChild && (
-            <Card style={styles.activityCard}>
-              <View style={styles.activityHeader}>
-                <View style={styles.activityTitleRow}>
-                  <Ionicons name="fitness" size={20} color="#F97316" />
-                  <Text style={styles.activityTitle}>
-                    {getText('Daily Activity', '每日运动', 'Aktiviti Harian')}
+            <Card style={styles.hydrationCard}>
+              <View style={styles.hydrationHeader}>
+                <View style={styles.hydrationTitleRow}>
+                  <Ionicons name="water" size={20} color="#3B82F6" />
+                  <Text style={styles.hydrationTitle}>
+                    {getText('Daily Hydration', '每日饮水', 'Penghidratan Harian')}
                   </Text>
                 </View>
                 <Pressable 
-                  style={styles.activityDetailBtn}
-                  onPress={() => navigation.navigate('PhysicalActivity')} 
+                  style={styles.hydrationDetailBtn}
+                  onPress={() => navigation.navigate('Hydration')} 
                 >
-                  <Text style={styles.activityDetailText}>
+                  <Text style={styles.hydrationDetailText}>
                     {getText('Details', '详情', 'Butiran')}
                   </Text>
-                  <Ionicons name="chevron-forward" size={16} color="#F97316" />
+                  <Ionicons name="chevron-forward" size={16} color="#3B82F6" />
                 </Pressable>
-              </View>
+              </View>      
 
-              {/* Live Progress linked to Context! */}
-              <View style={styles.activityProgressWrap}>
-                <View style={styles.activityBarBg}>
+              <View style={styles.hydrationProgressWrap}>
+                <View style={styles.hydrationBarBg}>
                   <View 
                     style={[
-                      styles.activityBarFill, 
-                      { width: `${Math.min((todayActivityMinutes / dailyActivityGoal) * 100, 100)}%` }
+                      styles.hydrationBarFill, 
+                      { width: `${Math.min((todayWaterIntake / dailyWaterGoal) * 100, 100)}%` }
                     ]} 
                   /> 
                 </View>
-                <Text style={styles.activityText}>
-                  <Text style={styles.activityCurrent}>{todayActivityMinutes} min</Text> / {dailyActivityGoal} min
+                <Text style={styles.hydrationText}>
+                  <Text style={styles.hydrationCurrent}>{todayWaterIntake}ml</Text> / {dailyWaterGoal}ml
                 </Text>
               </View>
 
-              {/* Quick Add Buttons linked to Context! */}
-              <View style={styles.activityActions}>
-                <Pressable style={styles.addActivityBtn} onPress={() => addActivity(15, 'Play')}>
-                  <Text style={styles.addActivityText}>+ 15 min</Text>
+              <View style={styles.hydrationActions}>
+                <Pressable style={styles.addWaterBtn} onPress={() => addWater(100)}>
+                  <Text style={styles.addWaterText}>+ 100ml</Text>
                 </Pressable>
-                <Pressable style={styles.addActivityBtn} onPress={() => addActivity(30, 'Exercise')}>
-                  <Text style={styles.addActivityText}>+ 30 min</Text>
+                <Pressable style={styles.addWaterBtn} onPress={() => addWater(250)}>
+                  <Text style={styles.addWaterText}>+ 250ml</Text>
                 </Pressable>
+              </View>
+            </Card>
+          )}
+
+          {/* --- RESTORED PHYSICAL ACTIVITY CARD --- */}
+          {activeChild && (
+            <Card style={styles.newActivityCard}>
+              <View style={styles.cardTopRow}>
+                {/* Left Icon Section */}
+                <View style={styles.iconContainer}>
+                  <Image source={require('../assets/images/physical-activity-icon.jpeg')} style={styles.activityImage} resizeMode="cover" />
+                </View>
+
+                {/* Middle Info Section */}
+                <View style={styles.headerInfo}>
+                  <Text style={styles.activityTitleText}>{getText('Activity', '运动', 'Aktiviti')}</Text>
+                  <View style={styles.statusBadgeActivity}>
+                    <Text style={styles.statusText}>
+                      {/* 💡 使用三语变量判定 */}
+                      {todayTotal < dailyGoal / 2 ? (t('lowactive') || 'Low Activity') : (t('active') || 'Active')}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Right Navigation Button */}
+                <Pressable 
+                  style={styles.circleChevron} 
+                  onPress={() => navigation.navigate('PhysicalActivity')}
+                >
+                  <Ionicons name="chevron-forward" size={18} color="#10B981" />
+                </Pressable>
+              </View>
+
+              {/* Progress Label and Values Row */}
+              <View style={styles.progressLabelRow}>
+                <Text style={styles.progressLabel}>{getText('Progress', '进度', 'Kemajuan')}</Text>
+                <Text style={styles.progressValueText}>
+                  {todayTotal} / {dailyGoal} {t('minutes') || 'mins'}
+                </Text>
+              </View>
+
+              {/* Thin Progress Bar */}
+              <View style={styles.thinBarBg}>
+                <View 
+                  style={[
+                    styles.thinBarFill, 
+                    { width: `${Math.min((todayTotal / dailyGoal) * 100, 100)}%` }
+                  ]} 
+                /> 
               </View>
             </Card>
           )}
@@ -768,9 +741,9 @@ export default function HomeScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={styles.growthTitle}>{t('growthOverview')}</Text>
                 
-                {latestRecord && (
+                {activeChild?.bmi && (
                   <View style={{ backgroundColor: '#D1FAE5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 8 }}>
-                     <Text style={{ color: '#059669', fontSize: 12, fontWeight: '700' }}>BMI {latestRecord.bmiValue}</Text>
+                     <Text style={{ color: '#059669', fontSize: 12, fontWeight: '700' }}>BMI {activeChild.bmi}</Text>
                   </View>
                 )}
               </View>
@@ -787,7 +760,6 @@ export default function HomeScreen() {
             <View style={styles.growthLineWrap}>
               {bmiChartData ? (
                 <Svg width="100%" height={bmiChartData.height}>
-                  {/* Keep dotted line as background reference? No, maybe just chart */}
                   <Polyline
                     points={bmiChartData.pointsString}
                     fill="none"
@@ -854,23 +826,20 @@ export default function HomeScreen() {
                     setShowTopicModal(true);
                   }}
                 >
-                  {/* 1. 悬浮的黑色半透明标签 (保留旧版设计) */}
                   <View style={styles.topicCategoryBadge}>
                     <Text style={styles.topicCategoryText}>
                       {topic?.category 
-                        ? t(topic.category.trim().toLowerCase()) // 💡 直接传 'habit', 'report' 等，不加 'category.'
+                        ? t(topic.category.trim().toLowerCase())
                         : t('healthInsights')}
                     </Text>
                   </View>
 
-                  {/* 2. 封面大图 (保留旧版设计) */}
                   <Image 
                     source={{ uri: topic.imageUrl }} 
                     style={styles.topicImage} 
                     resizeMode="cover" 
                   />
 
-                  {/* 3. 底部文字区 (保留旧版设计) */}
                   <View style={styles.topicTextContainer}>
                     <Text style={styles.topicTitle} numberOfLines={2}>
                       {topic.title}
@@ -887,12 +856,10 @@ export default function HomeScreen() {
       </Screen>
 
       <Modal visible={showTopicModal} transparent animationType="fade">
-        {/* 1. Change to modalOverlay */}
         <View style={styles.modalOverlay}>
           {selectedTopic && (
             <View style={styles.modalContent}>
               
-              {/* 3. Change the top image area style */}
               <View style={styles.modalImageWrap}>
                 <Image source={{ uri: selectedTopic.imageUrl }} style={styles.modalImage} resizeMode="cover" />
                 <TouchableOpacity onPress={() => setShowTopicModal(false)} style={styles.modalCloseBtn}>
@@ -900,7 +867,6 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
               
-              {/* 4. Change the article scroll area style */}
               <ScrollView contentContainerStyle={styles.modalBody}>
                 <View style={styles.modalTagRow}>
                   <FileText color={colors.primaryDark} size={18} />
@@ -920,7 +886,6 @@ export default function HomeScreen() {
                 </Markdown>
               </ScrollView>
               
-              {/* 5. Change the bottom button style */}
               {selectedTopic.sourceUrl && (
                 <View style={styles.modalFooter}>
                   <TouchableOpacity onPress={() => Linking.openURL(selectedTopic.sourceUrl)} style={styles.modalActionBtn}>
@@ -939,7 +904,6 @@ export default function HomeScreen() {
         onClose={() => setShowLanguage(false)}
       />
 
-
       <AddChildModal
         visible={showAddChild}
         onClose={() => setShowAddChild(false)}
@@ -949,6 +913,8 @@ export default function HomeScreen() {
         visible={showChildren}
         onClose={() => setShowChildren(false)}
       />
+
+      <FloatingAIChat />
       
     </>
   );
@@ -1238,17 +1204,16 @@ const styles = StyleSheet.create({
 
  displayTopicsScroll: {
     paddingBottom: 8,
-    gap: 16, // 旧版 UI 的间距
+    gap: 16, 
   },
   
-  // Start, Recover the old structure of health insight.
   topicCard: {
-    width: 256, // 对应旧版 w-64
+    width: 256, 
     backgroundColor: '#FFFFFF',
-    borderRadius: 24, // 对应旧版 rounded-3xl
+    borderRadius: 24, 
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F3F4F6', // 对应旧版 border-gray-100
+    borderColor: '#F3F4F6', 
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1264,7 +1229,7 @@ const styles = StyleSheet.create({
     top: 12,
     left: 12,
     zIndex: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)', // 对应 bg-black/50
+    backgroundColor: 'rgba(0,0,0,0.5)', 
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -1279,7 +1244,7 @@ const styles = StyleSheet.create({
 
   topicImage: {
     width: '100%',
-    height: 160, // 对应旧版 h-40
+    height: 160, 
   },
 
   topicTextContainer: {
@@ -1349,14 +1314,13 @@ const styles = StyleSheet.create({
   },
 
   modalActionText: { color: '#3B82F6', fontWeight: 'bold', fontSize: 16 },
-  // End, Recovery of the old design of health insights, JJ
 
   nutritionIconBox: {
     backgroundColor: '#E8F5E9',
   },
 
-  activityIconBox: {
-    backgroundColor: '#FAF5FF',
+  hydrationIconBox: {
+    backgroundColor: '#EFF6FF',
   },
 
   insightEmoji: {
@@ -1375,171 +1339,165 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 8,
   },
-  // --- NEW HYDRATION CARD STYLES ---
   hydrationCard: {
-    backgroundColor: 'white',
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 4,
+    padding: 16,
+    borderRadius: 22,
+    backgroundColor: '#EFF6FF', 
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    marginBottom: 14,
   },
-  hydrationHeaderRow: {
+  hydrationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  hydrationHeaderLeft: {
+  hydrationTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  hydrationIconBox: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#EFF6FF',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
   },
   hydrationTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
+    fontWeight: '800',
+    color: '#1E3A8A',
   },
-  statusBadge2: {
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    borderRadius: 999,
-    marginTop: 4,
-    alignSelf: 'flex-start',
-  },
-  statusBadgeGood: { backgroundColor: '#DCFCE7' },
-  statusBadgeNeeds: { backgroundColor: '#FEF3C7' },
-  statusText: { fontSize: 12, fontWeight: '600' },
-  statusTextGood: { color: '#15803D' },
-  statusTextNeeds: { color: '#B45309' },
-  chevronBox: {
-    width: 28,
-    height: 28,
-    backgroundColor: '#E8F5E9',
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  progressSection: {
-    marginTop: 4,
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  progressLabelText: {
-    fontSize: 11,
-    color: '#6B7280',
-  },
-  progressValueText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  progressBarBg: {
-    width: '100%',
-    height: 8,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 999,
-  },
-  activityCard: {
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: '#FFF7ED',
-    borderColor: '#FED7AA',
-    borderWidth: 1,
-    marginBottom: 16,
-  },
-  activityHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  activityTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  activityTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  activityDetailBtn: {
+  hydrationDetailBtn: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  activityDetailText: {
-    fontSize: 14,
-    color: '#F97316', // Orange
-    fontWeight: '600',
-  },
-  activityProgressWrap: {
-    marginBottom: 16,
-  },
-  activityBarBg: {
-    height: 12,
-    backgroundColor: '#FED7AA', // Very light orange bg
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  activityBarFill: {
-    height: '100%',
-    backgroundColor: '#F97316', // Bright Orange fill
-    borderRadius: 6,
-  },
-  activityText: {
+  hydrationDetailText: {
     fontSize: 13,
-    color: '#FF9D4D',
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  hydrationProgressWrap: {
+    marginBottom: 16,
+  },
+  hydrationBarBg: {
+    height: 12,
+    backgroundColor: '#DBEAFE',
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  hydrationBarFill: {
+    height: '100%',
+    backgroundColor: '#3B82F6',
+    borderRadius: 6,
+  },
+  hydrationText: {
+    fontSize: 13,
+    color: '#60A5FA',
     fontWeight: '600',
     textAlign: 'right',
   },
-  activityCurrent: {
+  hydrationCurrent: {
+    color: '#2563EB',
     fontWeight: '800',
-    color: '#F97316',
   },
-  activityActions: {
+  hydrationActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
-  addActivityBtn: {
+  addWaterBtn: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#FFEDD5',
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 10,
+    borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#F97316',
+    shadowColor: '#3B82F6',
     shadowOpacity: 0.1,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
-  addActivityText: {
-    color: '#9A3412', // Darker orange-brown for text readability
-    fontWeight: '600',
+  addWaterText: {
+    color: '#2563EB',
+    fontWeight: '700',
     fontSize: 14,
   },
-});
 
+  // --- 恢复的 Activity Card 样式 ---
+  newActivityCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  iconContainer: {
+    width: 54,
+    height: 54,
+    backgroundColor: '#DCFCE7',
+    borderRadius: 14,
+    overflow: 'hidden', 
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  activityImage: {
+    width: '100%',
+    height: '100%',
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  activityTitleText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  statusBadgeActivity: {
+    backgroundColor: '#FEF3C6', 
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  statusText: {
+    color: '#BB4D00', 
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  circleChevron: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#F0FDF4', 
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  progressLabel: {
+    fontSize: 15,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  progressValueText: {
+    fontSize: 15,
+    color: '#1E293B',
+    fontWeight: '700',
+  },
+  thinBarBg: {
+    height: 8,
+    backgroundColor: '#F1F5F9', 
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  thinBarFill: {
+    height: '100%',
+    backgroundColor: '#10B981', 
+  },
+});
