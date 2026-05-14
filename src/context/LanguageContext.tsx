@@ -62,6 +62,11 @@ const translations = {
     report: 'Report',
     diet: 'Diet',
     readOriginal: 'Read Original',
+    lowactive: 'Low Active',
+    active: 'Active',
+    activity: 'Activity',
+    progress: 'Progress',
+    mins: 'mins',
 
     // Meal Page
     mealPlan: 'Meal Plan',
@@ -173,6 +178,30 @@ const translations = {
     november: 'November',
     december: 'December',
     manage: 'Manage',
+    
+
+
+    // Physical Activity Page
+    logActivity: "Log Activity",
+    minutes: "minutes",
+    systemAdvice: "System Advice:",
+    sysRecommended: "System Recommended",
+    watchVideo: "Watch Video",
+    tapToLog: "Tap to Log",
+    todaysTotal: "Today's Total",
+    dailyGoal: "Daily Goal",
+    caloriesBurned: "Calories Burned",
+    kcal: "kcal",
+    logIt: "Log It",
+    customizeDailyGoal: "Customize Daily Goal",
+    setGoal: "Set Goal",
+    min: "min",
+    perDay: "/ day",
+    logged: "Logged",
+    clearAll: "Clear All",
+    clearConfirmTitle: "Clear Records",
+    clearConfirmMsg: "Are you sure you want to clear today's activity records?",
+    generalLogDisclaimer: "Uses average MET for calorie estimation. For better accuracy, log specific activities below."
   },
   zh: {
     // Header
@@ -210,7 +239,11 @@ const translations = {
     report: '健康报告',
     diet: '饮食建议',
     readOriginal: '阅读原文',
-
+    lowactive: '低活跃',
+    active: '活跃',
+    activity: '活动',
+    progress: '进度',
+    mins: '分钟',
     // Meal Page
     mealPlan: '膳食计划',
     searchRecipes: '搜索食谱...',
@@ -321,6 +354,29 @@ const translations = {
     november: '十一月',
     december: '十二月',
     manage: '管理',
+
+    // Physical Activity Page
+    logActivity: "记录活动",
+    minutes: "分钟",
+    systemAdvice: "系统建议：",
+    sysRecommended: "系统推荐",
+    watchVideo: "观看视频",
+    tapToLog: "点击记录",
+    todaysTotal: "今日总计",
+    dailyGoal: "每日目标",
+    caloriesBurned: "燃烧的卡路里",
+    kcal: "千卡",
+    logIt: "记录",
+    customizeDailyGoal: "自定义每日目标",
+    setGoal: "设定目标",
+    min: "分钟",
+    perDay: "/ 天",
+    logged: "已记录",
+    clearAll: "清除所有",
+    clearConfirmTitle: "清除记录",
+    clearConfirmMsg: "您确定要清除今天的活动记录吗？",
+    generalLogDisclaimer: "使用平均MET进行卡路里估算。为了更准确，请记录具体活动。"
+
   },
   ms: {
     // Header
@@ -358,7 +414,11 @@ const translations = {
     report: 'Laporan',
     diet: 'Diet',
     readOriginal: 'Baca Asal',
-
+    lowactive: 'Kurang Aktif',
+    active: 'Aktif',
+    activity: 'Aktiviti',
+    progress: 'Progress',
+    mins: 'mins',
     // Meal Page
     mealPlan: 'Rancangan Makanan',
     searchRecipes: 'Cari resipi...',
@@ -469,6 +529,28 @@ const translations = {
     november: 'November',
     december: 'Disember',
     manage: 'Urus',
+
+    // Physical Activity Page
+    logActivity: "Log Aktiviti",
+    minutes: "minit",
+    systemAdvice: "Nasihat Sistem:",
+    sysRecommended: "Disyorkan Sistem",
+    watchVideo: "Tonton Video",
+    tapToLog: "Ketik untuk Log",
+    todaysTotal: "Jumlah Hari Ini",
+    dailyGoal: "Tujuan Harian",
+    caloriesBurned: "Kalori Terbakar",
+    kcal: "kcal",
+    logIt: "Log",
+    customizeDailyGoal: "Sesuaikan Tujuan Harian",
+    setGoal: "Tetapkan Tujuan",
+    min: "min",
+    perDay: "/ hari",
+    logged: "Tercatat",
+    clearAll: "Hapus Semua",
+    clearConfirmTitle: "Hapus Rekod",
+    clearConfirmMsg: "Apakah Anda yakin ingin menghapus semua rekod aktivitas hari ini?",
+    generalLogDisclaimer: "Menggunakan MET rata-rata untuk estimasi kalori. Untuk akurasi lebih baik, catat aktivitas spesifik di bawah."
   },
 };
 

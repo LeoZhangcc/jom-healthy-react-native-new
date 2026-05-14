@@ -8,10 +8,10 @@ import {
   Text,
   TextInput,
   View,
-  Image, //Health Insights, JJ
-  Modal, //Health Insights, JJ
+  Image, 
+  Modal, 
   Linking,
-  TouchableOpacity, //Health Insights, JJ
+  TouchableOpacity, 
   FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,9 +37,7 @@ import LanguageModal from '../components/LanguageModal';
 import AddChildModal from '../components/AddChildModal';
 import ChildrenProfilesModal from '../components/ChildrenProfilesModal';
 import { useAiMealPlanGeneration } from '../context/AiMealPlanGenerationContext';
-// Use for Markdown format of Health Insights, JJ
 import Markdown from 'react-native-markdown-display';
-// Use for details of each type of health insights, JJ
 import { FileText, X, ExternalLink } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FloatingAIChat from "../components/FloatingAIChat";
@@ -73,7 +71,7 @@ export default function HomeScreen() {
   const [showLanguage, setShowLanguage] = useState(false);
   const [showAddChild, setShowAddChild] = useState(false);
   const [showChildren, setShowChildren] = useState(false);
-  const currentLanguage = language; // Record the current language for API calls, JJ
+  const currentLanguage = language; 
 
   const [searchText, setSearchText] = useState('');
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -101,14 +99,12 @@ export default function HomeScreen() {
     React.useCallback(() => {
       const fetchLatestRecord = async () => {
         const records = await loadHealthRecords();
-        if (records && records.length > 0) {
-          // Find latest record for activeChild
-          const childRecords = records.filter(r => r.nickname === activeChild?.nickname || !activeChild);
+        if (records && records.length > 0 && activeChild) {
+          // 💡 修复点 1：严格过滤，只抓取当前小孩的记录，防止迷你折线图串台
+          const childRecords = records.filter(r => r.nickname === activeChild.nickname);
           if (childRecords.length > 0) {
             const sorted = [...childRecords].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-            // sorted is ascending (oldest to newest)
             setLatestRecord(sorted[sorted.length - 1]);
-            // Keep up to 6 records for the sparkline
             setChartRecords(sorted.slice(-6));
           } else {
             setLatestRecord(null);
@@ -119,12 +115,6 @@ export default function HomeScreen() {
           setChartRecords([]);
         }
       };
-      if (activeChild) {
-         fetchLatestRecord(); 
-         // Actually we might want to filter by activeChild's nickname, but the original implementation seems to show any latest check.
-         // Let's filter by activeChild nickname to match the child profile context.
-         // Wait, the GrowthScreen filters by records? Let's check GrowthScreen.tsx filtering logic.
-      }
       fetchLatestRecord();
     }, [activeChild])
   );
@@ -150,7 +140,6 @@ export default function HomeScreen() {
   const getChildChipLabel = (child: any) => {
     return child.avatarImageUri ? child.nickname : `${child.avatar} ${child.nickname}`;
   };
-
 
   const getStatusLabel = (status?: string | null) => {
     const value = String(status || 'Normal').toLowerCase();
@@ -231,24 +220,19 @@ export default function HomeScreen() {
     const fetchRecommendedTopics = async () => {
       setTopicsLoading(true);
       try {
-        // 1. 获取宝宝状态
         let currentStatus = 'NORMAL';
         if (activeChild && activeChild.status) {
           currentStatus = activeChild.status.toUpperCase(); 
         }
 
-        // 💡 2. 获取当前系统/应用选择的语言 (这里以你的实际变量名为准)
-        // 如果你没用插件，可以从全局 state 或 AsyncStorage 获取，例如 'en'
         const lang = currentLanguage || 'en'; 
 
-        // 💡 3. 调用接口时带上 &lang 参数
         const response = await fetch(
           `${BASE_URL}/api/topics/recommend?status=${currentStatus}&lang=${lang}`
         );
 
         if (response.ok) {
           const data = await response.json();
-          // 因为后端用了 DTO，data 里的每个 item 现在只有唯一的 title, summary, content
           setAllTopics(data);
         }
       } catch (error) {
@@ -259,9 +243,6 @@ export default function HomeScreen() {
     };
 
     fetchRecommendedTopics();
-
-    // 💡 4. 依赖项必须加上 currentLanguage！
-    // 这样当用户在设置里切换语言时，首页的文章会立刻重新请求后端，变更为对应语言。
   }, [activeChild?.status, currentLanguage]);
 
   useEffect(() => {
@@ -340,9 +321,6 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, [searchText, language]);
 
-  // ==========================================
-  // 3. 辅助函数与变量计算
-  // ==========================================
   const reportTopics = allTopics.filter(t => t.category === 'REPORT');
   const dietTopics = allTopics.filter(t => t.category === 'DIET');
   const sportTopics = allTopics.filter(t => t.category === 'SPORT');
@@ -399,10 +377,8 @@ export default function HomeScreen() {
     return { points, pointsString, width, height };
   }, [chartRecords]);
   
-  // Pull the synced data from Context
   const { todayTotal, dailyGoal } = useActivity();
   
-  // Calculate progress percentage
   const progressPercent = (todayTotal / dailyGoal) * 100;
 
   return (
@@ -606,7 +582,8 @@ export default function HomeScreen() {
 
                   <View style={styles.statusBadge}>
                     <Text style={styles.statusBadgeText}>
-                      {getStatusLabel(latestRecord?.status || 'Normal')}
+                      {/* 💡 修复点 2：直接使用 SSOT 全局的 status */}
+                      {getStatusLabel(activeChild?.status || 'Normal')}
                     </Text>
                   </View>
                 </View>
@@ -721,10 +698,10 @@ export default function HomeScreen() {
 
                 {/* Middle Info Section */}
                 <View style={styles.headerInfo}>
-                  <Text style={styles.activityTitleText}>Activity</Text>
+                  <Text style={styles.activityTitleText}>{t('activity')}</Text>
                   <View style={styles.statusBadgeActivity}>
                     <Text style={styles.statusText}>
-                      {todayTotal < dailyGoal / 2 ? 'Low Activity' : 'Active'}
+                      {todayTotal < dailyGoal / 2 ? t('lowactive') : t('active')}
                     </Text>
                   </View>
                 </View>
@@ -740,9 +717,9 @@ export default function HomeScreen() {
 
               {/* Progress Label and Values Row */}
               <View style={styles.progressLabelRow}>
-                <Text style={styles.progressLabel}>Progress</Text>
+                <Text style={styles.progressLabel}>{t('progress')}</Text>
                 <Text style={styles.progressValueText}>
-                  {todayTotal} / {dailyGoal} mins
+                  {todayTotal} / {dailyGoal} {t('mins')}
                 </Text>
               </View>
 
@@ -767,9 +744,10 @@ export default function HomeScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={styles.growthTitle}>{t('growthOverview')}</Text>
                 
-                {latestRecord && (
+                {/* 💡 修复点 3：优先使用 SSOT 的 global BMI */}
+                {activeChild?.bmi && (
                   <View style={{ backgroundColor: '#D1FAE5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 8 }}>
-                     <Text style={{ color: '#059669', fontSize: 12, fontWeight: '700' }}>BMI {latestRecord.bmiValue}</Text>
+                     <Text style={{ color: '#059669', fontSize: 12, fontWeight: '700' }}>BMI {activeChild.bmi}</Text>
                   </View>
                 )}
               </View>
@@ -786,7 +764,6 @@ export default function HomeScreen() {
             <View style={styles.growthLineWrap}>
               {bmiChartData ? (
                 <Svg width="100%" height={bmiChartData.height}>
-                  {/* Keep dotted line as background reference? No, maybe just chart */}
                   <Polyline
                     points={bmiChartData.pointsString}
                     fill="none"
@@ -853,23 +830,23 @@ export default function HomeScreen() {
                     setShowTopicModal(true);
                   }}
                 >
-                  {/* 1. 悬浮的黑色半透明标签 (保留旧版设计) */}
+                  {/* 1. 悬浮的黑色半透明标签 */}
                   <View style={styles.topicCategoryBadge}>
                     <Text style={styles.topicCategoryText}>
                       {topic?.category 
-                        ? t(topic.category.trim().toLowerCase()) // 💡 直接传 'habit', 'report' 等，不加 'category.'
+                        ? t(topic.category.trim().toLowerCase())
                         : t('healthInsights')}
                     </Text>
                   </View>
 
-                  {/* 2. 封面大图 (保留旧版设计) */}
+                  {/* 2. 封面大图 */}
                   <Image 
                     source={{ uri: topic.imageUrl }} 
                     style={styles.topicImage} 
                     resizeMode="cover" 
                   />
 
-                  {/* 3. 底部文字区 (保留旧版设计) */}
+                  {/* 3. 底部文字区 */}
                   <View style={styles.topicTextContainer}>
                     <Text style={styles.topicTitle} numberOfLines={2}>
                       {topic.title}
@@ -886,12 +863,10 @@ export default function HomeScreen() {
       </Screen>
 
       <Modal visible={showTopicModal} transparent animationType="fade">
-        {/* 1. Change to modalOverlay */}
         <View style={styles.modalOverlay}>
           {selectedTopic && (
             <View style={styles.modalContent}>
               
-              {/* 3. Change the top image area style */}
               <View style={styles.modalImageWrap}>
                 <Image source={{ uri: selectedTopic.imageUrl }} style={styles.modalImage} resizeMode="cover" />
                 <TouchableOpacity onPress={() => setShowTopicModal(false)} style={styles.modalCloseBtn}>
@@ -899,7 +874,6 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
               
-              {/* 4. Change the article scroll area style */}
               <ScrollView contentContainerStyle={styles.modalBody}>
                 <View style={styles.modalTagRow}>
                   <FileText color={colors.primaryDark} size={18} />
@@ -919,7 +893,6 @@ export default function HomeScreen() {
                 </Markdown>
               </ScrollView>
               
-              {/* 5. Change the bottom button style */}
               {selectedTopic.sourceUrl && (
                 <View style={styles.modalFooter}>
                   <TouchableOpacity onPress={() => Linking.openURL(selectedTopic.sourceUrl)} style={styles.modalActionBtn}>
@@ -937,7 +910,6 @@ export default function HomeScreen() {
         visible={showLanguage}
         onClose={() => setShowLanguage(false)}
       />
-
 
       <AddChildModal
         visible={showAddChild}
@@ -1239,17 +1211,16 @@ const styles = StyleSheet.create({
 
  displayTopicsScroll: {
     paddingBottom: 8,
-    gap: 16, // 旧版 UI 的间距
+    gap: 16, 
   },
   
-  // Start, Recover the old structure of health insight.
   topicCard: {
-    width: 256, // 对应旧版 w-64
+    width: 256, 
     backgroundColor: '#FFFFFF',
-    borderRadius: 24, // 对应旧版 rounded-3xl
+    borderRadius: 24, 
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F3F4F6', // 对应旧版 border-gray-100
+    borderColor: '#F3F4F6', 
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1265,7 +1236,7 @@ const styles = StyleSheet.create({
     top: 12,
     left: 12,
     zIndex: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)', // 对应 bg-black/50
+    backgroundColor: 'rgba(0,0,0,0.5)', 
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -1280,7 +1251,7 @@ const styles = StyleSheet.create({
 
   topicImage: {
     width: '100%',
-    height: 160, // 对应旧版 h-40
+    height: 160, 
   },
 
   topicTextContainer: {
@@ -1350,7 +1321,6 @@ const styles = StyleSheet.create({
   },
 
   modalActionText: { color: '#3B82F6', fontWeight: 'bold', fontSize: 16 },
-  // End, Recovery of the old design of health insights, JJ
 
   nutritionIconBox: {
     backgroundColor: '#E8F5E9',
@@ -1383,7 +1353,7 @@ const styles = StyleSheet.create({
   hydrationCard: {
     padding: 16,
     borderRadius: 22,
-    backgroundColor: '#EFF6FF', // Light blue background
+    backgroundColor: '#EFF6FF', 
     borderColor: '#BFDBFE',
     borderWidth: 1,
     marginBottom: 14,
@@ -1464,7 +1434,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     marginBottom: 16,
-    // Add shadow or use your Card component's default
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -1476,7 +1445,7 @@ const styles = StyleSheet.create({
     height: 54,
     backgroundColor: '#DCFCE7',
     borderRadius: 14,
-    overflow: 'hidden', // Clips the image to your border radius
+    overflow: 'hidden', 
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1494,7 +1463,7 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
   statusBadgeActivity: {
-    backgroundColor: '#FEF3C6', // Very light orange
+    backgroundColor: '#FEF3C6', 
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
@@ -1502,14 +1471,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   statusText: {
-    color: '#BB4D00', // Dark orange
+    color: '#BB4D00', 
     fontSize: 14,
     fontWeight: '600',
   },
   circleChevron: {
     width: 32,
     height: 32,
-    backgroundColor: '#F0FDF4', // Very pale green
+    backgroundColor: '#F0FDF4', 
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1532,13 +1501,12 @@ const styles = StyleSheet.create({
   },
   thinBarBg: {
     height: 8,
-    backgroundColor: '#F1F5F9', // Light gray track
+    backgroundColor: '#F1F5F9', 
     borderRadius: 4,
     overflow: 'hidden',
   },
   thinBarFill: {
     height: '100%',
-    backgroundColor: '#10B981', // Green fill
+    backgroundColor: '#10B981', 
   },
 });
-
