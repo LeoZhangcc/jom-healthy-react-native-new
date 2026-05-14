@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, Modal, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, G } from 'react-native-svg';
 import { useChildProfile } from '../context/ChildProfileContext';
@@ -185,6 +185,7 @@ export default function HydrationScreen({ navigation }: any) {
                 key={drink.id || index}
                 style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: index === searchResults.length - 1 ? 0 : 1, borderBottomColor: '#F3F4F6' }}
                 onPress={() => {
+                  Keyboard.dismiss();
                   // Set the selected database drink and open Analysis!
                   setSelectedDrink({
                     emoji: drink.emoji,
@@ -208,8 +209,7 @@ export default function HydrationScreen({ navigation }: any) {
           </View>
         )}
 
-        {!showAnalysis ? (
-          <>
+        
             {/* Hydration Progress Section */}
             <View style={styles.progressCard}>
               <View style={styles.progressHeader}>
@@ -411,91 +411,112 @@ export default function HydrationScreen({ navigation }: any) {
                 );
               })}
             </View>
-          </>
-        ) : (
-          /* --- DRINK ANALYSIS PAGE --- */
-          selectedDrink && (
-            <View style={{ paddingBottom: 40 }}>
-              <Pressable onPress={handleBackFromAnalysis} style={styles.backBtn}>
-                <Ionicons name="arrow-back" size={16} color="#4B5563" />
-                <Text style={styles.backBtnText}>{t('back') || 'Back to Hydration'}</Text>
-              </Pressable>
+          {/* --- DRINK ANALYSIS MODAL --- */}
+          <Modal visible={showAnalysis} transparent animationType="slide" onRequestClose={handleBackFromAnalysis}>
+            <View style={[styles.modalOverlay, { padding: 12 }]}>
+              <View style={[styles.modalContent, { maxHeight: '85%', padding: 0, alignItems: 'stretch' }]}>
+                {selectedDrink && (
+                  <ScrollView contentContainerStyle={{ padding: 24 }} showsVerticalScrollIndicator={false}>
+                    
+                    {/* Close Button (Top Right) */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
+                      <Pressable onPress={handleBackFromAnalysis} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
+                        <Ionicons name="close-circle" size={32} color="#D1D5DB" />
+                      </Pressable>
+                    </View>
 
-              <View style={styles.analysisHeader}>
-                <View style={styles.analysisIconBox}><Text style={{ fontSize: 40 }}>{selectedDrink.emoji}</Text></View>
-                <Text style={styles.analysisTitle}>{selectedDrink.title}</Text>
-                <Text style={styles.analysisDesc}>{selectedDrink.description}</Text>
+                    <View style={styles.analysisHeader}>
+                      <View style={styles.analysisIconBox}><Text style={{ fontSize: 40 }}>{selectedDrink.emoji}</Text></View>
+                      <Text style={styles.analysisTitle}>{selectedDrink.title}</Text>
+                      <Text style={[styles.analysisDesc, { textAlign: 'center' }]}>{selectedDrink.description}</Text>
+                    </View>
+
+                    <View style={styles.analysisCard}>
+                      <Text style={styles.cardTitle}>{t('nutritionalAnalysis') || 'Nutritional Analysis (per 100g)'}</Text>
+                      
+                      <View style={styles.analysisRow}>
+                        <Text style={styles.analysisLabel}>{t('energy') || 'Energy'}</Text>
+                        <Text style={styles.analysisValue}>{selectedDrink.energy || 0} kcal</Text>
+                      </View>
+
+                      <View style={styles.analysisRow}>
+                        <Text style={styles.analysisLabel}>{t('carbohydrates') || 'Carbohydrates'}</Text>
+                        <Text style={styles.analysisValue}>{selectedDrink.carbs || 0}g</Text>
+                      </View>
+
+                      <View style={styles.analysisRow}>
+                        <Text style={styles.analysisLabel}>{t('sugar') || 'Sugar'}</Text>
+                        <Text style={styles.analysisValue}>{selectedDrink.sugar || 0}g</Text>
+                      </View>
+
+                      <View style={styles.analysisRow}>
+                        <Text style={styles.analysisLabel}>{t('protein') || 'Protein'}</Text>
+                        <Text style={styles.analysisValue}>{selectedDrink.protein || 0}g</Text>
+                      </View>
+                    </View>
+
+                    {/* HIGH SUGAR WARNING ALERT */}
+                    {selectedDrink.sugar > 8 && (
+                      <View style={[styles.tipBox, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
+                        <View style={[styles.tipIconBox, { backgroundColor: '#FEE2E2' }]}>
+                          <Text style={{ fontSize: 20 }}>⚠️</Text>
+                        </View>
+                        <View style={styles.tipContent}>
+                          <Text style={[styles.tipTitle, { color: '#991B1B' }]}>{t('highSugarAlert') || 'High Sugar Alert'}</Text>
+                          <Text style={[styles.tipDesc, { color: '#B91C1C' }]}>
+                            {t('highSugarDescPart1') || 'This drink contains'} {selectedDrink.sugar}{t('highSugarDescPart2') || 'g of sugar. Frequent consumption may exceed'} {activeChild?.nickname || 'your child'}{t('highSugarDescPart3') || "'s recommended daily limits."}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    <Pressable onPress={() => {
+                      handleDrinkCardClick(selectedDrink);
+                      handleBackFromAnalysis();
+                    }} style={styles.logBtn}>
+                      <Text style={styles.logBtnText}>{t('addToLog') || 'Add to Log'}</Text>
+                    </Pressable>
+
+                  </ScrollView>
+                )}
               </View>
-
-              <View style={styles.analysisCard}>
-                <Text style={styles.cardTitle}>Nutritional Analysis (per 100g)</Text>
-                
-                <View style={styles.analysisRow}>
-                  <Text style={styles.analysisLabel}>Energy</Text>
-                  <Text style={styles.analysisValue}>{selectedDrink.energy || 0} kcal</Text>
-                </View>
-
-                <View style={styles.analysisRow}>
-                  <Text style={styles.analysisLabel}>Carbohydrates</Text>
-                  <Text style={styles.analysisValue}>{selectedDrink.carbs || 0}g</Text>
-                </View>
-
-                <View style={styles.analysisRow}>
-                  <Text style={styles.analysisLabel}>Sugar</Text>
-                  <Text style={styles.analysisValue}>{selectedDrink.sugar || 0}g</Text>
-                </View>
-
-                <View style={styles.analysisRow}>
-                  <Text style={styles.analysisLabel}>Protein</Text>
-                  <Text style={styles.analysisValue}>{selectedDrink.protein || 0}g</Text>
-                </View>
-              </View>
-
-              {/* --- NEW: HIGH SUGAR WARNING ALERT --- */}
-              {selectedDrink.sugar > 8 && (
-                <View style={[styles.tipBox, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
-                  <View style={[styles.tipIconBox, { backgroundColor: '#FEE2E2' }]}>
-                    <Text style={{ fontSize: 20 }}>⚠️</Text>
-                  </View>
-                  <View style={styles.tipContent}>
-                    <Text style={[styles.tipTitle, { color: '#991B1B' }]}>High Sugar Alert</Text>
-                    <Text style={[styles.tipDesc, { color: '#B91C1C' }]}>
-                      This drink contains {selectedDrink.sugar}g of sugar. Frequent consumption may exceed {activeChild?.nickname || 'your child'}'s recommended daily sugar limits.
-                    </Text>
-                  </View>
-                </View>
-              )}
-              {/* --------------------------------------- */}
-
-              <Pressable onPress={() => handleDrinkCardClick(selectedDrink)} style={styles.logBtn}>
-                <Text style={styles.logBtnText}>Add to Log</Text>
-              </Pressable>
             </View>
-          )
-        )}
+          </Modal>
+          {/* --------------------------------- */}
       </ScrollView>
 
       {/* Pop-up Modal for Custom Analysis Amount */}
       <Modal transparent visible={showAmountInput} animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <View style={styles.analysisIconBox}><Text style={{ fontSize: 30 }}>{pendingDrink?.emoji}</Text></View>
-              <Text style={styles.modalTitle}>{pendingDrink?.title}</Text>
-              <Text style={styles.modalDesc}>How much did {activeChild?.nickname || 'your child'} drink?</Text>
-            </View>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <View style={styles.analysisIconBox}><Text style={{ fontSize: 30 }}>{pendingDrink?.emoji}</Text></View>
+                <Text style={styles.modalTitle}>{pendingDrink?.title}</Text>
+                <Text style={styles.modalDesc}>
+                  {t('howMuchDid') || 'How much did'} {activeChild?.nickname || 'your child'} {t('drinkQuestion') || 'drink?'}
+                </Text>
+              </View>
 
-            <View style={styles.modalInputWrap}>
-              <TextInput style={styles.modalInput} value={inputAmount} onChangeText={setInputAmount} keyboardType="number-pad" />
-              <Text style={styles.modalUnit}>mL</Text>
-            </View>
+              <View style={styles.modalInputWrap}>
+                <TextInput style={styles.modalInput} value={inputAmount} onChangeText={setInputAmount} keyboardType="number-pad" />
+                <Text style={styles.modalUnit}>mL</Text>
+              </View>
 
-            <View style={styles.modalActions}>
-              <Pressable onPress={() => setShowAmountInput(false)} style={styles.modalCancelBtn}><Text style={styles.modalCancelText}>{t('cancel')}</Text></Pressable>
-              <Pressable onPress={handleConfirmAmount} style={styles.modalConfirmBtn}><Text style={styles.modalConfirmText}>Confirm</Text></Pressable>
+              <View style={styles.modalActions}>
+                <Pressable onPress={() => setShowAmountInput(false)} style={styles.modalCancelBtn}>
+                  <Text style={styles.modalCancelText}>{t('cancel') || 'Cancel'}</Text>
+                </Pressable>
+                <Pressable onPress={handleConfirmAmount} style={styles.modalConfirmBtn}>
+                  <Text style={styles.modalConfirmText}>{t('confirm') || 'Confirm'}</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
