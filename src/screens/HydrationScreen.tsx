@@ -411,7 +411,6 @@ export default function HydrationScreen({ navigation }: any) {
           </>
         ) : (
           /* --- DRINK ANALYSIS PAGE --- */
-          /* --- DRINK ANALYSIS PAGE --- */
           selectedDrink && (
             <View style={{ paddingBottom: 40 }}>
               <Pressable onPress={handleBackFromAnalysis} style={styles.backBtn}>

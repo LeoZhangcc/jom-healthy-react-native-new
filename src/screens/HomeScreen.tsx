@@ -630,11 +630,6 @@ export default function HomeScreen() {
                 </View>
               </Card>
 
-              <DigitalTwin
-                tip={getTwinTip()}
-                nickname={getTwinNickname()}
-                isComplete={allGoalsMet}
-              />
             </>
           )}
 
