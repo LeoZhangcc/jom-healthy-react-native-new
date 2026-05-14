@@ -29,7 +29,10 @@ const BASE_URL = "https://jom-healthy-java.onrender.com";  //Backend URL
 export default function HealthCheckScreen() {
   const navigation = useNavigation<any>();
   const { t, language } = useLanguage();
-  const { children } = useChildProfile();
+  
+  // 💡 修改点 1：把 syncLatestHealthRecord 提取出来
+  const { children, syncLatestHealthRecord } = useChildProfile();
+  
   const getText = (en: string, zh: string, ms: string) => language === 'zh' ? zh : language === 'ms' ? ms : en;
   
   // --- The state for the form ---
@@ -198,6 +201,12 @@ export default function HealthCheckScreen() {
 
     try {
       await saveHealthRecord(record);
+      
+      // 💡 修改点 2：保存完毕后，立即通知全局大脑更新档案！
+      if (syncLatestHealthRecord) {
+        await syncLatestHealthRecord();
+      }
+
       navigation.goBack();
     } catch (e) {
       console.error(e);

@@ -31,6 +31,7 @@ type Ingredient = {
   proteinG?: number;
   carbohydrateG?: number;
   fatG?: number;
+  picUrl?: string;
 };
 
 type MealRecipe = {
@@ -65,6 +66,7 @@ type ShoppingItem = {
   source: string;
   mealId: string;
   checked: boolean;
+  picUrl?: string;
 };
 
 type OpenAiMealPlanModalOptions = {
@@ -265,6 +267,7 @@ function normalizeAiMeal(meal: any): MealRecipe {
           proteinG: safeNumber(item.proteinG),
           carbohydrateG: safeNumber(item.carbohydrateG),
           fatG: safeNumber(item.fatG),
+          picUrl: item.picUrl || '',
         }))
       : [],
   };
@@ -377,6 +380,7 @@ async function generateShoppingListByOwner(allMealPlans: Record<string, Record<s
               source: `${dateKey} · ${slot}: ${meal.strMeal}`,
               mealId: meal.idMeal,
               checked: checkedMap.get(id) || false,
+              picUrl: ingredient.picUrl || '',
             });
           });
         });

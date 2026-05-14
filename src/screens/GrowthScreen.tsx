@@ -19,6 +19,7 @@ import { documentDirectory, readAsStringAsync, writeAsStringAsync } from 'expo-f
 import * as Sharing from 'expo-sharing';
 
 import { useLanguage } from '../context/LanguageContext';
+import { useChildProfile } from '../context/ChildProfileContext'; // 💡 新增：导入 Context
 import { colors } from '../theme/colors';
 import { Card, Chip, Header, Screen, SectionTitle } from '../components/Common';
 import { HealthRecord, deleteHealthRecords, loadHealthRecords, saveHealthRecord } from '../utils/storage';
@@ -131,7 +132,7 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
               <Polyline points={`${healthyTop} ${healthyBottom}`} fill="rgba(76, 175, 122, 0.1)" stroke="none" />
             )}
 
-            {/* WHO Basic Lines (修改了 SD0 为蓝色) */}
+            {/* WHO Basic Lines */}
             {sd1Points && <Polyline points={sd1Points} fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeDasharray="4 4" />}
             {sd0Points && <Polyline points={sd0Points} fill="none" stroke="#3B82F6" strokeWidth="2" strokeDasharray="4 4" />}
             {neg1Points && <Polyline points={neg1Points} fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeDasharray="4 4" />}
@@ -150,7 +151,7 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
         </ScrollView>
       </View>
       
-      {/* ================= Bottom legend (文字与颜色均已优化) ================= */}
+      {/* ================= Bottom legend ================= */}
       {showWhoLines && (
         <View style={styles.legendContainer}>
           <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} /><Text style={styles.legendText}>{t('optimal')}</Text></View>
@@ -170,6 +171,10 @@ type SegmentType = "HEIGHT" | "WEIGHT" | "BMI";
 export default function GrowthScreen() {
   const navigation = useNavigation<any>();
   const { t, language } = useLanguage();
+  
+  // 💡 提取 activeChild
+  const { activeChild } = useChildProfile();
+  
   const getText = (en: string, zh: string, ms: string) => language === 'zh' ? zh : language === 'ms' ? ms : en;
 
   const [records, setRecords] = useState<HealthRecord[]>([]);
@@ -180,23 +185,36 @@ export default function GrowthScreen() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+  // 💡 依赖项加入 activeChild
   useFocusEffect(
     useCallback(() => {
       setIsEditMode(false); 
       setSelectedIds([]);
       fetchData();
-    }, [selectedTab])
+    }, [selectedTab, activeChild])
   );
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      // 💡 保护逻辑：如果当前没有活跃的小孩档案，直接置空
+      if (!activeChild) {
+        setRecords([]);
+        setWhoData(null);
+        return;
+      }
+
       const stored = await loadHealthRecords();
-      const sortedRecords = stored.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      // 💡 核心修复：过滤出当前 activeChild 的记录！
+      const childRecords = stored.filter(record => record.nickname === activeChild.nickname);
+      
+      const sortedRecords = childRecords.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       setRecords(sortedRecords);
 
       if (selectedTab === "BMI" && sortedRecords.length > 0) {
-        const gender = sortedRecords[0].gender; 
+        // 💡 修复：直接使用 activeChild.gender 获取 WHO 数据，更稳定
+        const gender = activeChild.gender; 
         const response = await fetch(`${BASE_URL}/api/bmi/who-standards?type=MONTH&gender=${gender}`);
         const data = await response.json();
         setWhoData(data);
@@ -337,8 +355,15 @@ export default function GrowthScreen() {
             {selectedTab === 'HEIGHT' ? t('heightTrend') : selectedTab === 'WEIGHT' ? t('weightTrend') : getText('BMI Trend', 'BMI趋势', 'Trend BMI')}
           </Text>
           
+          {/* 💡 这里添加了对 activeChild 的判断保护 UI */}
           {loading ? (
             <ActivityIndicator size="large" color={colors.primaryDark} style={{ height: 200 }} />
+          ) : !activeChild ? (
+            <View style={[styles.emptyState, { height: 200, borderWidth: 0 }]}>
+               <Text style={styles.emptyStateText}>
+                 {getText('Please create a child profile first.', '请先创建小孩档案。', 'Sila cipta profil kanak-kanak dahulu.')}
+               </Text>
+            </View>
           ) : (
             <SimpleLineChart 
               data={chartData} 

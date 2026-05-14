@@ -146,6 +146,10 @@ interface ChildProfileContextType {
   reloadFromStorage: () => Promise<void>;
   refreshFromStorage: () => Promise<void>;
   loadFromStorage: () => Promise<void>;
+  
+  // 💡 新增：同步最新健康记录到全局的方法
+  syncLatestHealthRecord: () => Promise<void>;
+
   // --- Hydration Props ---
   dailyWaterGoal: number;
   todayWaterIntake: number;
@@ -180,7 +184,6 @@ const addDays = (dateString: string, days: number) => {
 
 function safeJsonParse(value: string | null | undefined) {
   if (!value) return null;
-
   try {
     return JSON.parse(value);
   } catch {
@@ -290,6 +293,52 @@ export function ChildProfileProvider({ children: childrenProp }: { children: Rea
   const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>([]);
   const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+
+  // 💡 核心新增：自动同步最新的健康记录 (身高、体重、BMI、Status)
+  const syncLatestHealthRecord = useCallback(async (childToSync = activeChild) => {
+    if (!childToSync) return;
+    try {
+      const { loadHealthRecords } = await import('../utils/storage');
+      const records = await loadHealthRecords();
+      
+      // 找到当前小孩的所有记录
+      const childRecords = records.filter((r: any) => r.nickname === childToSync.nickname);
+      if (childRecords.length === 0) return;
+
+      // 按时间降序排列，取最新一条
+      childRecords.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const latest = childRecords[0];
+
+      // 如果最新记录和当前档案不一样，则进行覆盖合并
+      if (
+        childToSync.height !== Number(latest.height) ||
+        childToSync.weight !== Number(latest.weight) ||
+        childToSync.bmi !== latest.bmiValue ||
+        childToSync.status !== latest.status
+      ) {
+        const updatedChild = {
+          ...childToSync,
+          height: Number(latest.height),
+          weight: Number(latest.weight),
+          bmi: latest.bmiValue,
+          status: latest.status,
+        };
+        
+        // 更新全局状态，这会触发全 App UI 刷新
+        setActiveChildState(updatedChild);
+        setChildrenList(prev => prev.map(c => c.id === updatedChild.id ? updatedChild : c));
+      }
+    } catch (e) {
+      console.error("Sync Health Record Error:", e);
+    }
+  }, [activeChild]);
+
+  // 💡 自动监听：当切换小孩，或者首次加载出 activeChild 时，自动同步一次最新数据
+  useEffect(() => {
+    if (activeChild?.id) {
+      syncLatestHealthRecord(activeChild);
+    }
+  }, [activeChild?.id]); // 依赖项只写 id，防止无限循环
 
   const getOwnerKey = useCallback(() => {
     if (!activeChild?.id) return 'guest';
@@ -608,7 +657,6 @@ export function ChildProfileProvider({ children: childrenProp }: { children: Rea
   const [hydrationHistory, setHydrationHistory] = useState<any[]>([]);
   const [todayWaterIntake, setTodayWaterIntake] = useState(0);
 
-  // User Story 1.2: Calculate age-based hydration target
   const dailyWaterGoal = useMemo(() => {
     if (!activeChild) return 1000; // Default
     
@@ -628,17 +676,14 @@ export function ChildProfileProvider({ children: childrenProp }: { children: Rea
     return 2000; // Default for 19+
   }, [activeChild]);
 
-  // Load hydration data
   const loadHydrationData = useCallback(async () => {
     if (!activeChild) return;
     const { loadHydrationRecords } = await import('../utils/storage');
     const records = await loadHydrationRecords();
     
-    // Filter records for the active child
     const childRecords = records.filter(r => r.childId === activeChild.id);
     setHydrationHistory(childRecords);
 
-    // Calculate today's total
     const todayStr = new Date().toISOString().split('T')[0];
     const todayTotal = childRecords
       .filter(r => r.date === todayStr)
@@ -647,12 +692,10 @@ export function ChildProfileProvider({ children: childrenProp }: { children: Rea
     setTodayWaterIntake(todayTotal);
   }, [activeChild]);
 
-  // Call loadHydrationData when active child changes
   useEffect(() => {
     loadHydrationData();
   }, [loadHydrationData]);
 
-  // Function to add water with drink type
   const addWater = async (amount: number, drinkType: string = 'Water') => {
     if (!activeChild) return;
     const { saveHydrationRecord } = await import('../utils/storage');
@@ -667,51 +710,50 @@ export function ChildProfileProvider({ children: childrenProp }: { children: Rea
     };
 
     await saveHydrationRecord(newRecord);
-    await loadHydrationData(); // Refresh state
+    await loadHydrationData(); 
   };
 
   // --- Activity State ---
-const [activityHistory, setActivityHistory] = useState<any[]>([]);
-const [todayActivityMinutes, setTodayActivityMinutes] = useState(0);
-const dailyActivityGoal = 60; 
+  const [activityHistory, setActivityHistory] = useState<any[]>([]);
+  const [todayActivityMinutes, setTodayActivityMinutes] = useState(0);
+  const dailyActivityGoal = 60; 
 
-const loadActivityData = useCallback(async () => {
-  if (!activeChild) return;
-  // Dynamic import to match your hydration style
-  const { loadActivityRecords } = await import('../utils/storage');
-  const records = await loadActivityRecords();
-  
-  const childRecords = records.filter(r => r.childId === activeChild.id);
-  setActivityHistory(childRecords);
+  const loadActivityData = useCallback(async () => {
+    if (!activeChild) return;
+    const { loadActivityRecords } = await import('../utils/storage');
+    const records = await loadActivityRecords();
+    
+    const childRecords = records.filter(r => r.childId === activeChild.id);
+    setActivityHistory(childRecords);
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayTotal = childRecords
-    .filter(r => r.date === todayStr)
-    .reduce((sum, record) => sum + record.minutes, 0);
-  
-  setTodayActivityMinutes(todayTotal);
-}, [activeChild]);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayTotal = childRecords
+      .filter(r => r.date === todayStr)
+      .reduce((sum, record) => sum + record.minutes, 0);
+    
+    setTodayActivityMinutes(todayTotal);
+  }, [activeChild]);
 
-useEffect(() => {
-  loadActivityData();
-}, [loadActivityData]);
+  useEffect(() => {
+    loadActivityData();
+  }, [loadActivityData]);
 
-const addActivity = async (minutes: number, activityType: string = 'General Play') => {
-  if (!activeChild) return;
-  const { saveActivityRecord } = await import('../utils/storage');
-  
-  const newRecord = {
-    id: Date.now().toString(),
-    childId: activeChild.id,
-    date: new Date().toISOString().split('T')[0],
-    timestamp: Date.now(),
-    minutes: minutes,
-    activityType: activityType
+  const addActivity = async (minutes: number, activityType: string = 'General Play') => {
+    if (!activeChild) return;
+    const { saveActivityRecord } = await import('../utils/storage');
+    
+    const newRecord = {
+      id: Date.now().toString(),
+      childId: activeChild.id,
+      date: new Date().toISOString().split('T')[0],
+      timestamp: Date.now(),
+      minutes: minutes,
+      activityType: activityType
+    };
+
+    await saveActivityRecord(newRecord);
+    await loadActivityData(); 
   };
-
-  await saveActivityRecord(newRecord);
-  await loadActivityData(); 
-};
 
   return (
     <ChildProfileContext.Provider
@@ -748,6 +790,9 @@ const addActivity = async (minutes: number, activityType: string = 'General Play
         reloadFromStorage: reloadChildProfileData,
         refreshFromStorage: reloadChildProfileData,
         loadFromStorage: reloadChildProfileData,
+        
+        syncLatestHealthRecord, // 💡 暴露出这个方法！
+
         dailyWaterGoal,
         todayWaterIntake,
         hydrationHistory,
