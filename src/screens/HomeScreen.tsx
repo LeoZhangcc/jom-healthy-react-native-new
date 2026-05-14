@@ -648,61 +648,68 @@ export default function HomeScreen() {
                   </Pressable>
                 </View>
               </Card>
-
-              <DigitalTwin
-                tip={getTwinTip()}
-                nickname={getTwinNickname()}
-                isComplete={allGoalsMet}
-              />
             </>
           )}
 
-          {/* Insert this right ABOVE the Growth Overview Card */}
+          {/* --- NEW HYDRATION CARD --- */}
           {activeChild && (
-            <Card style={styles.hydrationCard}>
-              <View style={styles.hydrationHeader}>
-                <View style={styles.hydrationTitleRow}>
-                  <Ionicons name="water" size={20} color="#3B82F6" />
-                  <Text style={styles.hydrationTitle}>
-                    {getText('Daily Hydration', '每日饮水', 'Penghidratan Harian')}
+            <Pressable 
+              style={({ pressed }) => [
+                styles.hydrationCard,
+                pressed && { transform: [{ scale: 0.98 }] }
+              ]}
+              onPress={() => navigation.navigate('Hydration')}
+            >
+              <View style={styles.hydrationHeaderRow}>
+                <View style={styles.hydrationHeaderLeft}>
+                  {/* Blue Droplet Icon Box */}
+                  <View style={styles.hydrationIconBox}>
+                    <Ionicons name="water" size={22} color="#3B82F6" />
+                  </View>
+                  
+                  <View>
+                    <Text style={styles.activityTitle}>{t('hydration')}</Text>
+                    {/* Status Badge */}
+                    <View style={[
+                      styles.statusBadge2, 
+                      todayWaterIntake >= dailyWaterGoal ? styles.statusBadgeGood : styles.statusBadgeNeeds
+                    ]}>
+                      <Text style={[
+                        styles.statusText, 
+                        todayWaterIntake >= dailyWaterGoal ? styles.statusTextGood : styles.statusTextNeeds
+                      ]}>
+                        {todayWaterIntake >= dailyWaterGoal ? t('wellHydrated') : t('needsMoreWater')}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Green Chevron Right Box */}
+                <View style={styles.chevronBox}>
+                  <Ionicons name="chevron-forward" size={14} color="#4CAF7A" />
+                </View>
+              </View>
+
+              {/* Progress Bar Section */}
+              <View style={styles.progressSection}>
+                <View style={styles.progressLabels}>
+                  <Text style={styles.progressLabelText}>Progress</Text>
+                  <Text style={styles.progressValueText}>
+                    {todayWaterIntake} / {dailyWaterGoal} mL
                   </Text>
                 </View>
-                <Pressable 
-                  style={styles.hydrationDetailBtn}
-                  onPress={() => navigation.navigate('Hydration')} 
-                >
-                  <Text style={styles.hydrationDetailText}>
-                    {getText('Details', '详情', 'Butiran')}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={16} color="#3B82F6" />
-                </Pressable>
-              </View>      
-
-              {/* Live Progress linked to Context! */}
-              <View style={styles.hydrationProgressWrap}>
-                <View style={styles.hydrationBarBg}>
+                
+                <View style={styles.progressBarBg}>
                   <View 
                     style={[
-                      styles.hydrationBarFill, 
-                      { width: `${Math.min((todayWaterIntake / dailyWaterGoal) * 100, 100)}%` }
+                      styles.progressBarFill, 
+                      { width: `${Math.min((todayWaterIntake / dailyWaterGoal) * 100, 100)}%` },
+                      { backgroundColor: todayWaterIntake >= dailyWaterGoal ? '#3B82F6' : '#60A5FA' }
                     ]} 
-                  /> 
+                  />
                 </View>
-                <Text style={styles.hydrationText}>
-                  <Text style={styles.hydrationCurrent}>{todayWaterIntake}ml</Text> / {dailyWaterGoal}ml
-                </Text>
               </View>
-
-              {/* Active Buttons linked to Context! */}
-              <View style={styles.hydrationActions}>
-                <Pressable style={styles.addWaterBtn} onPress={() => addWater(100)}>
-                  <Text style={styles.addWaterText}>+ 100ml</Text>
-                </Pressable>
-                <Pressable style={styles.addWaterBtn} onPress={() => addWater(250)}>
-                  <Text style={styles.addWaterText}>+ 250ml</Text>
-                </Pressable>
-              </View>
-            </Card>
+            </Pressable>
           )}
 
           {activeChild && (
@@ -942,8 +949,6 @@ export default function HomeScreen() {
         visible={showChildren}
         onClose={() => setShowChildren(false)}
       />
-
-      <FloatingAIChat />
       
     </>
   );
@@ -1350,10 +1355,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F5E9',
   },
 
-  hydrationIconBox: {
-    backgroundColor: '#EFF6FF',
-  },
-
   activityIconBox: {
     backgroundColor: '#FAF5FF',
   },
@@ -1374,84 +1375,90 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 8,
   },
+  // --- NEW HYDRATION CARD STYLES ---
   hydrationCard: {
-    padding: 16,
-    borderRadius: 22,
-    backgroundColor: '#EFF6FF', // Light blue background
-    borderColor: '#BFDBFE',
-    borderWidth: 1,
-    marginBottom: 14,
+    backgroundColor: 'white',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 4,
   },
-  hydrationHeader: {
+  hydrationHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
-  hydrationTitleRow: {
+  hydrationHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 12,
+  },
+  hydrationIconBox: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   hydrationTitle: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#1E3A8A',
-  },
-  hydrationDetailBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  hydrationDetailText: {
-    fontSize: 13,
-    color: '#3B82F6',
-    fontWeight: '600',
-  },
-  hydrationProgressWrap: {
-    marginBottom: 16,
-  },
-  hydrationBarBg: {
-    height: 12,
-    backgroundColor: '#DBEAFE',
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginBottom: 6,
-  },
-  hydrationBarFill: {
-    height: '100%',
-    backgroundColor: '#3B82F6',
-    borderRadius: 6,
-  },
-  hydrationText: {
-    fontSize: 13,
-    color: '#60A5FA',
-    fontWeight: '600',
-    textAlign: 'right',
-  },
-  hydrationCurrent: {
-    color: '#2563EB',
-    fontWeight: '800',
-  },
-  hydrationActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  addWaterBtn: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#3B82F6',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-  addWaterText: {
-    color: '#2563EB',
     fontWeight: '700',
-    fontSize: 14,
+    color: '#333',
+  },
+  statusBadge2: {
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 999,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  statusBadgeGood: { backgroundColor: '#DCFCE7' },
+  statusBadgeNeeds: { backgroundColor: '#FEF3C7' },
+  statusText: { fontSize: 12, fontWeight: '600' },
+  statusTextGood: { color: '#15803D' },
+  statusTextNeeds: { color: '#B45309' },
+  chevronBox: {
+    width: 28,
+    height: 28,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressSection: {
+    marginTop: 4,
+  },
+  progressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  progressLabelText: {
+    fontSize: 11,
+    color: '#6B7280',
+  },
+  progressValueText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  progressBarBg: {
+    width: '100%',
+    height: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 999,
   },
   activityCard: {
     padding: 16,

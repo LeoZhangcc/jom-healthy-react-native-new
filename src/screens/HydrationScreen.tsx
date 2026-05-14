@@ -1,277 +1,532 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput, Animated, ScrollView } from 'react-native';
-import { useChildProfile } from '../context/ChildProfileContext';
-import { Header, Screen } from '../components/Common';
+import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path, G, Line, Circle as SvgCircle, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, G } from 'react-native-svg';
+import { useChildProfile } from '../context/ChildProfileContext';
+import { Screen, Header } from '../components/Common';
+import { useLanguage } from '../context/LanguageContext';
 
-// Predefined drink types and their colors for the pie chart
-const DRINK_TYPES = [
-  { id: 'Water', icon: '💧', color: '#3B82F6' },
-  { id: 'Milk', icon: '🥛', color: '#10B981' },
-  { id: 'Juice', icon: '🧃', color: '#F59E0B' },
-  { id: 'Tea', icon: '🍵', color: '#8B5CF6' },
-  { id: 'Soda', icon: '🥤', color: '#EF4444' },
-  { id: 'Other', icon: '➕', color: '#6B7280' },
-];
 
-// Generates a consistent unique color based on the drink's name
-const getCustomColor = (drinkName: string) => {
-  const customColors = ['#F472B6', '#38BDF8', '#FB923C', '#A3E635', '#C084FC', '#FB7185', '#2DD4BF', '#FCD34D'];
-  let hash = 0;
-  for (let i = 0; i < drinkName.length; i++) {
-    hash = drinkName.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return customColors[Math.abs(hash) % customColors.length];
+const drinkColors: Record<string, { emoji: string; color: string }> = {
+  'Water': { emoji: '💧', color: '#3B82F6' },
+  'Milk': { emoji: '🥛', color: '#F59E0B' },
+  'Fresh Juice': { emoji: '🧃', color: '#10B981' },
+  'Packaged Juice': { emoji: '🥤', color: '#EF4444' },
+  'Other': { emoji: '🥤', color: '#8B5CF6' }
 };
 
 export default function HydrationScreen({ navigation }: any) {
+  const { t , language} = useLanguage();
   const { activeChild, todayWaterIntake, dailyWaterGoal, addWater, hydrationHistory } = useChildProfile();
 
-  const [selectedDrink, setSelectedDrink] = useState('Water');
+  const drinkOptions = useMemo(() => [
+    { emoji: '💧', title: t('water'), amountValue: 200, description: t('bestForHydration'), type: 'healthy' as const },
+    { emoji: '🥛', title: t('milk'), amountValue: 250, description: t('goodSourceOfCalcium'), type: 'healthy' as const },
+    { emoji: '🧃', title: t('freshJuice'), amountValue: 150, description: t('naturalHydration'), type: 'healthy' as const },
+    { emoji: '🥤', title: t('packagedJuice'), amountValue: 200, description: t('highSugarContent'), type: 'unhealthy' as const },
+  ], [t]);
+
+  const [amount, setAmount] = useState(200);
+  const [customAmount, setCustomAmount] = useState('200');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [selectedDrink, setSelectedDrink] = useState<any>(null);
   const [customDrinkName, setCustomDrinkName] = useState('');
+  const [expandedHistoryDate, setExpandedHistoryDate] = useState<string | null>(null);
   
-  // --- CUP ANIMATION LOGIC ---
-  const fillAnimation = useRef(new Animated.Value(0)).current;
+  const [showAmountInput, setShowAmountInput] = useState(false);
+  const [pendingDrink, setPendingDrink] = useState<any>(null);
+  const [inputAmount, setInputAmount] = useState('250');
+
+  const [selectedDrinkType, setSelectedDrinkType] = useState<{ emoji: string; title: string; type: 'healthy' | 'unhealthy' }>({
+    emoji: '💧', title: t('water'), type: 'healthy',
+  });
+
+  // Group history by date for the accordion and breakdown
+  const { groupedHistory, todaysDrinks } = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const grouped: Record<string, { date: string; total: number; drinks: any[] }> = {};
+    let todayDrinksArr: any[] = [];
+
+    hydrationHistory.forEach((record) => {
+      const dateStr = new Date(record.timestamp).toISOString().split('T')[0];
+      if (!grouped[dateStr]) grouped[dateStr] = { date: dateStr, total: 0, drinks: [] };
+      grouped[dateStr].total += record.amount;
+      grouped[dateStr].drinks.push(record);
+      if (dateStr === todayStr) todayDrinksArr.push(record);
+    });
+
+    const sortedArray = Object.values(grouped).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return { groupedHistory: sortedArray, todaysDrinks: todayDrinksArr };
+  }, [hydrationHistory]);
+
+  const handleLog = () => {
+    const finalAmount = parseInt(customAmount) || amount;
+    const drinkName = selectedDrinkType.title === 'Other' ? (customDrinkName || 'Other') : selectedDrinkType.title;
+    addWater(finalAmount, drinkName);
+    setCustomAmount('200');
+    setCustomDrinkName('');
+  };
+
+  const handleQuickAdd = (ml: number) => {
+    setAmount(ml);
+    setCustomAmount(String(ml));
+  };
+
+  const handleCustomAmountChange = (value: string) => {
+    setCustomAmount(value);
+    const numValue = parseInt(value);
+    if (!isNaN(numValue) && numValue >= 1 && numValue <= 1000) setAmount(numValue);
+  };
+
+  const handleDrinkCardClick = (drink: any) => {
+    setPendingDrink(drink);
+    setInputAmount(String(drink.amountValue));
+    setShowAmountInput(true);
+  };
+
+  const handleConfirmAmount = () => {
+    if (pendingDrink) {
+      const finalAmount = parseInt(inputAmount) || pendingDrink.amountValue;
+      addWater(finalAmount, pendingDrink.title);
+      setShowAmountInput(false);
+      setPendingDrink(null);
+      handleBackFromAnalysis();
+    }
+  };
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      const drink = drinkOptions.find(d => d.title.toLowerCase().includes(searchQuery.toLowerCase()));
+      if (drink) {
+        setSelectedDrink(drink);
+        setShowAnalysis(true);
+      }
+    }
+  };
+
+  const handleBackFromAnalysis = () => {
+    setShowAnalysis(false);
+    setSelectedDrink(null);
+    setSearchQuery('');
+  };
+
+  const needsMoreWater = todayWaterIntake < dailyWaterGoal;
   const progressPercent = Math.min((todayWaterIntake / dailyWaterGoal) * 100, 100);
+  const isWellHydrated = todayWaterIntake >= dailyWaterGoal;
 
-  useEffect(() => {
-    Animated.spring(fillAnimation, {
-      toValue: progressPercent,
-      friction: 6,
-      tension: 40,
-      useNativeDriver: false,
-    }).start();
-  }, [progressPercent]);
-
-  const animatedHeight = fillAnimation.interpolate({
-    inputRange: [0, 100],
-    outputRange: ['0%', '100%'],
-  });
-
-  // --- DATA FILTERING ---
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todaysRecords = hydrationHistory.filter(r => r.date === todayStr);
-
-  // --- PIE CHART MATH LOGIC ---
-  // 1. Group today's drinks by type
-  const groupedData = todaysRecords.reduce((acc, record) => {
-    const type = record.drinkType || 'Water';
-    acc[type] = (acc[type] || 0) + record.amount;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const pieChartData = Object.keys(groupedData).map(key => {
-    const defaultType = DRINK_TYPES.find(d => d.id === key);
-    return {
-      type: key,
-      amount: groupedData[key],
-      color: defaultType ? defaultType.color : getCustomColor(key)
-    };
-  });
-
-  // Helper to calculate X/Y on a circle for Pie Chart Paths
-  const getCoordinatesForAngle = (angleInDegrees: number, radius: number, cx: number, cy: number) => {
-    const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-    return {
-      x: cx + (radius * Math.cos(angleInRadians)),
-      y: cy + (radius * Math.sin(angleInRadians))
-    };
-  };
-
-  const handleAddDrink = (amount: number) => {
-    const finalDrinkType = selectedDrink === 'Other' && customDrinkName.trim() !== '' 
-      ? customDrinkName.trim() 
-      : selectedDrink;
+  // Calculate drink breakdown for donut chart
+  const drinkBreakdown = useMemo(() => {
+    const breakdown: Record<string, { amount: number; emoji: string; color: string }> = {};
     
-    addWater(amount, finalDrinkType);
-    if(selectedDrink === 'Other') setCustomDrinkName(''); // reset input
-  };
+    todaysDrinks.forEach((drink) => {
+      const type = drink.drinkType || 'Water';
+      const knownType = drinkColors[type] ? type : 'Other';
+      if (!breakdown[knownType]) {
+        breakdown[knownType] = { amount: 0, emoji: drinkColors[knownType].emoji, color: drinkColors[knownType].color };
+      }
+      breakdown[knownType].amount += drink.amount;
+    });
+
+    let cumulativePercent = 0;
+    return Object.entries(breakdown).map(([name, data]) => {
+      const percentage = todayWaterIntake > 0 ? (data.amount / todayWaterIntake) * 100 : 0;
+      const startPercent = cumulativePercent;
+      cumulativePercent += percentage;
+      return { name, value: data.amount, emoji: data.emoji, color: data.color, percentage: Math.round(percentage), startPercent };
+    });
+  }, [todaysDrinks, todayWaterIntake]);
+
+  // Donut Chart Math
+  const chartRadius = 45;
+  const chartStrokeWidth = 18;
+  const chartCircumference = 2 * Math.PI * chartRadius;
 
   return (
-    <Screen>
-      <Header title="Daily Hydration" onBack={() => navigation.goBack()} />
-      
-      <ScrollView contentContainerStyle={styles.container}>
-        
-        {/* --- ANIMATED CUP VISUAL --- */}
-        <View style={styles.cupSection}>
-          <View style={styles.cupContainer}>
-             <Animated.View style={[styles.cupFill, { height: animatedHeight }]} />
-             <Text style={styles.cupText}>{todayWaterIntake} / {dailyWaterGoal} ml</Text>
-          </View>
-          <Text style={styles.goalText}>Goal for {activeChild?.nickname}</Text>
-        </View>
+    <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+      <Header title={t('logHydration')} onBack={() => navigation.goBack()} />
 
-        {/* --- DRINK TYPE SELECTION --- */}
-        <Text style={styles.sectionTitle}>What are they drinking?</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chipContainer}>
-          {DRINK_TYPES.map((drink) => (
-            <Pressable 
-              key={drink.id} 
-              style={[styles.chip, selectedDrink === drink.id && { backgroundColor: drink.color, borderColor: drink.color }]}
-              onPress={() => setSelectedDrink(drink.id)}
-            >
-              <Text style={[styles.chipText, selectedDrink === drink.id && { color: 'white' }]}>
-                {drink.icon} {drink.id}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        {/* Custom Drink Input */}
-        {selectedDrink === 'Other' && (
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={18} color="#9CA3AF" style={styles.searchIcon} />
           <TextInput
-            style={styles.customInput}
-            placeholder="Type custom drink here (e.g., Milo)..."
-            value={customDrinkName}
-            onChangeText={setCustomDrinkName}
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            placeholder={t('searchDrinks')}
+            placeholderTextColor="#9CA3AF"
+            returnKeyType="search"
           />
-        )}
-
-        {/* --- ADD BUTTONS --- */}
-        <View style={styles.quickAddRow}>
-          {[100, 200, 500].map((amount) => (
-            <Pressable key={amount} style={styles.addBtn} onPress={() => handleAddDrink(amount)}>
-              <Ionicons name="add-circle" size={20} color="#3B82F6" />
-              <Text style={styles.addBtnText}>{amount}ml</Text>
-            </Pressable>
-          ))}
         </View>
 
-        {/* --- PIE CHART SECTION --- */}
-        {pieChartData.length > 0 && (
-          <View style={styles.chartSection}>
-            <Text style={styles.sectionTitle}>Drink Distribution</Text>
-            <View style={styles.svgWrapper}>
-              <Svg width={250} height={250} viewBox="0 0 200 200">
-                {(() => {
-                  let startAngle = 0;
-                  const cx = 100, cy = 100, radius = 50;
-                  const totalAmount = pieChartData.reduce((sum, d) => sum + d.amount, 0);
-
-                  return pieChartData.map((slice, index) => {
-                    const sliceAngle = (slice.amount / totalAmount) * 360;
-                    const endAngle = startAngle + sliceAngle;
-
-                    // If it's a 100% single category, just draw a circle
-                    if (sliceAngle === 360) {
-                      return (
-                         <G key={index}>
-                           <SvgCircle cx={cx} cy={cy} r={radius} fill={slice.color} />
-                           <SvgText x={cx} y={cy} fill="white" fontSize="12" fontWeight="bold" textAnchor="middle" alignmentBaseline="middle">{slice.type}</SvgText>
-                         </G>
-                      )
-                    }
-
-                    // Path Math
-                    const startCoords = getCoordinatesForAngle(startAngle, radius, cx, cy);
-                    const endCoords = getCoordinatesForAngle(endAngle, radius, cx, cy);
-                    const largeArcFlag = sliceAngle > 180 ? 1 : 0;
-                    const pathData = [
-                      `M ${cx} ${cy}`,
-                      `L ${startCoords.x} ${startCoords.y}`,
-                      `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endCoords.x} ${endCoords.y}`,
-                      'Z'
-                    ].join(' ');
-
-                    // Arrow Line Math (Points out from center of slice)
-                    const midAngle = startAngle + (sliceAngle / 2);
-                    const lineStart = getCoordinatesForAngle(midAngle, radius, cx, cy);
-                    const lineEnd = getCoordinatesForAngle(midAngle, radius + 20, cx, cy);
-                    const textPos = getCoordinatesForAngle(midAngle, radius + 35, cx, cy);
-
-                    startAngle += sliceAngle; // setup for next slice
-
-                    return (
-                      <G key={index}>
-                        {/* Slice */}
-                        <Path d={pathData} fill={slice.color} />
-                        {/* Arrow Line pointing out */}
-                        <Line x1={lineStart.x} y1={lineStart.y} x2={lineEnd.x} y2={lineEnd.y} stroke={slice.color} strokeWidth="2" />
-                        <SvgCircle cx={lineEnd.x} cy={lineEnd.y} r="3" fill={slice.color} />
-                        {/* Text Label */}
-                        <SvgText x={textPos.x} y={textPos.y} fill="#333" fontSize="12" fontWeight="bold" textAnchor="middle" alignmentBaseline="middle">
-                          {slice.type}
-                        </SvgText>
-                      </G>
-                    );
-                  });
-                })()}
-              </Svg>
-            </View>
-          </View>
-        )}
-
-        {/* --- HISTORY LIST --- */}
-        <Text style={styles.sectionTitle}>Today's Log</Text>
-        {todaysRecords.length === 0 ? (
-          <Text style={styles.emptyText}>No drinks logged yet today.</Text>
-        ) : (
-          todaysRecords.map((item) => {
-            const defaultType = DRINK_TYPES.find(d => d.id === item.drinkType);
-            const drinkColor = defaultType ? defaultType.color : getCustomColor(item.drinkType || '');
-            return (
-              <View key={item.id} style={styles.historyItem}>
-                <View style={styles.historyLeft}>
-                   <View style={[styles.historyDot, { backgroundColor: drinkColor }]} />
-                   <Text style={styles.historyType}>{item.drinkType || 'Water'}</Text>
-                   <Text style={styles.historyTime}>
-                     {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                   </Text>
+        {!showAnalysis ? (
+          <>
+            {/* Hydration Progress Section */}
+            <View style={styles.progressCard}>
+              <View style={styles.progressHeader}>
+                <View>
+                  <Text style={styles.progressCurrentText}>{todayWaterIntake}<Text style={styles.progressUnitText}>mL</Text></Text>
+                  <Text style={styles.progressGoalText}>{t('of')} {dailyWaterGoal}mL {t('dailyGoal')}</Text>
                 </View>
-                <Text style={styles.historyAmount}>+{item.amount} ml</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.progressPercentText}>{Math.round(progressPercent)}%</Text>
+                  <Text style={styles.progressGoalText}>{t('completed')}</Text>
+                </View>
               </View>
-            )
-          })
+
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+              </View>
+
+              <View style={styles.progressFooter}>
+                <View style={[styles.statusBadge, isWellHydrated ? styles.statusBadgeGood : styles.statusBadgeNeeds]}>
+                  <Text style={styles.statusBadgeText}>{isWellHydrated ? t('wellHydrated') : t('needsMoreWater')}</Text>
+                </View>
+                <Text style={styles.remainingText}>{isWellHydrated ? t('goalAchieved') : `${dailyWaterGoal - todayWaterIntake}mL ${t('remaining')}`}</Text>
+              </View>
+            </View>
+
+            {/* Drink Type Selector */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t('selectDrinkType')}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
+                {[...drinkOptions, { emoji: '🥤', title: 'Other', type: 'healthy' as const }].map((drink) => {
+                  const isSelected = selectedDrinkType.title === drink.title;
+                  return (
+                    <Pressable
+                      key={drink.title}
+                      onPress={() => setSelectedDrinkType(drink)}
+                      style={[styles.chip, isSelected && styles.chipActive]}
+                    >
+                      <Text style={styles.chipEmoji}>{drink.emoji}</Text>
+                      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>{drink.title}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              {selectedDrinkType.title === 'Other' && (
+                <TextInput
+                  style={styles.customDrinkInput}
+                  value={customDrinkName}
+                  onChangeText={setCustomDrinkName}
+                  placeholder="Enter drink name (e.g., Soda, Tea)"
+                  placeholderTextColor="#9CA3AF"
+                />
+              )}
+            </View>
+
+            {/* Amount Picker */}
+            <View style={styles.pickerBox}>
+              <Text style={styles.pickerTitle}>
+              {language === 'en' && `How much ${selectedDrinkType.title} did ${activeChild?.nickname || 'your child'} drink?`}
+              {language === 'ms' && `Berapa banyak ${selectedDrinkType.title} yang diminum oleh ${activeChild?.nickname || 'anak anda'}?`}
+              {language === 'zh' && `${activeChild?.nickname || '您的孩子'}喝了多少${selectedDrinkType.title}？`}
+            </Text>
+              
+              <View style={styles.amountInputWrap}>
+                <TextInput
+                  style={styles.amountInput}
+                  value={customAmount}
+                  onChangeText={handleCustomAmountChange}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                />
+                <Text style={styles.amountUnit}>mL</Text>
+              </View>
+
+              <View style={styles.quickAddRow}>
+                {[100, 200, 250].map((val) => (
+                  <Pressable key={val} onPress={() => handleQuickAdd(val)} style={[styles.quickAddBtn, amount === val && styles.quickAddBtnActive]}>
+                    <Text style={[styles.quickAddText, amount === val && styles.quickAddTextActive]}>{val} mL</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Pressable onPress={handleLog} style={({ pressed }) => [styles.logBtn, pressed && styles.btnPressed]}>
+                <Text style={styles.logBtnText}>{t('log')} {selectedDrinkType.title}</Text>
+              </Pressable>
+            </View>
+
+            {/* Drink Breakdown SVG Chart */}
+            {drinkBreakdown.length > 0 && (
+              <View style={styles.breakdownCard}>
+                <Text style={styles.sectionTitle}>{t('todayDrinkBreakdown')}</Text>
+                <View style={styles.breakdownRow}>
+                  <View style={styles.chartContainer}>
+                    <Svg width="120" height="120" viewBox="0 0 120 120">
+                      <G rotation="-90" origin="60, 60">
+                        {drinkBreakdown.map((slice, index) => {
+                          const strokeDasharray = `${(slice.percentage / 100) * chartCircumference} ${chartCircumference}`;
+                          const strokeDashoffset = -((slice.startPercent / 100) * chartCircumference);
+                          return (
+                            <Circle
+                              key={index}
+                              cx="60"
+                              cy="60"
+                              r={chartRadius}
+                              stroke={slice.color}
+                              strokeWidth={chartStrokeWidth}
+                              fill="transparent"
+                              strokeDasharray={strokeDasharray}
+                              strokeDashoffset={strokeDashoffset}
+                              strokeLinecap={drinkBreakdown.length === 1 ? "round" : "butt"}
+                            />
+                          );
+                        })}
+                      </G>
+                    </Svg>
+                  </View>
+                  
+                  <View style={styles.legendContainer}>
+                    {drinkBreakdown.map((drink, index) => (
+                      <View key={index} style={styles.legendItem}>
+                        <View style={styles.legendLeft}>
+                          <View style={[styles.legendColor, { backgroundColor: drink.color }]} />
+                          <Text style={styles.legendName}>{drink.emoji} {drink.name}</Text>
+                        </View>
+                        <View style={styles.legendRight}>
+                          <Text style={styles.legendPercent}>{drink.percentage}%</Text>
+                          <Text style={styles.legendMl}>({drink.value}mL)</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Hydration Tip */}
+            {needsMoreWater && (
+              <View style={styles.tipBox}>
+                <View style={styles.tipIconBox}><Text style={{ fontSize: 20 }}>💡</Text></View>
+                <View style={styles.tipContent}>
+                  <Text style={styles.tipTitle}>{t('stayHydrated')}</Text>
+                  <Text style={styles.tipDesc}>
+                    {activeChild?.nickname} {t('needsMore')} {dailyWaterGoal - todayWaterIntake} {t('moreToReach')}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Hydration History Accordion */}
+            <View style={styles.section}>
+              {/* 1. Translated Title */}
+              <Text style={styles.sectionTitle}>{t('hydrationHistory')}</Text>
+              
+              {groupedHistory.slice(0, 5).map((record) => {
+                const dateObj = new Date(record.date);
+                
+                // 2. Dynamic Date Translation (changes language of the month abbreviation)
+                const locale = language === 'zh' ? 'zh-CN' : language === 'ms' ? 'ms-MY' : 'en-MY';
+                const dateStr = dateObj.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+                
+                const isExpanded = expandedHistoryDate === record.date;
+
+                return (
+                  <View key={record.date} style={styles.historyGroup}>
+                    <Pressable onPress={() => setExpandedHistoryDate(isExpanded ? null : record.date)} style={styles.historyHeader}>
+                      <Text style={styles.historyDate}>{dateStr}</Text>
+                      <View style={styles.historyRight}>
+                        <Text style={styles.historyTotal}>{record.total}mL</Text>
+                        <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#9CA3AF" />
+                      </View>
+                    </Pressable>
+
+                    {isExpanded && (
+                      <View style={styles.historyDetails}>
+                        {record.drinks.map((drink, index) => {
+                          const time = new Date(drink.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                          return (
+                            <View key={index} style={styles.historyDrinkRow}>
+                              <View style={styles.historyDrinkLeft}>
+                                <Text style={styles.historyTime}>{time}</Text>
+                                
+                                {/* 3. Translated Logged Drink Names */}
+                                <Text style={styles.historyDrinkName}>
+                                  {drink.drinkType === 'Water' ? t('water') :
+                                   drink.drinkType === 'Milk' ? t('milk') :
+                                   drink.drinkType === 'Fresh Juice' ? t('freshJuice') :
+                                   drink.drinkType === 'Packaged Juice' ? t('packagedJuice') :
+                                   drink.drinkType === 'Other' ? t('other') :
+                                   drink.drinkType}
+                                </Text>
+                                
+                              </View>
+                              <Text style={styles.historyDrinkAmount}>{drink.amount}mL</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        ) : (
+          /* --- DRINK ANALYSIS PAGE --- */
+          selectedDrink && (
+            <View style={{ paddingBottom: 40 }}>
+              <Pressable onPress={handleBackFromAnalysis} style={styles.backBtn}>
+                <Ionicons name="arrow-back" size={16} color="#4B5563" />
+                <Text style={styles.backBtnText}>Back to Hydration</Text>
+              </Pressable>
+
+              <View style={styles.analysisHeader}>
+                <View style={styles.analysisIconBox}><Text style={{ fontSize: 40 }}>{selectedDrink.emoji}</Text></View>
+                <Text style={styles.analysisTitle}>{selectedDrink.title}</Text>
+                <Text style={styles.analysisDesc}>{selectedDrink.description}</Text>
+              </View>
+
+              <View style={styles.analysisCard}>
+                <Text style={styles.cardTitle}>Nutritional Analysis</Text>
+                <View style={styles.analysisRow}><Text style={styles.analysisLabel}>Energy</Text><Text style={styles.analysisValue}>{selectedDrink.title === 'Water' ? '0' : '150'} kcal</Text></View>
+                <View style={styles.analysisRow}><Text style={styles.analysisLabel}>Sugar</Text><Text style={styles.analysisValue}>{selectedDrink.title === 'Water' ? '0g' : '12g'}</Text></View>
+              </View>
+
+              <Pressable onPress={() => handleDrinkCardClick(selectedDrink)} style={styles.logBtn}>
+                <Text style={styles.logBtnText}>Add to Log</Text>
+              </Pressable>
+            </View>
+          )
         )}
       </ScrollView>
-    </Screen>
+
+      {/* Pop-up Modal for Custom Analysis Amount */}
+      <Modal transparent visible={showAmountInput} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.analysisIconBox}><Text style={{ fontSize: 30 }}>{pendingDrink?.emoji}</Text></View>
+              <Text style={styles.modalTitle}>{pendingDrink?.title}</Text>
+              <Text style={styles.modalDesc}>How much did {activeChild?.nickname || 'your child'} drink?</Text>
+            </View>
+
+            <View style={styles.modalInputWrap}>
+              <TextInput style={styles.modalInput} value={inputAmount} onChangeText={setInputAmount} keyboardType="number-pad" />
+              <Text style={styles.modalUnit}>mL</Text>
+            </View>
+
+            <View style={styles.modalActions}>
+              <Pressable onPress={() => setShowAmountInput(false)} style={styles.modalCancelBtn}><Text style={styles.modalCancelText}>{t('cancel')}</Text></Pressable>
+              <Pressable onPress={handleConfirmAmount} style={styles.modalConfirmBtn}><Text style={styles.modalConfirmText}>Confirm</Text></Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, paddingBottom: 40 },
+  container: { padding: 20, paddingBottom: 40 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 12 },
   
-  // Cup Styles
-  cupSection: { alignItems: 'center', marginBottom: 24, marginTop: 10 },
-  cupContainer: {
-    width: 120, height: 160,
-    borderWidth: 5, borderColor: '#CBD5E1',
-    borderTopWidth: 0,
-    borderBottomLeftRadius: 30, borderBottomRightRadius: 30,
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
-    backgroundColor: '#F8FAFC',
-    position: 'relative'
-  },
-  cupFill: { width: '100%', backgroundColor: '#60A5FA', opacity: 0.8 },
-  cupText: { position: 'absolute', width: '100%', textAlign: 'center', bottom: '40%', fontSize: 16, fontWeight: '900', color: '#1E3A8A' },
-  goalText: { marginTop: 12, fontSize: 15, fontWeight: '600', color: '#64748B' },
+  // Search
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 24 },
+  searchIcon: { marginRight: 10 },
+  searchInput: { flex: 1, fontSize: 15, color: '#333' },
 
-  // Selection Styles
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12, color: '#333' },
-  chipScroll: { marginBottom: 16 },
-  chipContainer: { flexDirection: 'row', gap: 10, paddingRight: 20 },
-  chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: 'white', borderWidth: 1, borderColor: '#E2E8F0' },
-  chipText: { fontSize: 15, fontWeight: '600', color: '#475569' },
-  customInput: { backgroundColor: 'white', borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 12, padding: 14, marginBottom: 16, fontSize: 15 },
-  
-  // Add Buttons
-  quickAddRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30 },
-  addBtn: { flexDirection: 'row', gap: 6, backgroundColor: 'white', padding: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', width: '31%', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
-  addBtnText: { fontWeight: '700', color: '#3B82F6', fontSize: 15 },
+  // Progress Card
+  progressCard: { backgroundColor: '#2563EB', borderRadius: 24, padding: 20, marginBottom: 24 },
+  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  progressCurrentText: { fontSize: 32, fontWeight: 'bold', color: 'white' },
+  progressUnitText: { fontSize: 18, color: 'rgba(255,255,255,0.8)' },
+  progressGoalText: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+  progressPercentText: { fontSize: 24, fontWeight: 'bold', color: 'white' },
+  progressBarBg: { height: 10, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 10, overflow: 'hidden', marginBottom: 16 },
+  progressBarFill: { height: '100%', backgroundColor: 'white', borderRadius: 10 },
+  progressFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  statusBadgeGood: { backgroundColor: 'rgba(255,255,255,0.3)' },
+  statusBadgeNeeds: { backgroundColor: 'rgba(251,191,36,0.3)' }, 
+  statusBadgeText: { color: 'white', fontSize: 12, fontWeight: '600' },
+  remainingText: { color: 'rgba(255,255,255,0.8)', fontSize: 12 },
 
-  // Chart Styles
-  chartSection: { backgroundColor: '#F8FAFC', padding: 20, borderRadius: 16, marginBottom: 30, alignItems: 'center' },
-  svgWrapper: { alignItems: 'center', justifyContent: 'center' },
+  // Chips
+  chipScroll: { paddingBottom: 8, gap: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 16, marginRight: 8 },
+  chipActive: { backgroundColor: '#3B82F6' },
+  chipEmoji: { fontSize: 16, marginRight: 8 },
+  chipText: { fontSize: 14, fontWeight: '500', color: '#374151' },
+  chipTextActive: { color: 'white' },
+  customDrinkInput: { marginTop: 12, borderWidth: 2, borderColor: '#DBEAFE', borderRadius: 16, padding: 12, fontSize: 14, backgroundColor: 'white' },
 
-  // History Styles
-  historyItem: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, backgroundColor: 'white', borderRadius: 12, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 },
-  historyLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  historyDot: { width: 12, height: 12, borderRadius: 6 },
-  historyType: { fontWeight: 'bold', fontSize: 15, color: '#334155' },
-  historyTime: { color: '#94A3B8', fontSize: 13, marginLeft: 4 },
-  historyAmount: { fontWeight: 'bold', color: '#3B82F6', fontSize: 16 },
-  emptyText: { textAlign: 'center', color: '#999', marginTop: 10, fontStyle: 'italic' }
+  // Picker Box
+  pickerBox: { backgroundColor: '#EFF6FF', borderRadius: 24, padding: 24, marginBottom: 24 },
+  pickerTitle: { fontSize: 14, fontWeight: '500', color: '#374151', textAlign: 'center', marginBottom: 20 },
+  amountInputWrap: { alignSelf: 'center', flexDirection: 'column', alignItems: 'center', backgroundColor: 'white', borderRadius: 20, paddingHorizontal: 24, paddingVertical: 12, borderWidth: 2, borderColor: '#93C5FD' },
+  amountInput: { fontSize: 48, fontWeight: 'bold', color: '#3B82F6', minWidth: 100, textAlign: 'center' },
+  amountUnit: { fontSize: 14, color: '#4B5563', marginTop: 4 },
+  quickAddRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginVertical: 20 },
+  quickAddBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: 'white', borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)' },
+  quickAddBtnActive: { backgroundColor: '#3B82F6' },
+  quickAddText: { color: '#3B82F6', fontSize: 14, fontWeight: '500' },
+  quickAddTextActive: { color: 'white' },
+  logBtn: { backgroundColor: '#2563EB', paddingVertical: 16, borderRadius: 20, alignItems: 'center' },
+  logBtnText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  btnPressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
+
+  // Breakdown Chart
+  breakdownCard: { backgroundColor: 'white', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#F3F4F6', marginBottom: 24 },
+  breakdownRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
+  chartContainer: { width: 120, height: 120, alignItems: 'center', justifyContent: 'center' },
+  legendContainer: { flex: 1, gap: 8 },
+  legendItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  legendLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  legendColor: { width: 12, height: 12, borderRadius: 6 },
+  legendName: { fontSize: 12, color: '#374151' },
+  legendRight: { alignItems: 'flex-end' },
+  legendPercent: { fontSize: 12, fontWeight: '600', color: '#111827' },
+  legendMl: { fontSize: 10, color: '#6B7280' },
+
+  // Tip Box
+  tipBox: { flexDirection: 'row', backgroundColor: '#F0F9FF', borderColor: '#BFDBFE', borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 24, gap: 12 },
+  tipIconBox: { width: 40, height: 40, backgroundColor: '#DBEAFE', borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  tipContent: { flex: 1 },
+  tipTitle: { fontSize: 14, fontWeight: '600', color: '#1E3A8A', marginBottom: 4 },
+  tipDesc: { fontSize: 12, color: '#1D4ED8', lineHeight: 18 },
+
+  // History Accordion
+  historyGroup: { marginBottom: 8, backgroundColor: '#EFF6FF', borderRadius: 16, overflow: 'hidden' },
+  historyHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, alignItems: 'center' },
+  historyDate: { fontSize: 14, color: '#374151' },
+  historyRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  historyTotal: { fontSize: 14, fontWeight: '600', color: '#2563EB' },
+  historyDetails: { paddingHorizontal: 16, paddingBottom: 12, gap: 6 },
+  historyDrinkRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: 'white', padding: 12, borderRadius: 12, borderColor: '#DBEAFE', borderWidth: 1 },
+  historyDrinkLeft: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  historyTime: { fontSize: 12, color: '#6B7280' },
+  historyDrinkName: { fontSize: 12, fontWeight: '500', color: '#374151' },
+  historyDrinkAmount: { fontSize: 12, fontWeight: '600', color: '#2563EB' },
+
+  // Analysis & Modal
+  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 24 },
+  backBtnText: { fontSize: 14, color: '#4B5563' },
+  analysisHeader: { alignItems: 'center', marginBottom: 24 },
+  analysisIconBox: { width: 80, height: 80, backgroundColor: '#EFF6FF', borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  analysisTitle: { fontSize: 24, fontWeight: 'bold', color: '#1F2937', marginBottom: 8 },
+  analysisDesc: { fontSize: 14, color: '#4B5563' },
+  analysisCard: { backgroundColor: '#EFF6FF', borderRadius: 20, padding: 20, marginBottom: 24 },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: '#1F2937', marginBottom: 16 },
+  analysisRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  analysisLabel: { fontSize: 13, color: '#4B5563' },
+  analysisValue: { fontSize: 14, fontWeight: '600', color: '#2563EB' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: 'white', width: '100%', borderRadius: 32, padding: 24, alignItems: 'center' },
+  modalHeader: { alignItems: 'center', marginBottom: 24 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 4 },
+  modalDesc: { fontSize: 14, color: '#6B7280' },
+  modalInputWrap: { backgroundColor: '#EFF6FF', borderRadius: 24, paddingVertical: 20, paddingHorizontal: 40, alignItems: 'center', marginBottom: 24, width: '100%' },
+  modalInput: { fontSize: 56, fontWeight: 'bold', color: '#3B82F6', textAlign: 'center' },
+  modalUnit: { fontSize: 14, color: '#4B5563', fontWeight: '500' },
+  modalActions: { flexDirection: 'row', gap: 12, width: '100%' },
+  modalCancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center' },
+  modalCancelText: { color: '#4B5563', fontWeight: '600', fontSize: 16 },
+  modalConfirmBtn: { flex: 1, paddingVertical: 14, borderRadius: 16, backgroundColor: '#2563EB', alignItems: 'center' },
+  modalConfirmText: { color: 'white', fontWeight: '600', fontSize: 16 },
 });

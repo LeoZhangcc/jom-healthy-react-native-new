@@ -611,11 +611,21 @@ export function ChildProfileProvider({ children: childrenProp }: { children: Rea
   // User Story 1.2: Calculate age-based hydration target
   const dailyWaterGoal = useMemo(() => {
     if (!activeChild) return 1000; // Default
+    
     const age = activeChild.age;
-    if (age <= 3) return 1000;  // 1-3 years: 1000ml
-    if (age <= 8) return 1200;  // 4-8 years: 1200ml
-    if (age <= 13) return 1600; // 9-13 years: 1600ml
-    return 2000;                // 14+ years: 2000ml
+    const gender = activeChild.gender; // 'boy' or 'girl' from your interface
+
+    if (age >= 1 && age <= 3) return 1000;
+    if (age >= 4 && age <= 6) return 1500;
+    if (age >= 7 && age <= 9) return 1750;
+    if (age >= 10 && age <= 12) return 2000;
+    
+    // 13-18 years old: 8-11 glasses (2000 ml – 2750 ml)
+    if (age >= 13 && age <= 18) {
+      return gender === 'boy' ? 2750 : 2000;
+    }
+    
+    return 2000; // Default for 19+
   }, [activeChild]);
 
   // Load hydration data
