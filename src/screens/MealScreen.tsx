@@ -816,7 +816,7 @@ export default function MealScreen() {
   const navigation = useNavigation<any>();
   const { language } = useLanguage();
   const { openAiMealPlanModal, isGeneratingMealPlan, lastGeneratedAt } = useAiMealPlanGeneration();
-  const { activeChild, getOwnerKey, nutritionNeeds } = useChildProfile();
+  const { activeChild, getOwnerKey, nutritionNeeds, savedRecipes = [] } = useChildProfile();
   const ownerKey = getOwnerKey();
   const today = useMemo(() => new Date(), []);
   const locale = normalizeLanguageCode(language) === 'zh' ? 'zh-CN' : normalizeLanguageCode(language) === 'ms' ? 'ms-MY' : 'en-US';
@@ -865,6 +865,7 @@ export default function MealScreen() {
   const [copyTargetKeys, setCopyTargetKeys] = useState<string[]>([]);
   const [mealToAdd, setMealToAdd] = useState<MealRecipe | null>(null);
   const [showMealSlotPicker, setShowMealSlotPicker] = useState(false);
+  const [showSavedRecipePicker, setShowSavedRecipePicker] = useState(false);
 
   const selectedKey = formatDateKey(selectedDate);
   const todayKey = formatDateKey(today);
@@ -1195,6 +1196,26 @@ export default function MealScreen() {
   const addMealToPlan = (meal: MealRecipe) => {
     setMealToAdd(normalizeAiMeal(meal));
     setShowMealSlotPicker(true);
+  };
+
+  const closeSavedRecipePicker = () => {
+    setShowSavedRecipePicker(false);
+  };
+
+  const getSavedRecipeMeal = (savedRecipe: any): MealRecipe => {
+    return normalizeAiMeal(savedRecipe?.meal || savedRecipe);
+  };
+
+  const addSavedRecipeToPlan = (savedRecipe: any) => {
+    const meal = getSavedRecipeMeal(savedRecipe);
+    closeSavedRecipePicker();
+    setTimeout(() => addMealToPlan(meal), 120);
+  };
+
+  const openSavedRecipeDetail = (savedRecipe: any) => {
+    const meal = getSavedRecipeMeal(savedRecipe);
+    closeSavedRecipePicker();
+    navigation.navigate('RecipeDetail', { meal });
   };
 
   const addMealToSelectedSlot = (slot: MealSlotKey) => {
@@ -1579,10 +1600,18 @@ export default function MealScreen() {
         <View style={styles.planWrapper}>
           <View style={styles.planHeaderRow}>
             <Text style={styles.planTitle}>{getText('Meal Plan', '膳食计划', 'Pelan Makanan')}</Text>
-            <Pressable style={styles.clearPlanButton} onPress={clearSelectedDayPlan}>
-              <Ionicons name="trash-outline" size={15} color="#EF4444" />
-              <Text style={styles.clearPlanButtonText}>{getText('Clear All', '全部清空', 'Kosongkan Semua')}</Text>
-            </Pressable>
+
+            <View style={styles.planHeaderActions}>
+              <Pressable style={styles.savedRecipeButton} onPress={() => setShowSavedRecipePicker(true)}>
+                <Ionicons name="bookmark-outline" size={15} color={colors.primaryDark} />
+                <Text style={styles.savedRecipeButtonText}>{getText('Saved Recipes', '收藏食谱', 'Resipi Tersimpan')}</Text>
+              </Pressable>
+
+              <Pressable style={styles.clearPlanButton} onPress={clearSelectedDayPlan}>
+                <Ionicons name="trash-outline" size={15} color="#EF4444" />
+                <Text style={styles.clearPlanButtonText}>{getText('Clear All', '全部清空', 'Kosongkan Semua')}</Text>
+              </Pressable>
+            </View>
           </View>
 
           <Text style={styles.planShoppingText}>☑ {getText('View ingredients in Shopping', '在购物清单查看食材', 'Lihat bahan di Shopping')}</Text>
@@ -1611,6 +1640,101 @@ export default function MealScreen() {
           )}
         </View>
       </ScrollView>
+
+      <Modal visible={showSavedRecipePicker} transparent animationType="fade" onRequestClose={closeSavedRecipePicker}>
+        <Pressable style={styles.savedRecipeBackdrop} onPress={closeSavedRecipePicker}>
+          <Pressable style={styles.savedRecipeModalCard} onPress={() => {}}>
+            <View style={styles.savedRecipeModalHeader}>
+              <View style={styles.savedRecipeModalIcon}>
+                <Ionicons name="bookmark" size={20} color="#FFFFFF" />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.savedRecipeModalTitle}>
+                  {getText('Add from Saved Recipes', '从收藏食谱添加', 'Tambah daripada Resipi Tersimpan')}
+                </Text>
+                <Text style={styles.savedRecipeModalSubtitle}>
+                  {getText(
+                    'Choose a saved recipe first, then select Breakfast, Lunch, Dinner or Snack.',
+                    '先选择一个收藏的食谱，再选择加入早餐、午餐、晚餐或加餐。',
+                    'Pilih resipi tersimpan dahulu, kemudian pilih Sarapan, Makan Tengah Hari, Makan Malam atau Snek.'
+                  )}
+                </Text>
+              </View>
+
+              <Pressable style={styles.savedRecipeModalClose} onPress={closeSavedRecipePicker}>
+                <Ionicons name="close" size={20} color="#64748B" />
+              </Pressable>
+            </View>
+
+            {savedRecipes.length > 0 ? (
+              <ScrollView
+                style={styles.savedRecipeListScroll}
+                contentContainerStyle={styles.savedRecipeListContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {savedRecipes.map((savedRecipe: any, index: number) => {
+                  const recipe = getSavedRecipeMeal(savedRecipe);
+                  const savedKey = String(savedRecipe?.id || recipe.idMeal || `saved-${index}`);
+
+                  return (
+                    <View key={savedKey} style={styles.savedRecipeItemCard}>
+                      <Pressable style={styles.savedRecipeMain} onPress={() => openSavedRecipeDetail(savedRecipe)}>
+                        {recipe.strMealThumb ? (
+                          <Image source={{ uri: recipe.strMealThumb }} style={styles.savedRecipeImage} />
+                        ) : (
+                          <View style={styles.savedRecipeImageFallback}>
+                            <Text style={styles.savedRecipeEmoji}>
+                              {recipe.mealIconEmoji || guessMealEmoji(getMealName(recipe, language), getMealCategory(recipe, language, ''))}
+                            </Text>
+                          </View>
+                        )}
+
+                        <View style={styles.savedRecipeInfo}>
+                          <Text style={styles.savedRecipeName} numberOfLines={2}>{getMealName(recipe, language)}</Text>
+                          <Text style={styles.savedRecipeMeta} numberOfLines={1}>
+                            {getMealCategory(recipe, language, getText('Recipe', '食谱', 'Resipi'))}
+                            {getMealArea(recipe, language, '') ? ` · ${getMealArea(recipe, language, '')}` : ''}
+                          </Text>
+                          <Text style={styles.savedRecipeNutrition} numberOfLines={1}>
+                            {round(recipe.totalEnergyKcal)} kcal · {getText('Protein', '蛋白质', 'Protein')} {round(recipe.totalProteinG)}g
+                          </Text>
+                        </View>
+                      </Pressable>
+
+                      <View style={styles.savedRecipeActions}>
+                        <Pressable style={styles.savedRecipeViewButton} onPress={() => openSavedRecipeDetail(savedRecipe)}>
+                          <Ionicons name="book-outline" size={15} color="#3BA76D" />
+                          <Text style={styles.savedRecipeViewButtonText}>{getText('View', '查看', 'Lihat')}</Text>
+                        </Pressable>
+
+                        <Pressable style={styles.savedRecipeAddButton} onPress={() => addSavedRecipeToPlan(savedRecipe)}>
+                          <Ionicons name="add" size={16} color="#FFFFFF" />
+                          <Text style={styles.savedRecipeAddButtonText}>{getText('Add to Meal Plan', '加入膳食计划', 'Tambah ke Pelan Makanan')}</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            ) : (
+              <View style={styles.savedRecipeEmptyState}>
+                <Text style={styles.savedRecipeEmptyEmoji}>🔖</Text>
+                <Text style={styles.savedRecipeEmptyTitle}>
+                  {getText('No saved recipes yet', '还没有收藏食谱', 'Belum ada resipi tersimpan')}
+                </Text>
+                <Text style={styles.savedRecipeEmptyText}>
+                  {getText(
+                    'Open a recipe and tap Save Recipe. It will appear here for quick meal-plan adding.',
+                    '打开食谱后点击“收藏食谱”，之后就可以在这里快速加入膳食计划。',
+                    'Buka resipi dan tekan Simpan Resipi. Resipi itu akan muncul di sini untuk ditambah dengan cepat.'
+                  )}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal visible={showMealSlotPicker} transparent animationType="fade" onRequestClose={closeMealSlotPicker}>
         <Pressable style={styles.mealSlotPickerBackdrop} onPress={closeMealSlotPicker}>
@@ -1848,6 +1972,9 @@ const styles = StyleSheet.create({
   ringTarget: { marginTop: 2, fontSize: 12, color: '#94A3B8', fontWeight: '600' },
   planWrapper: { backgroundColor: '#FFFFFF', borderRadius: 28, padding: 18, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   planHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  planHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
+  savedRecipeButton: { minHeight: 34, borderRadius: 17, backgroundColor: '#EAF7F0', borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, flexShrink: 1 },
+  savedRecipeButtonText: { color: colors.primaryDark, fontSize: 12, fontWeight: '900', flexShrink: 1 },
   planTitle: { fontSize: 18, fontWeight: '900', color: '#111827' },
   clearPlanButton: { minHeight: 34, borderRadius: 17, backgroundColor: '#FEF2F2', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   clearPlanButtonText: { color: '#EF4444', fontSize: 12, fontWeight: '900' },
@@ -1917,6 +2044,34 @@ const styles = StyleSheet.create({
   generateHomeButtonLoading: { opacity: 0.85 },
   generateHomeButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   aiMealPlanError: { marginTop: 10, color: '#B91C1C', fontSize: 12, fontWeight: '700', textAlign: 'center' },
+
+  savedRecipeBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  savedRecipeModalCard: { width: '100%', maxWidth: 440, maxHeight: '84%', backgroundColor: '#FFFFFF', borderRadius: 28, padding: 18, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 28, shadowOffset: { width: 0, height: 14 }, elevation: 8 },
+  savedRecipeModalHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
+  savedRecipeModalIcon: { width: 46, height: 46, borderRadius: 17, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
+  savedRecipeModalTitle: { color: '#0F172A', fontSize: 18, fontWeight: '900', lineHeight: 24 },
+  savedRecipeModalSubtitle: { marginTop: 4, color: '#64748B', fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  savedRecipeModalClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  savedRecipeListScroll: { flexGrow: 0 },
+  savedRecipeListContent: { gap: 12, paddingBottom: 4 },
+  savedRecipeItemCard: { borderRadius: 20, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', padding: 12 },
+  savedRecipeMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  savedRecipeImage: { width: 62, height: 62, borderRadius: 17, backgroundColor: '#E5E7EB' },
+  savedRecipeImageFallback: { width: 62, height: 62, borderRadius: 17, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+  savedRecipeEmoji: { fontSize: 28 },
+  savedRecipeInfo: { flex: 1 },
+  savedRecipeName: { color: '#0F172A', fontSize: 15, fontWeight: '900', lineHeight: 21 },
+  savedRecipeMeta: { marginTop: 3, color: '#64748B', fontSize: 12, fontWeight: '700' },
+  savedRecipeNutrition: { marginTop: 4, color: colors.primaryDark, fontSize: 12, fontWeight: '800' },
+  savedRecipeActions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+  savedRecipeViewButton: { minHeight: 38, borderRadius: 16, borderWidth: 1, borderColor: '#3BA76D', backgroundColor: '#FFFFFF', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  savedRecipeViewButtonText: { color: '#3BA76D', fontSize: 12, fontWeight: '900' },
+  savedRecipeAddButton: { flex: 1, minHeight: 38, borderRadius: 16, backgroundColor: colors.primaryDark, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  savedRecipeAddButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900', flexShrink: 1 },
+  savedRecipeEmptyState: { minHeight: 220, borderRadius: 22, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', padding: 22, alignItems: 'center', justifyContent: 'center' },
+  savedRecipeEmptyEmoji: { fontSize: 42 },
+  savedRecipeEmptyTitle: { marginTop: 12, color: '#0F172A', fontSize: 16, fontWeight: '900', textAlign: 'center' },
+  savedRecipeEmptyText: { marginTop: 8, color: '#64748B', fontSize: 13, lineHeight: 19, fontWeight: '700', textAlign: 'center' },
 
   mealSlotPickerBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
   mealSlotPickerCard: { width: '100%', maxWidth: 430, backgroundColor: '#FFFFFF', borderRadius: 28, padding: 18, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 28, shadowOffset: { width: 0, height: 14 }, elevation: 8 },
