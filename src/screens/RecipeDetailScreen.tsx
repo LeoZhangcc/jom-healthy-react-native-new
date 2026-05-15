@@ -626,6 +626,20 @@ export default function RecipeDetailScreen() {
     setIsSearching(false);
   };
 
+  const handleWeightInputChange = (value: string) => {
+    const normalized = String(value || '').replace(/,/g, '.');
+    const digitsAndDotOnly = normalized.replace(/[^0-9.]/g, '');
+    const firstDotIndex = digitsAndDotOnly.indexOf('.');
+
+    const sanitized =
+      firstDotIndex === -1
+        ? digitsAndDotOnly
+        : digitsAndDotOnly.slice(0, firstDotIndex + 1) +
+          digitsAndDotOnly.slice(firstDotIndex + 1).replace(/\./g, '');
+
+    setEditWeightValue(sanitized);
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(searchQuery), 500);
     return () => clearTimeout(timer);
@@ -805,9 +819,10 @@ export default function RecipeDetailScreen() {
   const handleUpdateWeight = async () => {
     if (selectedIngredientIndex === null) return;
 
-    const newWeight = parseInt(editWeightValue, 10);
+    const trimmedWeight = editWeightValue.trim();
+    const newWeight = Number(trimmedWeight);
 
-    if (isNaN(newWeight) || newWeight < 0) {
+    if (!trimmedWeight || Number.isNaN(newWeight) || newWeight < 0) {
       Alert.alert(
         getText('Invalid weight', '无效重量', 'Berat tidak sah'),
         getText(
@@ -1071,7 +1086,11 @@ export default function RecipeDetailScreen() {
                     style={styles.ingredientRow}
                     onPress={() => {
                       setSelectedIngredientIndex(index);
-                      setEditWeightValue(String(item.gramsEstimated || '100'));
+                      setEditWeightValue(
+                        item.gramsEstimated !== undefined && item.gramsEstimated !== null
+                          ? String(item.gramsEstimated)
+                          : '100'
+                      );
                       setSearchQuery('');
                       setDebouncedQuery('');
                       setSuggestions([]);
@@ -1165,7 +1184,7 @@ export default function RecipeDetailScreen() {
 
                 if (!ing) return null;
 
-                const dispWeight = safeNumber(editWeightValue) || 0;
+                const dispWeight = editWeightValue.trim() ? safeNumber(editWeightValue) : 0;
                 const previewIngredient = recalculateIngredientForWeight(ing, dispWeight);
                 const cals = round(previewIngredient.energyKcal);
                 const carbs = round(previewIngredient.carbohydrateG);
@@ -1240,15 +1259,29 @@ export default function RecipeDetailScreen() {
                         )}
                       </Text>
 
-                      <TextInput
-                        style={styles.detailWeightInput}
-                        keyboardType="number-pad"
-                        value={editWeightValue}
-                        onChangeText={setEditWeightValue}
-                        maxLength={5}
-                        returnKeyType="done"
-                        onSubmitEditing={handleUpdateWeight}
-                      />
+                      <View style={styles.detailWeightInputWrap}>
+                        <TextInput
+                          style={styles.detailWeightInput}
+                          keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
+                          value={editWeightValue}
+                          onChangeText={handleWeightInputChange}
+                          placeholder="0"
+                          maxLength={6}
+                          selectTextOnFocus
+                          returnKeyType="done"
+                          onSubmitEditing={handleUpdateWeight}
+                        />
+
+                        {editWeightValue.length > 0 && (
+                          <Pressable
+                            style={styles.detailWeightClearButton}
+                            onPress={() => setEditWeightValue('')}
+                            hitSlop={8}
+                          >
+                            <Ionicons name="close-circle" size={22} color="#94A3B8" />
+                          </Pressable>
+                        )}
+                      </View>
                     </View>
 
                     <View style={styles.inlineReplaceSection}>
@@ -1845,15 +1878,28 @@ const styles = StyleSheet.create({
     color: '#475569',
     marginBottom: 8,
   },
+  detailWeightInputWrap: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
   detailWeightInput: {
     backgroundColor: '#F1F5F9',
     borderRadius: 16,
-    paddingHorizontal: 20,
+    paddingLeft: 20,
+    paddingRight: 52,
     paddingVertical: 14,
     fontSize: 24,
     fontWeight: '800',
     color: '#0F172A',
     textAlign: 'center',
+  },
+  detailWeightClearButton: {
+    position: 'absolute',
+    right: 16,
+    height: 44,
+    width: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   replaceFullButton: {
     flexDirection: 'row',
