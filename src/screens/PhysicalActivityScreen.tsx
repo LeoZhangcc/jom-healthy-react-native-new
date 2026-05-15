@@ -64,7 +64,8 @@ const ScrollingText = ({ text, style }: { text: string; style: any }) => {
 };
 
 const PhysicalActivityScreen = ({ navigation }: any) => {
-  const { todayTotal, dailyGoal, logMinutes, updateGoal, todayCalories } = useActivity() as any; 
+  // 💡 修复：移除了废弃的 logMinutes，引入了新版的 logActivity 和 clearActivity
+  const { todayTotal, dailyGoal, updateGoal, todayCalories, logActivity, clearActivity } = useActivity() as any; 
   const { activeChild } = useChildProfile();
   const { t, language } = useLanguage(); 
 
@@ -86,10 +87,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [localCalories, setLocalCalories] = useState(0);
-  const displayCalories = todayCalories ?? localCalories;
-
-  // 💡 新增：追踪具体哪些运动被记录了 (存储其 title)
+  // 💡 追踪具体哪些运动被记录了 (存储其 title)
   const [loggedActivities, setLoggedActivities] = useState<Set<string>>(new Set());
 
   const getBmiAdvice = (status: string) => {
@@ -154,10 +152,10 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
     return Math.round(met * childWeight * (mins / 60));
   };
 
+  // 💡 修复：通用打卡功能（调用全局 logActivity）
   const handleGeneralLogSubmit = () => {
     const burned = calculateBurnedCals(minutesToLog, averageMetValue);
-    logMinutes(minutesToLog); 
-    setLocalCalories(prev => prev + burned); 
+    logActivity(minutesToLog, burned); // 同时传分钟和卡路里
   };
 
   const openLogPopup = (title: string, defaultMins: number, metValue: number) => {
@@ -166,16 +164,15 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
     setModalVisible(true);
   };
 
+  // 💡 修复：卡片专属打卡功能（调用全局 logActivity）
   const handlePopupSubmit = () => {
     const burned = calculateBurnedCals(popupMins, activeRecommendation.metValue);
-    logMinutes(popupMins); 
-    setLocalCalories(prev => prev + burned); 
-    // 💡 记录该运动项
+    logActivity(popupMins, burned); // 同时传分钟和卡路里
     setLoggedActivities(prev => new Set(prev).add(activeRecommendation.title));
     setModalVisible(false);
   };
 
-  // 💡 一键清空逻辑
+  // 💡 修复：调用新版的一键清空方法
   const handleClearAll = () => {
     Alert.alert(
       t('clearConfirmTitle') || 'Clear Records',
@@ -186,8 +183,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
           text: t('clearAll') || 'Clear All', 
           style: 'destructive', 
           onPress: () => {
-            if (todayTotal > 0) logMinutes(-todayTotal); // 巧妙清零时间
-            setLocalCalories(0); // 清零卡路里
+            clearActivity(); // 🌟 直接调用 Context 提供的一键清空（同时清空时间与卡路里）
             setLoggedActivities(new Set()); // 清除卡片上的已记录标志
           }
         }
@@ -243,7 +239,6 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
                     style={[styles.quickBtn, minutesToLog === m && styles.quickBtnActive]}
                     onPress={() => setMinutesToLog(m)}
                   >
-                    {/* 💡 修复：添加 min 多语言 */}
                     <Text style={[styles.quickText, minutesToLog === m && styles.quickTextActive]}>
                       {m} {t('min') || 'min'}
                     </Text>
@@ -304,7 +299,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
                   videoUrl={activity.videoUrl}
                   imageUrl={activity.imageUrl} 
                   t={t} 
-                  isLogged={loggedActivities.has(title)} // 💡 传入是否已记录状态
+                  isLogged={loggedActivities.has(title)} 
                   onLog={() => openLogPopup(title, 20, activity.metValue)}
                 />
               )
@@ -316,7 +311,6 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <View>
-              {/* 💡 修复：在这里加了垃圾桶清空按钮 */}
               <View style={styles.summaryLabelRow}>
                 <Text style={styles.summaryLabel}>{t('todaysTotal') || "Today's Total"}</Text>
                 {todayTotal > 0 && (
@@ -349,13 +343,13 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
              <View style={[styles.progressBarFill, { width: `${Math.min((todayTotal / dailyGoal) * 100, 100)}%` }]} />
           </View>
 
-          {/* 卡路里显示框 */}
+          {/* 卡路里显示框 (直接绑定全局 todayCalories) */}
           <View style={styles.divider} />
           <View style={[styles.summaryRow, { marginBottom: 0 }]}>
             <View>
               <Text style={styles.summaryLabel}>{t('caloriesBurned') || 'Calories Burned'}</Text>
               <Text style={[styles.summaryValue, { color: '#F59E0B' }]}>
-                {displayCalories} <Text style={styles.unitText}>{t('kcal') || 'kcal'}</Text>
+                {todayCalories || 0} <Text style={styles.unitText}>{t('kcal') || 'kcal'}</Text>
               </Text>
             </View>
             <View style={styles.calIconBox}>
@@ -411,7 +405,6 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
           <View style={styles.goalModalContent}>
             <Text style={styles.popupTitle}>{t('customizeDailyGoal') || 'Customize Daily Goal'}</Text>
             
-            {/* 💡 修复：规范的三语翻译长句 */}
             <Text style={styles.popupSubtitle}>
               {getText(
                 `Set a realistic daily target for ${activeChild?.nickname}.`, 
@@ -426,7 +419,6 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
               </TouchableOpacity>
               <View style={styles.goalDisplayBox}>
                 <Text style={styles.goalBigNum}>{tempGoal}</Text>
-                {/* 💡 修复：/ day 三语补充 */}
                 <Text style={styles.goalUnitText}>{t('minutes') || 'mins'} {t('perDay') || '/ day'}</Text>
               </View>
               <TouchableOpacity style={styles.goalAdjBtn} onPress={() => setTempGoal(tempGoal + 5)}>
@@ -467,7 +459,7 @@ const ActivityRecommendationCard = ({ title, desc, tag, subtext, onLog, videoUrl
         ) : (
           <View style={styles.recIconCircle}><Text style={{ fontSize: 24 }}>🏃</Text></View>
         )}
-        {/* 💡 新增：绿色的 Logged 遮罩 */}
+        {/* 绿色的 Logged 遮罩 */}
         {isLogged && (
           <View style={styles.loggedBadge}>
             <Text style={styles.loggedBadgeText}>{t('logged') || 'Logged'}</Text>
@@ -533,7 +525,6 @@ const styles = StyleSheet.create({
   recCard: { marginHorizontal: 20, marginBottom: 16, padding: 20, backgroundColor: '#FFF', borderRadius: 32, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
   recHeader: { flexDirection: 'row', marginBottom: 18 },
   
-  // 修改：确保容器能装下底部绝对定位的 badge
   recImageContainer: { width: 60, height: 60, borderRadius: 20, overflow: 'hidden', backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center', position: 'relative' },
   recImage: { width: '100%', height: '100%' },
   recIconCircle: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F0FDF4' },
@@ -552,11 +543,10 @@ const styles = StyleSheet.create({
   tapLogBtnLarge: { flex: 1, backgroundColor: '#73BC7D', paddingVertical: 14, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   tapLogTextLarge: { color: '#FFF', fontWeight: '700', fontSize: 15 },
   
-  // Summary Card
   summaryCard: { margin: 20, padding: 24, borderRadius: 24, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9' },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  summaryLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }, // 新增的带垃圾桶的标题行
-  trashBtn: { padding: 4, backgroundColor: '#FEE2E2', borderRadius: 8 }, // 垃圾桶按钮样式
+  summaryLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }, 
+  trashBtn: { padding: 4, backgroundColor: '#FEE2E2', borderRadius: 8 }, 
   summaryLabel: { color: '#64748B', fontSize: 14 },
   summaryValue: { fontSize: 28, fontWeight: '800', color: '#1E293B' },
   unitText: { fontSize: 14, color: '#94A3B8', fontWeight: '400' },
@@ -594,7 +584,7 @@ const styles = StyleSheet.create({
   logDisclaimer: {
     textAlign: 'center',
     fontSize: 12,
-    color: '#94A3B8', // 比较柔和的灰色
+    color: '#94A3B8', 
     marginBottom: 20,
     paddingHorizontal: 10,
     lineHeight: 18,

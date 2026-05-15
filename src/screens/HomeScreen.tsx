@@ -824,7 +824,7 @@ export default function HomeScreen() {
           </Pressable>
 
           {/* Health Insights */} 
-          <SectionTitle title={t('healthInsights')} />
+          <Text style={styles.localSectionTitle}>{t('healthInsights')}</Text>
 
           {topicsLoading ? (
              <ActivityIndicator size="small" color={colors.primaryDark} style={{ paddingVertical: 20 }} />
@@ -1153,11 +1153,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
+
   growthOverviewCard: {
-    backgroundColor: 'white',
-    borderRadius: 22,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
     minHeight: 150,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 16,
@@ -1175,9 +1177,10 @@ const styles = StyleSheet.create({
   },
 
   growthTitle: {
-    color: colors.text,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
   },
 
   growthArrow: {
@@ -1347,7 +1350,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 12,
   },
-
   insightDesc: {
     fontSize: 12,
     color: '#4B5563',
@@ -1447,8 +1449,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   iconContainer: {
-    width: 54,
-    height: 54,
+    width: 44,
+    height: 44,
     backgroundColor: '#DCFCE7',
     borderRadius: 14,
     overflow: 'hidden', 
@@ -1464,9 +1466,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   activityTitleText: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     color: '#0F172A',
+    marginBottom: 4,
   },
   statusBadgeActivity: {
     backgroundColor: '#FEF3C6', 
@@ -1478,7 +1481,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     color: '#BB4D00', 
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   circleChevron: {
@@ -1496,14 +1499,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   progressLabel: {
-    fontSize: 15,
+    fontSize: 11,
     color: '#64748B',
     fontWeight: '500',
   },
   progressValueText: {
-    fontSize: 15,
-    color: '#1E293B',
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#374151',
   },
   thinBarBg: {
     height: 8,
@@ -1549,8 +1552,8 @@ const styles = StyleSheet.create({
   },
   newHydrationTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: '700',
+    color: '#0F172A',
     marginBottom: 4,
   },
   newHydrationBadge: {
@@ -1612,5 +1615,16 @@ const styles = StyleSheet.create({
   newHydrationBarFill: {
     height: '100%',
     borderRadius: 4,
+  },
+
+
+
+  localSectionTitle: {
+    // Health Insights Section
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+    marginTop: 12,
   },
 });
