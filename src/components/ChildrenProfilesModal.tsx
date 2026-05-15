@@ -47,6 +47,24 @@ export default function ChildrenProfilesModal({ visible, onClose }: { visible: b
     setChildToEdit(null);
   };
 
+  const handleChildSaveSuccess = () => {
+    const wasEditing = !!childToEdit;
+
+    setToast(
+      wasEditing
+        ? getText('Profile Updated!', '资料已更新！', 'Profil dikemas kini!')
+        : getText('Profile Created!', '资料已创建！', 'Profil dicipta!')
+    );
+
+    // After editing an existing profile, close the whole Children Profiles flow
+    // instead of returning the user to the Children Profiles list again.
+    if (wasEditing) {
+      setShowAdd(false);
+      setChildToEdit(null);
+      onClose();
+    }
+  };
+
   const deleteChild = (id: number) => {
     Alert.alert(getText('Delete Profile?', '删除资料？', 'Padam Profil?'), getText('This action cannot be undone.', '此操作无法撤消。', 'Tindakan ini tidak boleh dibuat asal.'), [
       { text: getText('Cancel', '取消', 'Batal'), style: 'cancel' },
@@ -109,7 +127,7 @@ export default function ChildrenProfilesModal({ visible, onClose }: { visible: b
         visible={visible && showAdd}
         childToEdit={childToEdit}
         onClose={handleCloseAdd}
-        onSuccess={() => setToast(childToEdit ? getText('Profile Updated!', '资料已更新！', 'Profil dikemas kini!') : getText('Profile Created!', '资料已创建！', 'Profil dicipta!'))}
+        onSuccess={handleChildSaveSuccess}
       />
 
       {!!toast && <Toast message={toast} onClose={() => setToast('')} />}

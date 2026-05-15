@@ -6,9 +6,10 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
-import { NutritionNeeds } from '../services/api';
+import { getFoodNutritionNeeds, NutritionNeeds } from '../services/api';
 
 export interface ChildProfile {
   id: number;
@@ -218,7 +219,15 @@ function normalizeNutritionNeeds(value: any): NutritionNeeds | null {
   const carbs = Number(value.carbs ?? value.carbohydrate ?? value.targetCarbs);
   const protein = Number(value.protein ?? value.targetProtein);
   const fat = Number(value.fat ?? value.targetFat);
-  const calories = Number(value.calories ?? value.energyKcal ?? value.kcal ?? 0);
+  const calories = Number(
+    value.calories ??
+      value.energyKcal ??
+      value.kcal ??
+      value.targetCalories ??
+      value.targetEnergyKcal ??
+      value.totalEnergyKcal ??
+      0
+  );
 
   if (!Number.isFinite(carbs) && !Number.isFinite(protein) && !Number.isFinite(fat)) {
     return null;
@@ -230,6 +239,64 @@ function normalizeNutritionNeeds(value: any): NutritionNeeds | null {
     protein: Number.isFinite(protein) ? protein : 32,
     fat: Number.isFinite(fat) ? fat : 28,
   };
+}
+
+function parseChildBirthday(value?: string | null) {
+  if (!value) return null;
+
+  const normalized = String(value).trim().replace(/-/g, '/');
+  const parts = normalized.split('/').map((item) => Number(item));
+
+  if (parts.length !== 3) return null;
+
+  const [year, month, day] = parts;
+
+  if (!year || !month || !day) return null;
+
+  const birthday = new Date(year, month - 1, day);
+
+  if (
+    birthday.getFullYear() !== year ||
+    birthday.getMonth() !== month - 1 ||
+    birthday.getDate() !== day ||
+    birthday.getTime() > Date.now()
+  ) {
+    return null;
+  }
+
+  return birthday;
+}
+
+function calculateChildAgeMonths(child: ChildProfile) {
+  const birthday = parseChildBirthday(child.birthday);
+
+  if (!birthday) {
+    const ageYears = Number(child.age);
+    return Number.isFinite(ageYears) && ageYears >= 0 ? Math.max(0, Math.round(ageYears * 12)) : 0;
+  }
+
+  const today = new Date();
+  let months =
+    (today.getFullYear() - birthday.getFullYear()) * 12 +
+    (today.getMonth() - birthday.getMonth());
+
+  if (today.getDate() < birthday.getDate()) {
+    months -= 1;
+  }
+
+  return Math.max(0, months);
+}
+
+function getNutritionNeedsPayload(value: any) {
+  if (!value) return null;
+
+  return (
+    value.data?.data ??
+    value.data ??
+    value.result ??
+    value.payload ??
+    value
+  );
 }
 
 function makeMeal(type: Meal['type']): Meal {
@@ -293,6 +360,71 @@ export function ChildProfileProvider({ children: childrenProp }: { children: Rea
   const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>([]);
   const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const nutritionNeedsRequestIdRef = useRef(0);
+
+  const refreshNutritionNeedsFromChild = useCallback(async (childToRefresh: ChildProfile | null) => {
+    if (!childToRefresh) return;
+
+    const heightCm = Number(childToRefresh.height);
+    const weightKg = Number(childToRefresh.weight);
+    const ageMonths = calculateChildAgeMonths(childToRefresh);
+    const gender = childToRefresh.gender === 'boy' ? 1 : 0;
+
+    if (
+      !Number.isFinite(heightCm) ||
+      !Number.isFinite(weightKg) ||
+      heightCm <= 0 ||
+      weightKg <= 0 ||
+      !Number.isFinite(ageMonths) ||
+      ageMonths < 0
+    ) {
+      console.log('Skip refreshing nutrition needs because child profile data is incomplete.', childToRefresh);
+      return;
+    }
+
+    const requestId = ++nutritionNeedsRequestIdRef.current;
+
+    const result = await getFoodNutritionNeeds({
+      heightCm,
+      weightKg,
+      ageMonths,
+      gender,
+    });
+
+    if (requestId !== nutritionNeedsRequestIdRef.current) {
+      return;
+    }
+
+    if (!result.ok) {
+      console.log('Refresh nutrition needs failed:', result.message);
+      return;
+    }
+
+    const normalizedNeeds = normalizeNutritionNeeds(getNutritionNeedsPayload(result.data));
+
+    if (!normalizedNeeds) {
+      console.log('Nutrition needs response format is not recognized:', result.data);
+      return;
+    }
+
+    setNutritionNeedsState(normalizedNeeds);
+  }, []);
+
+  const activeChildNutritionKey = activeChild
+    ? [
+        activeChild.id,
+        activeChild.height,
+        activeChild.weight,
+        activeChild.birthday || activeChild.age,
+        activeChild.gender,
+      ].join('|')
+    : '';
+
+  useEffect(() => {
+    if (!hydrated || !activeChild) return;
+
+    refreshNutritionNeedsFromChild(activeChild);
+  }, [hydrated, activeChildNutritionKey, refreshNutritionNeedsFromChild]);
 
   // 💡 核心新增：自动同步最新的健康记录 (身高、体重、BMI、Status)
   const syncLatestHealthRecord = useCallback(async (childToSync = activeChild) => {
