@@ -908,8 +908,6 @@ export default function HomeScreen() {
         visible={showChildren}
         onClose={() => setShowChildren(false)}
       />
-
-      <FloatingAIChat />
       
     </>
   );
