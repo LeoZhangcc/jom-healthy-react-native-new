@@ -17,6 +17,13 @@ const drinkColors: Record<string, { emoji: string; color: string }> = {
 
 export default function HydrationScreen({ navigation }: any) {
   const { t , language} = useLanguage();
+
+  const getDrinkName = (drink: any) => {
+    if (language === 'zh' && drink.title_zh) return drink.title_zh;
+    if (language === 'ms' && drink.title_ms) return drink.title_ms;
+    return drink.title; // Default to English
+  };
+
   const { activeChild, todayWaterIntake, dailyWaterGoal, addWater, hydrationHistory } = useChildProfile();
 
   const drinkOptions = useMemo(() => [
@@ -189,7 +196,7 @@ export default function HydrationScreen({ navigation }: any) {
                   // Set the selected database drink and open Analysis!
                   setSelectedDrink({
                     emoji: drink.emoji,
-                    title: drink.title,
+                    title: getDrinkName(drink), 
                     type: drink.type,
                     sugar: drink.sugar,
                     energy: drink.energy,
@@ -203,7 +210,9 @@ export default function HydrationScreen({ navigation }: any) {
                 }}
               >
                 <Text style={{ fontSize: 24, marginRight: 12 }}>{drink.emoji}</Text>
-                <Text style={{ fontSize: 16, fontWeight: '500', color: '#1F2937' }}>{drink.title}</Text>
+                
+                <Text style={{ fontSize: 16, fontWeight: '500', color: '#1F2937' }}>{getDrinkName(drink)}</Text>
+                
               </Pressable>
             ))}
           </View>
