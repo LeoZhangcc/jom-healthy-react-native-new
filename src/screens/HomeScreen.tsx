@@ -435,12 +435,6 @@ export default function HomeScreen() {
               )}
 
               <IconButton
-                icon="mic"
-                size={38}
-                onPress={() => navigation.navigate('VoiceSearch')}
-              />
-
-              <IconButton
                 icon="camera"
                 size={38}
                 onPress={() => navigation.navigate('CameraSearch')}
