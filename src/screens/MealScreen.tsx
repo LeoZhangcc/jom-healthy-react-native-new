@@ -1304,7 +1304,20 @@ export default function MealScreen() {
     ]);
   };
 
-  const openRecipeDetail = (meal: MealRecipe) => navigation.navigate('RecipeDetail', { meal: normalizeAiMeal(meal) });
+  const openRecipeDetail = (
+    meal: MealRecipe,
+    mealPlanEditContext?: {
+      ownerKey: string;
+      dateKey: string;
+      slot: MealSlotKey;
+      mealIndex: number;
+    }
+  ) => {
+    navigation.navigate('RecipeDetail', {
+      meal: normalizeAiMeal(meal),
+      ...(mealPlanEditContext ? { mealPlanEditContext } : {}),
+    });
+  };
 
   const openYoutube = async (url?: string | null) => {
     if (!url) {
@@ -1397,7 +1410,15 @@ export default function MealScreen() {
             <View style={[styles.macroTag, styles.macroFat]}><Text style={[styles.macroTagText, { color: '#16A34A' }]}>{round(meal.totalFatG)}g {getText('fat', '脂肪', 'lemak')}</Text></View>
           </View>
           <View style={styles.mealButtonRow}>
-            <Pressable style={[styles.actionButton, styles.viewButton]} onPress={() => openRecipeDetail(meal)}>
+            <Pressable
+              style={[styles.actionButton, styles.viewButton]}
+              onPress={() => openRecipeDetail(meal, {
+                ownerKey,
+                dateKey: selectedKey,
+                slot,
+                mealIndex,
+              })}
+            >
               <Ionicons name="book-outline" size={16} color="#3BA76D" />
               <Text style={[styles.actionButtonText, { color: '#3BA76D' }]} numberOfLines={1}>{getText('View', '查看', 'Lihat')}</Text>
             </Pressable>

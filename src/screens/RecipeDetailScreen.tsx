@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   Alert,
@@ -39,6 +40,10 @@ type Ingredient = {
   proteinG?: number;
   carbohydrateG?: number;
   fatG?: number;
+  energyKcalPer100g?: number;
+  proteinGPer100g?: number;
+  carbohydrateGPer100g?: number;
+  fatGPer100g?: number;
   category?: string;
   picUrl?: string;
 };
@@ -410,6 +415,87 @@ function normalizeMealType(category?: string | null, type?: string | null) {
   return 'lunch';
 }
 
+
+type MealSlotKey = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
+
+type MealPlanEditContext = {
+  ownerKey?: string;
+  dateKey?: string;
+  slot?: MealSlotKey;
+  mealIndex?: number;
+};
+
+const MEAL_PLANS_STORAGE_KEY = 'JOMHEALTHY_MEAL_PLANS_BY_OWNER_V1';
+
+function roundToTwo(value: number) {
+  return Math.round(safeNumber(value) * 100) / 100;
+}
+
+function formatGramMeasure(grams: number) {
+  const safeGrams = Math.max(0, roundToTwo(grams));
+  const formatted = safeGrams
+    .toFixed(2)
+    .replace(/\.00$/, '')
+    .replace(/(\.\d)0$/, '$1');
+
+  return `${formatted}g`;
+}
+
+function getIngredientPer100gNutrition(item: Ingredient) {
+  const grams = safeNumber(item.gramsEstimated);
+
+  const derive = (explicitPer100g: any, actualAmount: any) => {
+    const explicit = safeNumber(explicitPer100g);
+    if (explicit > 0) return explicit;
+
+    const actual = safeNumber(actualAmount);
+    if (grams > 0) {
+      return actual * 100 / grams;
+    }
+
+    return actual;
+  };
+
+  return {
+    energyKcal: derive(item.energyKcalPer100g, item.energyKcal),
+    proteinG: derive(item.proteinGPer100g, item.proteinG),
+    carbohydrateG: derive(item.carbohydrateGPer100g, item.carbohydrateG),
+    fatG: derive(item.fatGPer100g, item.fatG),
+  };
+}
+
+function recalculateIngredientForWeight(item: Ingredient, grams: number): Ingredient {
+  const safeGrams = Math.max(0, safeNumber(grams));
+  const per100g = getIngredientPer100gNutrition(item);
+
+  return {
+    ...item,
+    gramsEstimated: safeGrams,
+    measure: formatGramMeasure(safeGrams),
+    energyKcalPer100g: roundToTwo(per100g.energyKcal),
+    proteinGPer100g: roundToTwo(per100g.proteinG),
+    carbohydrateGPer100g: roundToTwo(per100g.carbohydrateG),
+    fatGPer100g: roundToTwo(per100g.fatG),
+    energyKcal: roundToTwo(per100g.energyKcal * safeGrams / 100),
+    proteinG: roundToTwo(per100g.proteinG * safeGrams / 100),
+    carbohydrateG: roundToTwo(per100g.carbohydrateG * safeGrams / 100),
+    fatG: roundToTwo(per100g.fatG * safeGrams / 100),
+  };
+}
+
+function getNutritionTotalsFromIngredients(ingredients: Ingredient[]) {
+  return ingredients.reduce(
+    (acc, ingredient) => {
+      acc.calories += safeNumber(ingredient.energyKcal);
+      acc.protein += safeNumber(ingredient.proteinG);
+      acc.carbs += safeNumber(ingredient.carbohydrateG);
+      acc.fat += safeNumber(ingredient.fatG);
+      return acc;
+    },
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  );
+}
+
 export default function RecipeDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -423,6 +509,7 @@ export default function RecipeDetailScreen() {
   } = childProfile;
 
   const meal = route.params?.meal as MealRecipe | undefined;
+  const mealPlanEditContext = route.params?.mealPlanEditContext as MealPlanEditContext | undefined;
 
   const getText = (en: string, zh: string, ms: string) => {
     const lang = normalizeLanguageCode(language);
@@ -469,7 +556,7 @@ export default function RecipeDetailScreen() {
   }, [meal?.ingredients]);
 
   const localNutrition = useMemo(() => {
-    if (!meal || !Array.isArray(meal.ingredients) || meal.ingredients.length === 0) {
+    if (!meal || !Array.isArray(meal.ingredients)) {
       return {
         calories: safeNumber(meal?.totalEnergyKcal || meal?.calories),
         protein: safeNumber(meal?.totalProteinG || meal?.protein),
@@ -477,23 +564,8 @@ export default function RecipeDetailScreen() {
         fat: safeNumber(meal?.totalFatG || meal?.fat),
       };
     }
-    
-    let calories = 0;
-    let protein = 0;
-    let carbs = 0;
-    let fat = 0;
-    
-    localIngredients.forEach(item => {
-      const g = safeNumber(item.gramsEstimated);
-      if (g > 0) {
-        calories += safeNumber(item.energyKcal) * (g / 100);
-        protein += safeNumber(item.proteinG) * (g / 100);
-        carbs += safeNumber(item.carbohydrateG) * (g / 100);
-        fat += safeNumber(item.fatG) * (g / 100);
-      }
-    });
-    
-    return { calories, protein, carbs, fat };
+
+    return getNutritionTotalsFromIngredients(localIngredients);
   }, [localIngredients, meal]);
 
   const saveableMeal = useMemo(() => {
@@ -525,6 +597,8 @@ export default function RecipeDetailScreen() {
       imageUrl: imageUrl || undefined,
       strMealThumb: imageUrl || meal?.strMealThumb || '',
       mealIconEmoji: mealEmoji,
+      ingredients: localIngredients,
+      calories: localNutrition.calories,
       carbs: localNutrition.carbs,
       protein: localNutrition.protein,
       fat: localNutrition.fat,
@@ -533,7 +607,7 @@ export default function RecipeDetailScreen() {
       totalFatG: localNutrition.fat,
       totalEnergyKcal: localNutrition.calories,
     };
-  }, [meal, mealId, mealName, mealNameEn, mealNameCn, mealNameMs, categoryEn, categoryCn, categoryMs, areaEn, areaCn, areaMs, instructionsEn, instructionsCn, instructionsMs, imageUrl, mealEmoji, localNutrition]);
+  }, [meal, mealId, mealName, mealNameEn, mealNameCn, mealNameMs, categoryEn, categoryCn, categoryMs, areaEn, areaCn, areaMs, instructionsEn, instructionsCn, instructionsMs, imageUrl, mealEmoji, localIngredients, localNutrition]);
 
   const [selectedIngredientIndex, setSelectedIngredientIndex] = useState<number | null>(null);
   const [ingredientDetailModalVisible, setIngredientDetailModalVisible] = useState(false);
@@ -627,6 +701,82 @@ export default function RecipeDetailScreen() {
     return '';
   };
 
+
+  const buildUpdatedMealForStorage = useCallback((ingredients: Ingredient[]) => {
+    const totals = getNutritionTotalsFromIngredients(ingredients);
+
+    return {
+      ...(meal || {}),
+      ingredients,
+      calories: roundToTwo(totals.calories),
+      carbs: roundToTwo(totals.carbs),
+      protein: roundToTwo(totals.protein),
+      fat: roundToTwo(totals.fat),
+      totalEnergyKcal: roundToTwo(totals.calories),
+      totalCarbohydrateG: roundToTwo(totals.carbs),
+      totalProteinG: roundToTwo(totals.protein),
+      totalFatG: roundToTwo(totals.fat),
+    };
+  }, [meal]);
+
+  const persistMealPlanNutritionUpdate = useCallback(async (updatedMeal: MealRecipe) => {
+    const context = mealPlanEditContext;
+
+    if (!context?.ownerKey || !context?.dateKey || !context?.slot) {
+      return;
+    }
+
+    try {
+      const raw = await AsyncStorage.getItem(MEAL_PLANS_STORAGE_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      const ownerPlans = parsed?.[context.ownerKey];
+      const dayPlan = ownerPlans?.[context.dateKey];
+      const slotMeals = Array.isArray(dayPlan?.[context.slot]) ? [...dayPlan[context.slot]] : [];
+
+      if (slotMeals.length === 0) {
+        return;
+      }
+
+      let targetIndex = Number.isInteger(context.mealIndex) ? Number(context.mealIndex) : -1;
+      const requestedMealId = String(mealId || '');
+      const indexMatchesMeal =
+        targetIndex >= 0 &&
+        targetIndex < slotMeals.length &&
+        String(slotMeals[targetIndex]?.idMeal || slotMeals[targetIndex]?.id || '') === requestedMealId;
+
+      if (!indexMatchesMeal) {
+        targetIndex = slotMeals.findIndex((storedMeal: any) => (
+          String(storedMeal?.idMeal || storedMeal?.id || '') === requestedMealId
+        ));
+      }
+
+      if (targetIndex < 0 || targetIndex >= slotMeals.length) {
+        return;
+      }
+
+      slotMeals[targetIndex] = {
+        ...slotMeals[targetIndex],
+        ...updatedMeal,
+        id: slotMeals[targetIndex]?.id ?? updatedMeal.id,
+        idMeal: slotMeals[targetIndex]?.idMeal ?? updatedMeal.idMeal,
+      };
+
+      parsed[context.ownerKey] = {
+        ...ownerPlans,
+        [context.dateKey]: {
+          ...dayPlan,
+          [context.slot]: slotMeals,
+        },
+      };
+
+      await AsyncStorage.setItem(MEAL_PLANS_STORAGE_KEY, JSON.stringify(parsed));
+    } catch (error) {
+      console.log('Persist updated meal nutrition failed:', error);
+    }
+  }, [mealId, mealPlanEditContext]);
+
   const handleSaveRecipe = () => {
     if (!meal) return;
 
@@ -652,7 +802,7 @@ export default function RecipeDetailScreen() {
     );
   };
 
-  const handleUpdateWeight = () => {
+  const handleUpdateWeight = async () => {
     if (selectedIngredientIndex === null) return;
 
     const newWeight = parseInt(editWeightValue, 10);
@@ -669,56 +819,98 @@ export default function RecipeDetailScreen() {
       return;
     }
 
-    setLocalIngredients(prev => {
-      const next = [...prev];
+    const nextIngredients = [...localIngredients];
+    const currentIngredient = nextIngredients[selectedIngredientIndex];
 
-      next[selectedIngredientIndex] = {
-        ...next[selectedIngredientIndex],
-        gramsEstimated: newWeight,
-      };
+    if (!currentIngredient) {
+      closeIngredientEditor();
+      return;
+    }
 
-      return newWeight === 0
-        ? next.filter(i => safeNumber(i.gramsEstimated) > 0)
-        : next.sort((a, b) => safeNumber(b.gramsEstimated) - safeNumber(a.gramsEstimated));
-    });
+    nextIngredients[selectedIngredientIndex] = recalculateIngredientForWeight(
+      currentIngredient,
+      newWeight
+    );
 
+    const updatedIngredients = (newWeight === 0
+      ? nextIngredients.filter((item) => safeNumber(item.gramsEstimated) > 0)
+      : nextIngredients
+    ).sort((a, b) => safeNumber(b.gramsEstimated) - safeNumber(a.gramsEstimated));
+
+    setLocalIngredients(updatedIngredients);
+    await persistMealPlanNutritionUpdate(buildUpdatedMealForStorage(updatedIngredients));
     closeIngredientEditor();
   };
 
-  const handleReplaceIngredient = (foodData: any) => {
+  const handleReplaceIngredient = async (foodData: any) => {
     if (selectedIngredientIndex === null) return;
 
-    setLocalIngredients(prev => {
-      const next = [...prev];
-      const oldWeight = safeNumber(next[selectedIngredientIndex].gramsEstimated) || 100;
+    const nextIngredients = [...localIngredients];
+    const currentIngredient = nextIngredients[selectedIngredientIndex];
 
-      next[selectedIngredientIndex] = {
-        ...next[selectedIngredientIndex],
-        ingredientName: foodData.foodNameEn || foodData.foodNameOriginal || next[selectedIngredientIndex].ingredientName,
-        foodNameEn: foodData.foodNameEn || foodData.foodNameOriginal,
-        foodNameCn: foodData.foodNameCn,
-        foodNameMs: foodData.foodNameMs,
-        name: foodData.foodNameEn || foodData.foodNameOriginal,
-        measure: `${Math.round(oldWeight)}g`,
-        picUrl: foodData.picUrl,
-        energyKcal: foodData.energyKcal || foodData.calories,
-        proteinG: foodData.proteinG || foodData.protein,
-        carbohydrateG: foodData.carbohydrateG || foodData.carbs,
-        fatG: foodData.fatG || foodData.fat,
-        gramsEstimated: oldWeight,
-      };
+    if (!currentIngredient) {
+      closeIngredientEditor();
+      return;
+    }
 
-      return next.sort((a, b) => safeNumber(b.gramsEstimated) - safeNumber(a.gramsEstimated));
-    });
+    const oldWeight = safeNumber(currentIngredient.gramsEstimated) || 100;
 
+    const replacementBase: Ingredient = {
+      ...currentIngredient,
+      ingredientName:
+        foodData.foodNameEn ||
+        foodData.foodNameOriginal ||
+        currentIngredient.ingredientName,
+      foodNameEn: foodData.foodNameEn || foodData.foodNameOriginal,
+      foodNameCn: foodData.foodNameCn,
+      foodNameMs: foodData.foodNameMs,
+      name: foodData.foodNameEn || foodData.foodNameOriginal,
+      picUrl: foodData.picUrl,
+      foodGroup:
+        foodData.foodGroup ||
+        foodData.food_group_ ||
+        currentIngredient.foodGroup,
+      energyKcalPer100g: safeNumber(
+        foodData.energyKcalPer100g ??
+        foodData.energyKcal ??
+        foodData.calories
+      ),
+      proteinGPer100g: safeNumber(
+        foodData.proteinGPer100g ??
+        foodData.proteinG ??
+        foodData.protein
+      ),
+      carbohydrateGPer100g: safeNumber(
+        foodData.carbohydrateGPer100g ??
+        foodData.carbohydrateG ??
+        foodData.carbs
+      ),
+      fatGPer100g: safeNumber(
+        foodData.fatGPer100g ??
+        foodData.fatG ??
+        foodData.fat
+      ),
+    };
+
+    nextIngredients[selectedIngredientIndex] = recalculateIngredientForWeight(
+      replacementBase,
+      oldWeight
+    );
+
+    const updatedIngredients = nextIngredients.sort(
+      (a, b) => safeNumber(b.gramsEstimated) - safeNumber(a.gramsEstimated)
+    );
+
+    setLocalIngredients(updatedIngredients);
+    await persistMealPlanNutritionUpdate(buildUpdatedMealForStorage(updatedIngredients));
     closeIngredientEditor();
 
     Alert.alert(
       getText('Food replaced', '食物已替换', 'Makanan telah diganti'),
       getText(
-        'The ingredient was replaced and the original weight was kept.',
-        '食材已替换，并自动保留原来的重量。',
-        'Bahan telah diganti dan berat asal dikekalkan.'
+        'The ingredient was replaced, the original weight was kept, and today’s nutrition was updated.',
+        '食材已替换，原来的重量已保留，今日营养也已同步更新。',
+        'Bahan telah diganti, berat asal dikekalkan, dan nutrisi hari ini telah dikemas kini.'
       )
     );
   };
@@ -974,10 +1166,11 @@ export default function RecipeDetailScreen() {
                 if (!ing) return null;
 
                 const dispWeight = safeNumber(editWeightValue) || 0;
-                const cals = round(safeNumber(ing.energyKcal) * (dispWeight / 100));
-                const carbs = round(safeNumber(ing.carbohydrateG) * (dispWeight / 100));
-                const protein = round(safeNumber(ing.proteinG) * (dispWeight / 100));
-                const fat = round(safeNumber(ing.fatG) * (dispWeight / 100));
+                const previewIngredient = recalculateIngredientForWeight(ing, dispWeight);
+                const cals = round(previewIngredient.energyKcal);
+                const carbs = round(previewIngredient.carbohydrateG);
+                const protein = round(previewIngredient.proteinG);
+                const fat = round(previewIngredient.fatG);
                 const nameText = getIngredientName(ing);
 
                 return (
