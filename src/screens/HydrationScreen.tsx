@@ -7,12 +7,29 @@ import { Screen, Header } from '../components/Common';
 import { useLanguage } from '../context/LanguageContext';
 
 
-const drinkColors: Record<string, { emoji: string; color: string }> = {
+const categoryConfig: Record<string, { emoji: string; color: string }> = {
   'Water': { emoji: '💧', color: '#3B82F6' },
   'Milk': { emoji: '🥛', color: '#F59E0B' },
-  'Fresh Juice': { emoji: '🧃', color: '#10B981' },
-  'Packaged Juice': { emoji: '🥤', color: '#EF4444' },
-  'Other': { emoji: '🥤', color: '#8B5CF6' }
+  'Juice': { emoji: '🧃', color: '#10B981' },
+  'Soft Drink': { emoji: '🥤', color: '#EF4444' },
+  'Coffee & Tea': { emoji: '☕', color: '#8B5CF6' },
+  'Alcohol': { emoji: '🍷', color: '#EC4899' },
+  'Other': { emoji: '🍹', color: '#6B7280' }
+};
+
+// This function acts like a brain, reading the English drink name and assigning it a category
+const getDrinkCategory = (name: string) => {
+  if (!name) return 'Water';
+  const lower = name.toLowerCase();
+  
+  if (['water', 'air', '水'].includes(lower)) return 'Water';
+  if (lower.includes('milk') || lower.includes('whey') || lower.includes('soy')) return 'Milk';
+  if (lower.includes('soda') || lower.includes('cola') || lower.includes('root beer') || lower.includes('carbonated')) return 'Soft Drink';
+  if (lower.includes('juice') || lower.includes('lemonade') || lower.includes('punch') || lower.includes('fruit')) return 'Juice';
+  if (lower.includes('coffee') || lower.includes('tea')) return 'Coffee & Tea';
+  if (lower.includes('beer') || lower.includes('wine') || lower.includes('liquor') || lower.includes('whiskey') || lower.includes('alcoholic')) return 'Alcohol';
+  
+  return 'Other';
 };
 
 export default function HydrationScreen({ navigation }: any) {
@@ -110,7 +127,8 @@ export default function HydrationScreen({ navigation }: any) {
   const handleConfirmAmount = () => {
     if (pendingDrink) {
       const finalAmount = parseInt(inputAmount) || pendingDrink.amountValue;
-      addWater(finalAmount, pendingDrink.title);
+      // Use the hidden English ID, otherwise fallback to the title
+      addWater(finalAmount, pendingDrink.id || pendingDrink.title); 
       setShowAmountInput(false);
       setPendingDrink(null);
       handleBackFromAnalysis();
@@ -154,16 +172,23 @@ export default function HydrationScreen({ navigation }: any) {
   const isWellHydrated = todayWaterIntake >= dailyWaterGoal;
 
   // Calculate drink breakdown for donut chart
+  // Calculate drink breakdown for donut chart
   const drinkBreakdown = useMemo(() => {
     const breakdown: Record<string, { amount: number; emoji: string; color: string }> = {};
     
     todaysDrinks.forEach((drink) => {
-      const type = normalizeDrinkType(drink.drinkType); 
-      const knownType = drinkColors[type] ? type : 'Other';
-      if (!breakdown[knownType]) {
-        breakdown[knownType] = { amount: 0, emoji: drinkColors[knownType].emoji, color: drinkColors[knownType].color };
+      // 1. Run the saved drink name through the smart sorter!
+      const category = getDrinkCategory(drink.drinkType);
+      
+      // 2. Add it to that category's total
+      if (!breakdown[category]) {
+        breakdown[category] = { 
+          amount: 0, 
+          emoji: categoryConfig[category].emoji, 
+          color: categoryConfig[category].color 
+        };
       }
-      breakdown[knownType].amount += drink.amount;
+      breakdown[category].amount += drink.amount;
     });
 
     let cumulativePercent = 0;
@@ -171,7 +196,14 @@ export default function HydrationScreen({ navigation }: any) {
       const percentage = todayWaterIntake > 0 ? (data.amount / todayWaterIntake) * 100 : 0;
       const startPercent = cumulativePercent;
       cumulativePercent += percentage;
-      return { name, value: data.amount, emoji: data.emoji, color: data.color, percentage: Math.round(percentage), startPercent };
+      return { 
+        name, // The Category Name (e.g. "Soft Drink")
+        value: data.amount, 
+        emoji: data.emoji, 
+        color: data.color, 
+        percentage: Math.round(percentage), 
+        startPercent 
+      };
     });
   }, [todaysDrinks, todayWaterIntake]);
 
@@ -208,6 +240,7 @@ export default function HydrationScreen({ navigation }: any) {
                   Keyboard.dismiss();
                   // Set the selected database drink and open Analysis!
                   setSelectedDrink({
+                    id: drink.title,
                     emoji: drink.emoji,
                     title: getDrinkName(drink), 
                     type: drink.type,
@@ -355,18 +388,40 @@ export default function HydrationScreen({ navigation }: any) {
                   </View>
                   
                   <View style={styles.legendContainer}>
-                    {drinkBreakdown.map((drink, index) => (
-                      <View key={index} style={styles.legendItem}>
-                        <View style={styles.legendLeft}>
-                          <View style={[styles.legendColor, { backgroundColor: drink.color }]} />
-                          <Text style={styles.legendName}>{drink.emoji} {drink.name}</Text>
+                    {drinkBreakdown.map((drink, index) => {
+                      // Translate the category names for the chart legend
+                      let translatedName = drink.name;
+                      if (language === 'ms') {
+                        if (drink.name === 'Water') translatedName = 'Air';
+                        if (drink.name === 'Milk') translatedName = 'Susu';
+                        if (drink.name === 'Juice') translatedName = 'Jus';
+                        if (drink.name === 'Soft Drink') translatedName = 'Minuman Ringan';
+                        if (drink.name === 'Coffee & Tea') translatedName = 'Kopi & Teh';
+                        if (drink.name === 'Alcohol') translatedName = 'Alkohol';
+                        if (drink.name === 'Other') translatedName = 'Lain-lain';
+                      } else if (language === 'zh') {
+                        if (drink.name === 'Water') translatedName = '水';
+                        if (drink.name === 'Milk') translatedName = '牛奶';
+                        if (drink.name === 'Juice') translatedName = '果汁';
+                        if (drink.name === 'Soft Drink') translatedName = '汽水';
+                        if (drink.name === 'Coffee & Tea') translatedName = '咖啡和茶';
+                        if (drink.name === 'Alcohol') translatedName = '酒精';
+                        if (drink.name === 'Other') translatedName = '其他';
+                      }
+
+                      return (
+                        <View key={index} style={styles.legendItem}>
+                          <View style={styles.legendLeft}>
+                            <View style={[styles.legendColor, { backgroundColor: drink.color }]} />
+                            <Text style={styles.legendName}>{drink.emoji} {translatedName}</Text>
+                          </View>
+                          <View style={styles.legendRight}>
+                            <Text style={styles.legendPercent}>{drink.percentage}%</Text>
+                            <Text style={styles.legendMl}>({drink.value}mL)</Text>
+                          </View>
                         </View>
-                        <View style={styles.legendRight}>
-                          <Text style={styles.legendPercent}>{drink.percentage}%</Text>
-                          <Text style={styles.legendMl}>({drink.value}mL)</Text>
-                        </View>
-                      </View>
-                    ))}
+                      );
+                    })}
                   </View>
                 </View>
               </View>
