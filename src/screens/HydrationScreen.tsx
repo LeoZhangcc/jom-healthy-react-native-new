@@ -27,10 +27,10 @@ export default function HydrationScreen({ navigation }: any) {
   const { activeChild, todayWaterIntake, dailyWaterGoal, addWater, hydrationHistory } = useChildProfile();
 
   const drinkOptions = useMemo(() => [
-    { emoji: '💧', title: t('water'), amountValue: 200, description: t('bestForHydration'), type: 'healthy' as const },
-    { emoji: '🥛', title: t('milk'), amountValue: 250, description: t('goodSourceOfCalcium'), type: 'healthy' as const },
-    { emoji: '🧃', title: t('freshJuice'), amountValue: 150, description: t('naturalHydration'), type: 'healthy' as const },
-    { emoji: '🥤', title: t('packagedJuice'), amountValue: 200, description: t('highSugarContent'), type: 'unhealthy' as const },
+    { id: 'Water', emoji: '💧', title: t('water'), amountValue: 200, description: t('bestForHydration'), type: 'healthy' as const },
+    { id: 'Milk', emoji: '🥛', title: t('milk'), amountValue: 250, description: t('goodSourceOfCalcium'), type: 'healthy' as const },
+    { id: 'Fresh Juice', emoji: '🧃', title: t('freshJuice'), amountValue: 150, description: t('naturalHydration'), type: 'healthy' as const },
+    { id: 'Packaged Juice', emoji: '🥤', title: t('packagedJuice'), amountValue: 200, description: t('highSugarContent'), type: 'unhealthy' as const },
   ], [t]);
 
   const [amount, setAmount] = useState(200);
@@ -47,9 +47,20 @@ export default function HydrationScreen({ navigation }: any) {
   const [pendingDrink, setPendingDrink] = useState<any>(null);
   const [inputAmount, setInputAmount] = useState('250');
 
-  const [selectedDrinkType, setSelectedDrinkType] = useState<{ emoji: string; title: string; type: 'healthy' | 'unhealthy' }>({
-    emoji: '💧', title: t('water'), type: 'healthy',
+  const [selectedDrinkType, setSelectedDrinkType] = useState<{ id?: string, emoji: string; title: string; type: 'healthy' | 'unhealthy' }>({
+    id: 'Water', emoji: '💧', title: t('water'), type: 'healthy',
   });
+
+  const normalizeDrinkType = (type: string) => {
+    if (!type) return 'Water';
+    const lower = type.toLowerCase();
+    if (['water', 'air', '水'].includes(lower)) return 'Water';
+    if (['milk', 'susu', '牛奶'].includes(lower)) return 'Milk';
+    if (['fresh juice', 'jus segar', '鲜榨果汁'].includes(lower)) return 'Fresh Juice';
+    if (['packaged juice', 'jus kotak', '包装果汁'].includes(lower)) return 'Packaged Juice';
+    if (['other', 'lain-lain', '其他'].includes(lower)) return 'Other';
+    return type; // Leave custom/searched drinks exactly as they are
+  };
 
   // Group history by date for the accordion and breakdown
   const { groupedHistory, todaysDrinks } = useMemo(() => {
@@ -71,7 +82,9 @@ export default function HydrationScreen({ navigation }: any) {
 
   const handleLog = () => {
     const finalAmount = parseInt(customAmount) || amount;
-    const drinkName = selectedDrinkType.title === 'Other' ? (customDrinkName || 'Other') : selectedDrinkType.title;
+    // Always save the English ID (e.g. "Water") to the database!
+    const drinkId = selectedDrinkType.id || selectedDrinkType.title;
+    const drinkName = drinkId === 'Other' ? (customDrinkName || 'Other') : drinkId;
     addWater(finalAmount, drinkName);
     setCustomAmount('200');
     setCustomDrinkName('');
@@ -145,7 +158,7 @@ export default function HydrationScreen({ navigation }: any) {
     const breakdown: Record<string, { amount: number; emoji: string; color: string }> = {};
     
     todaysDrinks.forEach((drink) => {
-      const type = drink.drinkType || 'Water';
+      const type = normalizeDrinkType(drink.drinkType); 
       const knownType = drinkColors[type] ? type : 'Other';
       if (!breakdown[knownType]) {
         breakdown[knownType] = { amount: 0, emoji: drinkColors[knownType].emoji, color: drinkColors[knownType].color };
@@ -248,12 +261,12 @@ export default function HydrationScreen({ navigation }: any) {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{t('selectDrinkType')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
-                {[...drinkOptions, { emoji: '🥤', title: 'Other', type: 'healthy' as const }].map((drink) => {
-                  const isSelected = selectedDrinkType.title === drink.title;
+                {[...drinkOptions, { id: 'Other', emoji: '🥤', title: t('other') || 'Other', type: 'healthy' as const }].map((drink) => {
+                  const isSelected = (selectedDrinkType.id || selectedDrinkType.title) === (drink.id || drink.title);
                   return (
                     <Pressable
-                      key={drink.title}
-                      onPress={() => setSelectedDrinkType(drink)}
+                      key={drink.id || drink.title}
+                      onPress={() => setSelectedDrinkType(drink as any)}
                       style={[styles.chip, isSelected && styles.chipActive]}
                     >
                       <Text style={styles.chipEmoji}>{drink.emoji}</Text>
@@ -276,10 +289,14 @@ export default function HydrationScreen({ navigation }: any) {
             {/* Amount Picker */}
             <View style={styles.pickerBox}>
               <Text style={styles.pickerTitle}>
-              {language === 'en' && `How much ${selectedDrinkType.title} did ${activeChild?.nickname || 'your child'} drink?`}
-              {language === 'ms' && `Berapa banyak ${selectedDrinkType.title} yang diminum oleh ${activeChild?.nickname || 'anak anda'}?`}
-              {language === 'zh' && `${activeChild?.nickname || '您的孩子'}喝了多少${selectedDrinkType.title}？`}
-            </Text>
+                {(() => {
+                  const activeTitle = drinkOptions.find(d => d.id === selectedDrinkType.id)?.title 
+                    || (selectedDrinkType.id === 'Other' ? (t('other') || 'Other') : selectedDrinkType.title);
+                  if (language === 'ms') return `Berapa banyak ${activeTitle} yang diminum oleh ${activeChild?.nickname || 'anak anda'}?`;
+                  if (language === 'zh') return `${activeChild?.nickname || '您的孩子'}喝了多少${activeTitle}？`;
+                  return `How much ${activeTitle} did ${activeChild?.nickname || 'your child'} drink?`;
+                })()}
+              </Text>
               
               <View style={styles.amountInputWrap}>
                 <TextInput
@@ -301,7 +318,9 @@ export default function HydrationScreen({ navigation }: any) {
               </View>
 
               <Pressable onPress={handleLog} style={({ pressed }) => [styles.logBtn, pressed && styles.btnPressed]}>
-                <Text style={styles.logBtnText}>{t('log')} {selectedDrinkType.title}</Text>
+                <Text style={styles.logBtnText}>
+                  {t('log')} {drinkOptions.find(d => d.id === selectedDrinkType.id)?.title || (selectedDrinkType.id === 'Other' ? (t('other') || 'Other') : selectedDrinkType.title)}
+                </Text>
               </Pressable>
             </View>
 
@@ -401,12 +420,15 @@ export default function HydrationScreen({ navigation }: any) {
                                 
                                 {/* 3. Translated Logged Drink Names */}
                                 <Text style={styles.historyDrinkName}>
-                                  {drink.drinkType === 'Water' ? t('water') :
-                                   drink.drinkType === 'Milk' ? t('milk') :
-                                   drink.drinkType === 'Fresh Juice' ? t('freshJuice') :
-                                   drink.drinkType === 'Packaged Juice' ? t('packagedJuice') :
-                                   drink.drinkType === 'Other' ? t('other') :
-                                   drink.drinkType}
+                                  {(() => {
+                                    const nType = normalizeDrinkType(drink.drinkType);
+                                    if (nType === 'Water') return t('water');
+                                    if (nType === 'Milk') return t('milk');
+                                    if (nType === 'Fresh Juice') return t('freshJuice');
+                                    if (nType === 'Packaged Juice') return t('packagedJuice');
+                                    if (nType === 'Other') return t('other');
+                                    return drink.drinkType; // Keep custom searched drink names as is
+                                  })()}
                                 </Text>
                                 
                               </View>
