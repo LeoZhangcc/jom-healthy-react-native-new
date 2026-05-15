@@ -633,50 +633,78 @@ export default function HomeScreen() {
             </>
           )}
 
-          {activeChild && (
-            <Card style={styles.hydrationCard}>
-              <View style={styles.hydrationHeader}>
-                <View style={styles.hydrationTitleRow}>
-                  <Ionicons name="water" size={20} color="#3B82F6" />
-                  <Text style={styles.hydrationTitle}>
-                    {getText('Daily Hydration', '每日饮水', 'Penghidratan Harian')}
-                  </Text>
-                </View>
-                <Pressable 
-                  style={styles.hydrationDetailBtn}
-                  onPress={() => navigation.navigate('Hydration')} 
-                >
-                  <Text style={styles.hydrationDetailText}>
-                    {getText('Details', '详情', 'Butiran')}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={16} color="#3B82F6" />
-                </Pressable>
-              </View>      
+          {/* --- NEW BEAUTIFIED HYDRATION CARD --- */}
+          {activeChild && (() => {
+            const isWellHydrated = todayWaterIntake >= dailyWaterGoal;
+            const progressPercent = Math.min((todayWaterIntake / dailyWaterGoal) * 100, 100) || 0;
 
-              <View style={styles.hydrationProgressWrap}>
-                <View style={styles.hydrationBarBg}>
-                  <View 
-                    style={[
-                      styles.hydrationBarFill, 
-                      { width: `${Math.min((todayWaterIntake / dailyWaterGoal) * 100, 100)}%` }
-                    ]} 
-                  /> 
-                </View>
-                <Text style={styles.hydrationText}>
-                  <Text style={styles.hydrationCurrent}>{todayWaterIntake}ml</Text> / {dailyWaterGoal}ml
-                </Text>
-              </View>
+            return (
+              <Pressable 
+                onPress={() => navigation.navigate('Hydration')}
+                style={({ pressed }) => [
+                  styles.newHydrationCard,
+                  pressed && { transform: [{ scale: 0.98 }] } // Shrink effect on press
+                ]}
+              >
+                <View style={styles.newHydrationTopRow}>
+                  {/* Left Side: Icon & Titles */}
+                  <View style={styles.newHydrationLeft}>
+                    <View style={styles.newHydrationIconContainer}>
+                      <Ionicons name="water" size={22} color="#3B82F6" />
+                    </View>
+                    
+                    <View>
+                      <Text style={styles.newHydrationTitle}>
+                        {getText('Hydration', '饮水', 'Penghidratan')}
+                      </Text>
+                      <View style={[
+                        styles.newHydrationBadge, 
+                        isWellHydrated ? styles.newHydrationBadgeGood : styles.newHydrationBadgeNeeds
+                      ]}>
+                        <Text style={[
+                          styles.newHydrationBadgeText,
+                          isWellHydrated ? styles.newHydrationBadgeTextGood : styles.newHydrationBadgeTextNeeds
+                        ]}>
+                          {isWellHydrated 
+                            ? getText('Well Hydrated', '水分充足', 'Penghidratan Baik') 
+                            : getText('Needs More Water', '需要多喝水', 'Perlu Lebih Air')}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
 
-              <View style={styles.hydrationActions}>
-                <Pressable style={styles.addWaterBtn} onPress={() => addWater(100)}>
-                  <Text style={styles.addWaterText}>+ 100ml</Text>
-                </Pressable>
-                <Pressable style={styles.addWaterBtn} onPress={() => addWater(250)}>
-                  <Text style={styles.addWaterText}>+ 250ml</Text>
-                </Pressable>
-              </View>
-            </Card>
-          )}
+                  {/* Right Side: Navigation Arrow */}
+                  <View style={styles.newHydrationChevronContainer}>
+                    <Ionicons name="chevron-forward" size={16} color="#4CAF7A" />
+                  </View>
+                </View>
+
+                {/* Bottom Side: Progress Bar */}
+                <View style={styles.newHydrationProgressContainer}>
+                  <View style={styles.newHydrationProgressLabelRow}>
+                    <Text style={styles.newHydrationProgressLabel}>
+                      {getText('Progress', '进度', 'Kemajuan')}
+                    </Text>
+                    <Text style={styles.newHydrationProgressValue}>
+                      {todayWaterIntake} / {dailyWaterGoal} mL
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.newHydrationBarBg}>
+                    <View 
+                      style={[
+                        styles.newHydrationBarFill, 
+                        { 
+                          width: `${progressPercent}%`,
+                          backgroundColor: isWellHydrated ? '#3B82F6' : '#60A5FA'
+                        }
+                      ]} 
+                    /> 
+                  </View>
+                </View>
+              </Pressable>
+            );
+          })()}
 
           {/* --- RESTORED PHYSICAL ACTIVITY CARD --- */}
           {activeChild && (
@@ -1492,5 +1520,103 @@ const styles = StyleSheet.create({
   thinBarFill: {
     height: '100%',
     backgroundColor: '#10B981', 
+  },
+
+  // --- NEW HYDRATION CARD STYLES ---
+  newHydrationCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3, // For Android shadow
+  },
+  newHydrationTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  newHydrationLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  newHydrationIconContainer: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newHydrationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  newHydrationBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+  },
+  newHydrationBadgeGood: {
+    backgroundColor: '#DCFCE7',
+  },
+  newHydrationBadgeNeeds: {
+    backgroundColor: '#FEF3C7',
+  },
+  newHydrationBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  newHydrationBadgeTextGood: {
+    color: '#15803D',
+  },
+  newHydrationBadgeTextNeeds: {
+    color: '#B45309',
+  },
+  newHydrationChevronContainer: {
+    width: 28,
+    height: 28,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newHydrationProgressContainer: {
+    marginTop: 4,
+  },
+  newHydrationProgressLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  newHydrationProgressLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  newHydrationProgressValue: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  newHydrationBarBg: {
+    width: '100%',
+    height: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  newHydrationBarFill: {
+    height: '100%',
+    borderRadius: 4,
   },
 });
