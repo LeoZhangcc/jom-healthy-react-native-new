@@ -709,9 +709,8 @@ export default function RecipeDetailScreen() {
   };
 
   const getIngredientMeasure = (item: Ingredient) => {
-    if (item.measure) return String(item.measure);
-    if (item.quantity) return String(item.quantity);
-    if (item.gramsEstimated !== undefined && item.gramsEstimated !== null) return `${item.gramsEstimated}g`;
+    if (item.measure) return String(item.measure).trim();
+    if (item.quantity) return String(item.quantity).trim();
     return '';
   };
 
@@ -1110,7 +1109,7 @@ export default function RecipeDetailScreen() {
                       {!!measure && <Text style={styles.ingredientMeasure}>{measure}</Text>}
                     </View>
 
-                    {safeNumber(item.gramsEstimated) > 0 && (
+                    {safeNumber(item.gramsEstimated) >= 10 && (
                       <View style={styles.ingredientWeightTag}>
                         <Text style={styles.ingredientGram}>{round(item.gramsEstimated)}g</Text>
                       </View>
