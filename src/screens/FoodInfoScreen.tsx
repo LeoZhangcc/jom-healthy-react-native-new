@@ -246,35 +246,59 @@ export default function FoodInfoScreen() {
     Array.isArray(parentTips) && parentTips.length > 0
       ? parentTips
       : [
-          'Pair with fresh vegetables or fruit for more nutrients.',
-          'Serve an age-appropriate portion for your child.',
-          'Choose grilled, steamed, or boiled options when possible.',
+          getText(
+            'Pair with fresh vegetables or fruit for more nutrients.',
+            '搭配新鲜蔬菜或水果，获得更多营养。',
+            'Padankan dengan sayur atau buah segar untuk lebih nutrisi.'
+          ),
+          getText(
+            'Serve an age-appropriate portion for your child.',
+            '为孩子提供适合年龄的份量。',
+            'Hidangkan bahagian yang sesuai dengan umur anak.'
+          ),
+          getText(
+            'Choose grilled, steamed, or boiled options when possible.',
+            '尽量选择烤、蒸或水煮的做法。',
+            'Pilih pilihan panggang, kukus atau rebus jika boleh.'
+          ),
         ];
 
   const statusConfig = {
     healthy: {
       icon: 'checkmark-circle' as const,
       emoji: '✅',
-      label: food?.healthLabel || 'Healthy Choice',
-      description: healthReason || 'This is a healthy choice for children.',
+      label: food?.healthLabel || getText('Healthy Choice', '健康选择', 'Pilihan Sihat'),
+      description: healthReason || getText(
+        'This is a healthy choice for children.',
+        '这是适合孩子的健康选择。',
+        'Ini ialah pilihan yang sihat untuk kanak-kanak.'
+      ),
       color: '#4CAF7A',
       bg: '#EAF7F0',
     },
     moderate: {
       icon: 'alert-circle' as const,
       emoji: '⚠️',
-      label: food?.healthLabel || 'Moderate',
+      label: food?.healthLabel || getText('Moderate', '适量', 'Sederhana'),
       description:
-        healthReason || 'Okay in moderation. Balance with healthier options.',
+        healthReason || getText(
+          'Okay in moderation. Balance with healthier options.',
+          '可以适量食用，并搭配更健康的选择。',
+          'Boleh diambil secara sederhana. Seimbangkan dengan pilihan yang lebih sihat.'
+        ),
       color: '#D99A00',
       bg: '#FFF9E6',
     },
     unhealthy: {
       icon: 'alert-circle' as const,
       emoji: '❌',
-      label: food?.healthLabel || 'High in Sugar/Fat',
+      label: food?.healthLabel || getText('High in Sugar/Fat', '糖分/脂肪较高', 'Tinggi Gula/Lemak'),
       description:
-        healthReason || 'Try to limit this food. Choose healthier alternatives.',
+        healthReason || getText(
+          'Try to limit this food. Choose healthier alternatives.',
+          '建议减少食用，并选择更健康的替代品。',
+          'Cuba hadkan makanan ini. Pilih alternatif yang lebih sihat.'
+        ),
       color: '#EF4444',
       bg: '#FFE8E8',
     },

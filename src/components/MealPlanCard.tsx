@@ -38,6 +38,12 @@ function translateMealName(name: string, language: string) {
   return replacements.reduce((current, [pattern, replacement]) => current.replace(pattern as RegExp, replacement as string), text).replace(/\s+/g, ' ').trim();
 }
 
+function formatGramValue(value: number, language: string) {
+  if (language === 'zh') return `${value}克`;
+  if (language === 'ms') return `${value}gram`;
+  return `${value}g`;
+}
+
 export default function MealPlanCard({ meals, onToggleMeal }: { meals: Meal[]; onToggleMeal: (mealId: string) => void }) {
   const { language } = useLanguage();
   const getText = (en: string, zh: string, ms: string) => language === 'zh' ? zh : language === 'ms' ? ms : en;
@@ -65,7 +71,7 @@ export default function MealPlanCard({ meals, onToggleMeal }: { meals: Meal[]; o
           <View style={{ flex: 1 }}>
             <Text style={styles.type}>{getText(mealLabels[meal.type], mealLabels[meal.type] === 'Breakfast' ? '早餐' : mealLabels[meal.type] === 'Lunch' ? '午餐' : mealLabels[meal.type] === 'Dinner' ? '晚餐' : '点心', mealLabels[meal.type] === 'Breakfast' ? 'Sarapan' : mealLabels[meal.type] === 'Lunch' ? 'Makan Tengah Hari' : mealLabels[meal.type] === 'Dinner' ? 'Makan Malam' : 'Snek')}</Text>
             <Text style={styles.name}>{getMealDisplayName(meal)}</Text>
-            <Text style={styles.macro}>{meal.carbs}g C · {meal.protein}g P · {meal.fat}g F</Text>
+            <Text style={styles.macro}>{formatGramValue(meal.carbs, language)} C · {formatGramValue(meal.protein, language)} P · {formatGramValue(meal.fat, language)} F</Text>
           </View>
         </View>
       ))}

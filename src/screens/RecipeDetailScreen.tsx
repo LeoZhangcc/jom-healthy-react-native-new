@@ -102,6 +102,11 @@ type MealRecipe = {
   instructionsZh?: string | null;
   instructionsMs?: string | null;
   steps?: string[];
+  stepsEn?: string[];
+  stepsCn?: string[];
+  stepsCN?: string[];
+  stepsZh?: string[];
+  stepsMs?: string[];
   strMealThumb?: string | null;
   imageUrl?: string | null;
   mealIconEmoji?: string | null;
@@ -355,23 +360,168 @@ function translateMealName(name: string, language: string) {
   return replacements.reduce((current, [pattern, replacement]) => current.replace(pattern as RegExp, replacement as string), text).replace(/\s+/g, ' ').trim();
 }
 
+function localizeEnglishMealText(text: string, language: string) {
+  const lang = normalizeLanguageCode(language);
+  const value = String(text || '').trim();
+  if (!value || lang === 'en') return value;
+
+  const replacements = lang === 'zh'
+    ? [
+        [/\bai recommended meal\b/gi, 'AI 推荐餐食'],
+        [/\bhealthy\b/gi, '健康'],
+        [/\bbalanced\b/gi, '均衡'],
+        [/\bgrilled\b/gi, '烤'],
+        [/\bbaked\b/gi, '烘烤'],
+        [/\bsteamed\b/gi, '蒸'],
+        [/\bstir[-\s]?fried\b/gi, '炒'],
+        [/\bfried\b/gi, '炒'],
+        [/\bboiled\b/gi, '水煮'],
+        [/\bwith\b/gi, '配'],
+        [/\band\b/gi, '和'],
+        [/\bbrown rice\b/gi, '糙米饭'],
+        [/\brice\b/gi, '米饭'],
+        [/\bchicken\b/gi, '鸡肉'],
+        [/\bbeef\b/gi, '牛肉'],
+        [/\bfish\b/gi, '鱼'],
+        [/\bsalmon\b/gi, '三文鱼'],
+        [/\btuna\b/gi, '金枪鱼'],
+        [/\bshrimp\b/gi, '虾'],
+        [/\bprawn\b/gi, '虾'],
+        [/\begg(s)?\b/gi, '鸡蛋'],
+        [/\btofu\b/gi, '豆腐'],
+        [/\bnoodle(s)?\b/gi, '面'],
+        [/\bpasta\b/gi, '意面'],
+        [/\bbread\b/gi, '面包'],
+        [/\boat(s)?\b/gi, '燕麦'],
+        [/\bporridge\b/gi, '粥'],
+        [/\bsoup\b/gi, '汤'],
+        [/\bsalad\b/gi, '沙拉'],
+        [/\bvegetable(s)?\b/gi, '蔬菜'],
+        [/\bcarrot(s)?\b/gi, '胡萝卜'],
+        [/\bbroccoli\b/gi, '西兰花'],
+        [/\bspinach\b/gi, '菠菜'],
+        [/\btomato(es)?\b/gi, '番茄'],
+        [/\bpotato(es)?\b/gi, '土豆'],
+        [/\bsweet potato(es)?\b/gi, '红薯'],
+        [/\bfruit(s)?\b/gi, '水果'],
+        [/\bbanana(s)?\b/gi, '香蕉'],
+        [/\bapple(s)?\b/gi, '苹果'],
+        [/\byogurt\b/gi, '酸奶'],
+        [/\bmilk\b/gi, '牛奶'],
+      ]
+    : [
+        [/\bai recommended meal\b/gi, 'hidangan cadangan AI'],
+        [/\bhealthy\b/gi, 'sihat'],
+        [/\bbalanced\b/gi, 'seimbang'],
+        [/\bgrilled\b/gi, 'panggang'],
+        [/\bbaked\b/gi, 'bakar'],
+        [/\bsteamed\b/gi, 'kukus'],
+        [/\bstir[-\s]?fried\b/gi, 'tumis'],
+        [/\bfried\b/gi, 'goreng'],
+        [/\bboiled\b/gi, 'rebus'],
+        [/\bwith\b/gi, 'dengan'],
+        [/\band\b/gi, 'dan'],
+        [/\bbrown rice\b/gi, 'nasi perang'],
+        [/\brice\b/gi, 'nasi'],
+        [/\bchicken\b/gi, 'ayam'],
+        [/\bbeef\b/gi, 'daging lembu'],
+        [/\bfish\b/gi, 'ikan'],
+        [/\bsalmon\b/gi, 'salmon'],
+        [/\btuna\b/gi, 'tuna'],
+        [/\bshrimp\b/gi, 'udang'],
+        [/\bprawn\b/gi, 'udang'],
+        [/\begg(s)?\b/gi, 'telur'],
+        [/\btofu\b/gi, 'tauhu'],
+        [/\bnoodle(s)?\b/gi, 'mi'],
+        [/\bpasta\b/gi, 'pasta'],
+        [/\bbread\b/gi, 'roti'],
+        [/\boat(s)?\b/gi, 'oat'],
+        [/\bporridge\b/gi, 'bubur'],
+        [/\bsoup\b/gi, 'sup'],
+        [/\bsalad\b/gi, 'salad'],
+        [/\bvegetable(s)?\b/gi, 'sayur'],
+        [/\bcarrot(s)?\b/gi, 'lobak merah'],
+        [/\bbroccoli\b/gi, 'brokoli'],
+        [/\bspinach\b/gi, 'bayam'],
+        [/\btomato(es)?\b/gi, 'tomato'],
+        [/\bpotato(es)?\b/gi, 'kentang'],
+        [/\bsweet potato(es)?\b/gi, 'ubi keledek'],
+        [/\bfruit(s)?\b/gi, 'buah'],
+        [/\bbanana(s)?\b/gi, 'pisang'],
+        [/\bapple(s)?\b/gi, 'epal'],
+        [/\byogurt\b/gi, 'yogurt'],
+        [/\bmilk\b/gi, 'susu'],
+      ];
+
+  return replacements.reduce((current, [pattern, replacement]) => current.replace(pattern as RegExp, replacement as string), value).replace(/\s+/g, ' ').trim();
+}
+
+function localizeEnglishInstructions(text: string, language: string) {
+  const lang = normalizeLanguageCode(language);
+  const value = String(text || '').trim();
+  if (!value || lang === 'en') return value;
+
+  const replacements = lang === 'zh'
+    ? [
+        [/\bpreheat\b/gi, '预热'],
+        [/\bheat\b/gi, '加热'],
+        [/\badd\b/gi, '加入'],
+        [/\bmix\b/gi, '混合'],
+        [/\bstir\b/gi, '搅拌'],
+        [/\bcook\b/gi, '烹煮'],
+        [/\bboil\b/gi, '煮沸'],
+        [/\bsimmer\b/gi, '小火煮'],
+        [/\bsteam\b/gi, '蒸'],
+        [/\bgrill\b/gi, '烤'],
+        [/\bbake\b/gi, '烘烤'],
+        [/\bfry\b/gi, '炒'],
+        [/\bserve\b/gi, '盛出'],
+        [/\buntil\b/gi, '直到'],
+        [/\bminutes?\b/gi, '分钟'],
+        [/\bseason\b/gi, '调味'],
+      ]
+    : [
+        [/\bpreheat\b/gi, 'panaskan dahulu'],
+        [/\bheat\b/gi, 'panaskan'],
+        [/\badd\b/gi, 'masukkan'],
+        [/\bmix\b/gi, 'campurkan'],
+        [/\bstir\b/gi, 'kacau'],
+        [/\bcook\b/gi, 'masak'],
+        [/\bboil\b/gi, 'rebus'],
+        [/\bsimmer\b/gi, 'reneh'],
+        [/\bsteam\b/gi, 'kukus'],
+        [/\bgrill\b/gi, 'panggang'],
+        [/\bbake\b/gi, 'bakar'],
+        [/\bfry\b/gi, 'goreng'],
+        [/\bserve\b/gi, 'hidangkan'],
+        [/\buntil\b/gi, 'sehingga'],
+        [/\bminutes?\b/gi, 'minit'],
+        [/\bseason\b/gi, 'perasakan'],
+      ];
+
+  return localizeEnglishMealText(
+    replacements.reduce((current, [pattern, replacement]) => current.replace(pattern as RegExp, replacement as string), value),
+    language
+  );
+}
+
 function getLocalizedMealName(meal: any, language: string, fallback: string) {
   const localized = pickLocalizedValue(
     language,
-    meal?.strMealEn || meal?.nameEn || meal?.strMeal || meal?.name,
-    meal?.strMealCn || meal?.strMealCN || meal?.strMealZh || meal?.nameCn || meal?.nameCN || meal?.nameZh,
-    meal?.strMealMs || meal?.nameMs,
+    meal?.strMealEn || meal?.mealNameEn || meal?.recipeNameEn || meal?.titleEn || meal?.nameEn || meal?.strMeal || meal?.mealName || meal?.recipeName || meal?.title || meal?.name,
+    meal?.strMealCn || meal?.strMealCN || meal?.strMealZh || meal?.mealNameCn || meal?.mealNameCN || meal?.mealNameZh || meal?.recipeNameCn || meal?.recipeNameCN || meal?.recipeNameZh || meal?.titleCn || meal?.titleCN || meal?.titleZh || meal?.nameCn || meal?.nameCN || meal?.nameZh,
+    meal?.strMealMs || meal?.mealNameMs || meal?.recipeNameMs || meal?.titleMs || meal?.nameMs,
     fallback
   );
 
   if (normalizeLanguageCode(language) === 'zh' || normalizeLanguageCode(language) === 'ms') {
-    const sourceName = meal?.strMealEn || meal?.nameEn || meal?.strMeal || meal?.name || fallback;
+    const sourceName = meal?.strMealEn || meal?.mealNameEn || meal?.recipeNameEn || meal?.titleEn || meal?.nameEn || meal?.strMeal || meal?.mealName || meal?.recipeName || meal?.title || meal?.name || fallback;
     if (localized === sourceName) {
-      return translateMealName(localized, language);
+      return localizeEnglishMealText(translateMealName(localized, language), language);
     }
   }
 
-  return localized;
+  return localizeEnglishMealText(localized, language);
 }
 
 function getLocalizedMealCategory(meal: any, language: string, fallback: string) {
@@ -395,13 +545,36 @@ function getLocalizedMealArea(meal: any, language: string, fallback: string) {
 }
 
 function getLocalizedInstructions(meal: any, language: string) {
-  return pickLocalizedValue(
+  const lang = normalizeLanguageCode(language);
+  const localized = pickLocalizedValue(
     language,
-    meal?.strInstructionsEn || meal?.instructionsEn || meal?.strInstructions || meal?.instructions,
-    meal?.strInstructionsCn || meal?.strInstructionsCN || meal?.strInstructionsZh || meal?.instructionsCn || meal?.instructionsCN || meal?.instructionsZh,
-    meal?.strInstructionsMs || meal?.instructionsMs,
-    meal?.strInstructions || meal?.instructions || ''
+    meal?.strInstructionsEn || meal?.instructionsEn || meal?.methodEn || meal?.directionsEn || meal?.strInstructions || meal?.instructions || meal?.method || meal?.directions,
+    meal?.strInstructionsCn || meal?.strInstructionsCN || meal?.strInstructionsZh || meal?.instructionsCn || meal?.instructionsCN || meal?.instructionsZh || meal?.methodCn || meal?.methodCN || meal?.methodZh || meal?.directionsCn || meal?.directionsCN || meal?.directionsZh,
+    meal?.strInstructionsMs || meal?.instructionsMs || meal?.methodMs || meal?.directionsMs,
+    meal?.strInstructions || meal?.instructions || meal?.method || meal?.directions || ''
   );
+
+  const hasExplicitLocalized =
+    lang === 'zh'
+      ? cleanLocalizedValue(meal?.strInstructionsCn || meal?.strInstructionsCN || meal?.strInstructionsZh || meal?.instructionsCn || meal?.instructionsCN || meal?.instructionsZh || meal?.methodCn || meal?.methodCN || meal?.methodZh || meal?.directionsCn || meal?.directionsCN || meal?.directionsZh)
+      : lang === 'ms'
+      ? cleanLocalizedValue(meal?.strInstructionsMs || meal?.instructionsMs || meal?.methodMs || meal?.directionsMs)
+      : true;
+
+  return hasExplicitLocalized ? localized : localizeEnglishInstructions(localized, language);
+}
+
+function getLocalizedSteps(meal: any, language: string) {
+  const lang = normalizeLanguageCode(language);
+  if (lang === 'zh') {
+    return meal?.stepsCn || meal?.stepsCN || meal?.stepsZh || undefined;
+  }
+
+  if (lang === 'ms') {
+    return meal?.stepsMs || undefined;
+  }
+
+  return meal?.stepsEn || meal?.steps || undefined;
 }
 
 function normalizeMealType(category?: string | null, type?: string | null) {
@@ -447,6 +620,132 @@ function shouldHideIngredientMeasure(measure?: string | null) {
   if (/^\d+(?:\.\d+)?$/.test(text)) return true;
 
   return /^(?:\d+(?:\.\d+)?(?:\s*(?:-|to)\s*\d+(?:\.\d+)?)?\s*)?(?:g|gram|grams|kg|kilogram|kilograms|ml|milliliter|milliliters|millilitre|millilitres|kl|kiloliter|kiloliters|kilolitre|kilolitres)$/i.test(text);
+}
+
+function localizeIngredientMeasureText(value?: string | null, language = 'en') {
+  const raw = String(value || '').trim();
+  if (!raw || language === 'en') return raw;
+
+  const units: Record<string, Record<string, string>> = {
+    zh: {
+      g: '克', gram: '克', grams: '克',
+      kg: '公斤', kilogram: '公斤', kilograms: '公斤',
+      ml: '毫升', milliliter: '毫升', milliliters: '毫升', millilitre: '毫升', millilitres: '毫升',
+      l: '升', liter: '升', liters: '升', litre: '升', litres: '升',
+      lb: '磅', lbs: '磅', pound: '磅', pounds: '磅',
+      oz: '盎司', ounce: '盎司', ounces: '盎司',
+      cup: '杯', cups: '杯',
+      tablespoon: '汤匙', tablespoons: '汤匙', tbsp: '汤匙', tblsp: '汤匙', tbls: '汤匙', tbs: '汤匙',
+      teaspoon: '茶匙', teaspoons: '茶匙', tsp: '茶匙',
+      pint: '品脱', pints: '品脱', quart: '夸脱', quarts: '夸脱', qt: '夸脱',
+      clove: '瓣', cloves: '瓣', bulb: '头', bulbs: '头', bunch: '把', bunches: '把',
+      handful: '把', handfull: '把', handfuls: '把', handfulls: '把',
+      head: '颗', heads: '颗', slice: '片', slices: '片', sprig: '枝', sprigs: '枝',
+      stalk: '根', stalks: '根', leaf: '片叶', leaves: '片叶',
+      can: '罐', cans: '罐', tin: '罐', tins: '罐',
+      packet: '包', packets: '包', package: '包', packages: '包', pack: '包', packs: '包',
+      bag: '袋', bags: '袋', bottle: '瓶', bottles: '瓶', jar: '罐', jars: '罐',
+      pot: '盒', pots: '盒', knob: '小块', knobs: '小块', pinch: '撮', pinches: '撮',
+      dash: '少许', splash: '少许', drizzle: '淋少许', drop: '滴', drops: '滴',
+      scoop: '勺', scoops: '勺', shot: '小杯', shots: '小杯', part: '份', parts: '份',
+      pod: '荚', pods: '荚', fillet: '片', fillets: '片', rasher: '片', rashers: '片',
+      tail: '尾', tails: '尾', floret: '小朵', florets: '小朵', piece: '块', pieces: '块',
+      inch: '英寸', cm: '厘米',
+    },
+    ms: {
+      g: 'gram', gram: 'gram', grams: 'gram',
+      kg: 'kilogram', kilogram: 'kilogram', kilograms: 'kilogram',
+      ml: 'mL', milliliter: 'mL', milliliters: 'mL', millilitre: 'mL', millilitres: 'mL',
+      l: 'L', liter: 'L', liters: 'L', litre: 'L', litres: 'L',
+      lb: 'paun', lbs: 'paun', pound: 'paun', pounds: 'paun',
+      oz: 'auns', ounce: 'auns', ounces: 'auns',
+      cup: 'cawan', cups: 'cawan',
+      tablespoon: 'sudu besar', tablespoons: 'sudu besar', tbsp: 'sudu besar', tblsp: 'sudu besar', tbls: 'sudu besar', tbs: 'sudu besar',
+      teaspoon: 'sudu kecil', teaspoons: 'sudu kecil', tsp: 'sudu kecil',
+      pint: 'pain', pints: 'pain', quart: 'kuart', quarts: 'kuart', qt: 'kuart',
+      clove: 'ulas', cloves: 'ulas', bulb: 'labu', bulbs: 'labu', bunch: 'ikat', bunches: 'ikat',
+      handful: 'genggam', handfull: 'genggam', handfuls: 'genggam', handfulls: 'genggam',
+      head: 'biji', heads: 'biji', slice: 'keping', slices: 'keping', sprig: 'tangkai', sprigs: 'tangkai',
+      stalk: 'batang', stalks: 'batang', leaf: 'helai daun', leaves: 'helai daun',
+      can: 'tin', cans: 'tin', tin: 'tin', tins: 'tin',
+      packet: 'paket', packets: 'paket', package: 'paket', packages: 'paket', pack: 'paket', packs: 'paket',
+      bag: 'beg', bags: 'beg', bottle: 'botol', bottles: 'botol', jar: 'balang', jars: 'balang',
+      pot: 'bekas', pots: 'bekas', knob: 'ketul kecil', knobs: 'ketul kecil', pinch: 'secubit', pinches: 'secubit',
+      dash: 'sedikit', splash: 'sedikit', drizzle: 'renjis', drop: 'titik', drops: 'titik',
+      scoop: 'skop', scoops: 'skop', shot: 'shot', shots: 'shot', part: 'bahagian', parts: 'bahagian',
+      pod: 'lenggai', pods: 'lenggai', fillet: 'filet', fillets: 'filet', rasher: 'keping', rashers: 'keping',
+      tail: 'ekor', tails: 'ekor', floret: 'kuntum kecil', florets: 'kuntum kecil', piece: 'ketul', pieces: 'ketul',
+      inch: 'inci', cm: 'cm',
+    },
+  };
+
+  const phrases: Record<string, Array<[RegExp, string]>> = {
+    zh: [
+      [/\bas required\b/gi, '按需'], [/\bto serve\b/gi, '上桌用'], [/\bfor brushing\b/gi, '刷表面用'],
+      [/\bfor frying\b/gi, '煎炸用'], [/\bfor greasing\b/gi, '抹油用'], [/\bfor cooking\b/gi, '烹调用'],
+      [/\bgarnish with\b/gi, '用来装饰'], [/\bgarnish\b/gi, '装饰用'], [/\bdusting\b/gi, '撒少许'],
+      [/\bto taste\b/gi, '按口味'], [/\bsoaked overnight\b/gi, '浸泡过夜'], [/\bboiling\b/gi, '沸腾的'],
+      [/\bwarm\b/gi, '温热的'], [/\bhot\b/gi, '热的'], [/\bboneless skinless\b/gi, '去骨去皮'],
+      [/\bboneless\b/gi, '去骨'], [/\bskinless\b/gi, '去皮'], [/\bskinned\b/gi, '去皮'], [/\bskinnless\b/gi, '去皮'],
+      [/\bpeeled and chopped\b/gi, '去皮切碎'], [/\bpeeled and sliced\b/gi, '去皮切片'], [/\bpeeled and crushed\b/gi, '去皮压碎'],
+      [/\bpeeled crushed\b/gi, '去皮压碎'], [/\bpeeled\b/gi, '去皮'], [/\bfinely chopped\b/gi, '切细碎'],
+      [/\broughly chopped\b/gi, '粗切'], [/\bchopped\b/gi, '切碎'], [/\bfinely diced\b/gi, '切小丁'], [/\bdiced\b/gi, '切丁'],
+      [/\bfinely sliced\b/gi, '切薄片'], [/\bthinly sliced\b/gi, '切薄片'], [/\bsliced thinly\b/gi, '切薄片'], [/\bsliced\b/gi, '切片'],
+      [/\bminced\b/gi, '剁碎'], [/\bcrushed\b/gi, '压碎'], [/\bgrated zest\b/gi, '磨碎外皮'], [/\bgrated\b/gi, '磨碎'],
+      [/\bshredded\b/gi, '切丝'], [/\bshaved\b/gi, '刨片'], [/\bhalved\b/gi, '切半'], [/\bquartered\b/gi, '切四瓣'],
+      [/\bcut into\b/gi, '切成'], [/\bcut\b/gi, '切'], [/\btrimmed\b/gi, '修整'], [/\brinsed and patted dry\b/gi, '冲洗并拍干'],
+      [/\brinsed\b/gi, '冲洗'], [/\bpatted dry\b/gi, '拍干'], [/\bbeaten\b/gi, '打散'], [/\bseperated\b|\bseparated\b/gi, '分离'],
+      [/\bground\b/gi, '磨粉'], [/\bpounded\b/gi, '拍扁'], [/\bbashed\b/gi, '敲碎'], [/\bmashed\b/gi, '压成泥'],
+      [/\bcrumbled\b/gi, '掰碎'], [/\btorn\b/gi, '撕开'], [/\bdeseeded\b|\bseeded\b/gi, '去籽'],
+      [/\bfresh\b/gi, '新鲜'], [/\bdried\b/gi, '干'], [/\blarge\b/gi, '大'], [/\bmedium\b/gi, '中等'], [/\bsmall\b/gi, '小'],
+      [/\bthin\b/gi, '薄'], [/\bthick\b/gi, '厚'], [/\bwhole\b/gi, '整个'], [/\bhalf\b/gi, '半个'], [/\braw\b/gi, '生'],
+      [/\bfine\b/gi, '细'], [/\bred\b/gi, '红色'],
+    ],
+    ms: [
+      [/\bas required\b/gi, 'mengikut keperluan'], [/\bto serve\b/gi, 'untuk dihidang'], [/\bfor brushing\b/gi, 'untuk disapu'],
+      [/\bfor frying\b/gi, 'untuk menggoreng'], [/\bfor greasing\b/gi, 'untuk melengser'], [/\bfor cooking\b/gi, 'untuk memasak'],
+      [/\bgarnish with\b/gi, 'hias dengan'], [/\bgarnish\b/gi, 'hiasan'], [/\bdusting\b/gi, 'tabur sedikit'],
+      [/\bto taste\b/gi, 'ikut rasa'], [/\bsoaked overnight\b/gi, 'direndam semalaman'], [/\bboiling\b/gi, 'mendidih'],
+      [/\bwarm\b/gi, 'suam'], [/\bhot\b/gi, 'panas'], [/\bboneless skinless\b/gi, 'tanpa tulang dan kulit'],
+      [/\bboneless\b/gi, 'tanpa tulang'], [/\bskinless\b/gi, 'tanpa kulit'], [/\bskinned\b/gi, 'dibuang kulit'], [/\bskinnless\b/gi, 'tanpa kulit'],
+      [/\bpeeled and chopped\b/gi, 'dikupas dan dicincang'], [/\bpeeled and sliced\b/gi, 'dikupas dan dihiris'], [/\bpeeled and crushed\b/gi, 'dikupas dan dihancurkan'],
+      [/\bpeeled crushed\b/gi, 'dikupas dan dihancurkan'], [/\bpeeled\b/gi, 'dikupas'], [/\bfinely chopped\b/gi, 'dicincang halus'],
+      [/\broughly chopped\b/gi, 'dicincang kasar'], [/\bchopped\b/gi, 'dicincang'], [/\bfinely diced\b/gi, 'dipotong dadu halus'], [/\bdiced\b/gi, 'dipotong dadu'],
+      [/\bfinely sliced\b/gi, 'dihiris halus'], [/\bthinly sliced\b/gi, 'dihiris nipis'], [/\bsliced thinly\b/gi, 'dihiris nipis'], [/\bsliced\b/gi, 'dihiris'],
+      [/\bminced\b/gi, 'dicincang lumat'], [/\bcrushed\b/gi, 'dihancurkan'], [/\bgrated zest\b/gi, 'kulit diparut'], [/\bgrated\b/gi, 'diparut'],
+      [/\bshredded\b/gi, 'dicarik'], [/\bshaved\b/gi, 'diserut'], [/\bhalved\b/gi, 'dibelah dua'], [/\bquartered\b/gi, 'dibelah empat'],
+      [/\bcut into\b/gi, 'dipotong menjadi'], [/\bcut\b/gi, 'dipotong'], [/\btrimmed\b/gi, 'dirapikan'], [/\brinsed and patted dry\b/gi, 'dibilas dan ditepuk kering'],
+      [/\brinsed\b/gi, 'dibilas'], [/\bpatted dry\b/gi, 'ditepuk kering'], [/\bbeaten\b/gi, 'dipukul'], [/\bseperated\b|\bseparated\b/gi, 'diasingkan'],
+      [/\bground\b/gi, 'dikisar'], [/\bpounded\b/gi, 'ditumbuk'], [/\bbashed\b/gi, 'diketuk'], [/\bmashed\b/gi, 'dilenyek'],
+      [/\bcrumbled\b/gi, 'dihancurkan kasar'], [/\btorn\b/gi, 'dikoyak'], [/\bdeseeded\b|\bseeded\b/gi, 'dibuang biji'],
+      [/\bfresh\b/gi, 'segar'], [/\bdried\b/gi, 'kering'], [/\blarge\b/gi, 'besar'], [/\bmedium\b/gi, 'sederhana'], [/\bsmall\b/gi, 'kecil'],
+      [/\bthin\b/gi, 'nipis'], [/\bthick\b/gi, 'tebal'], [/\bwhole\b/gi, 'utuh'], [/\bhalf\b/gi, 'separuh'], [/\braw\b/gi, 'mentah'],
+      [/\bfine\b/gi, 'halus'], [/\bred\b/gi, 'merah'],
+    ],
+  };
+
+  let localized = raw
+    .replace(/½/g, '1/2')
+    .replace(/¼/g, '1/4')
+    .replace(/¾/g, '3/4')
+    .replace(/⅓/g, '1/3')
+    .replace(/⅔/g, '2/3')
+    .replace(/–/g, '-');
+
+  localized = localized.replace(
+    /(\d+(?:[.,]\d+)?|\d+\s+\d+\/\d+|\d+\/\d+)?\s*(kg|kilograms?|g|grams?|ml|milliliters?|millilitres?|l|liters?|litres?|lbs?|pounds?|oz|ounces?|cups?|tablespoons?|tbsp|tblsp|tbls|tbs|teaspoons?|tsp|pints?|quarts?|qt|cloves?|bulbs?|bunch(?:es)?|handfuls?|handfulls?|heads?|slices?|sprigs?|stalks?|leaves|leaf|cans?|tins?|packets?|packages?|packs?|bags?|bottles?|jars?|pots?|knobs?|pinches?|dash|splash|drizzle|drops?|scoops?|shots?|parts?|pods?|fillets?|rashers?|tails?|florets?|pieces?|inch|cm)\b/gi,
+    (_match, amount = '', unit) => `${amount}${amount ? ' ' : ''}${units[language]?.[String(unit).toLowerCase()] || unit}`
+  );
+
+  phrases[language]?.forEach(([pattern, replacement]) => {
+    localized = localized.replace(pattern, replacement);
+  });
+
+  return localized.replace(/\s+/g, ' ').trim();
+}
+
+function formatLocalizedGramValue(value?: number, language = 'en') {
+  return localizeIngredientMeasureText(`${round(value)}g`, language);
 }
 
 function getIngredientPer100gNutrition(item: Ingredient) {
@@ -547,9 +846,10 @@ export default function RecipeDetailScreen() {
   const youtubeUrl = isValidYoutubeUrl(meal?.strYoutube || meal?.youtubeUrl) ? String(meal?.strYoutube || meal?.youtubeUrl) : '';
   const mealEmoji = meal?.mealIconEmoji || guessMealEmoji(mealName, category);
 
+  const localizedSteps = useMemo(() => getLocalizedSteps(meal, language), [meal, language]);
   const instructions = useMemo(
-    () => splitInstructions(instructionsText, meal?.steps),
-    [instructionsText, meal?.steps]
+    () => splitInstructions(instructionsText, localizedSteps),
+    [instructionsText, localizedSteps]
   );
 
   const [localIngredients, setLocalIngredients] = useState<Ingredient[]>([]);
@@ -586,9 +886,9 @@ export default function RecipeDetailScreen() {
       nameCn: mealNameCn,
       nameMs: mealNameMs,
       strMeal: meal?.strMeal || mealNameEn,
-      strMealEn: meal?.strMealEn || meal?.strMeal || mealNameEn,
-      strMealCn: meal?.strMealCn || meal?.strMealCN || meal?.strMealZh || meal?.nameCn || meal?.nameCN || meal?.nameZh || mealNameCn,
-      strMealMs: meal?.strMealMs || meal?.nameMs || mealNameMs,
+      strMealEn: meal?.strMealEn || meal?.mealNameEn || meal?.recipeNameEn || meal?.titleEn || meal?.strMeal || mealNameEn,
+      strMealCn: meal?.strMealCn || meal?.strMealCN || meal?.strMealZh || meal?.mealNameCn || meal?.mealNameCN || meal?.mealNameZh || meal?.recipeNameCn || meal?.recipeNameCN || meal?.recipeNameZh || meal?.titleCn || meal?.titleCN || meal?.titleZh || meal?.nameCn || meal?.nameCN || meal?.nameZh || mealNameCn,
+      strMealMs: meal?.strMealMs || meal?.mealNameMs || meal?.recipeNameMs || meal?.titleMs || meal?.nameMs || mealNameMs,
       strCategory: meal?.strCategory || categoryEn,
       strCategoryEn: meal?.strCategoryEn || meal?.strCategory || categoryEn,
       strCategoryCn: meal?.strCategoryCn || meal?.strCategoryCN || meal?.strCategoryZh || meal?.categoryCn || meal?.categoryCN || meal?.categoryZh || categoryCn,
@@ -597,10 +897,10 @@ export default function RecipeDetailScreen() {
       strAreaEn: meal?.strAreaEn || meal?.strArea || areaEn,
       strAreaCn: meal?.strAreaCn || meal?.strAreaCN || meal?.strAreaZh || meal?.areaCn || meal?.areaCN || meal?.areaZh || areaCn,
       strAreaMs: meal?.strAreaMs || meal?.areaMs || areaMs,
-      strInstructions: meal?.strInstructions || meal?.strInstructionsEn || instructionsEn,
-      strInstructionsEn: meal?.strInstructionsEn || meal?.strInstructions || instructionsEn,
-      strInstructionsCn: meal?.strInstructionsCn || meal?.strInstructionsCN || meal?.strInstructionsZh || meal?.instructionsCn || meal?.instructionsCN || meal?.instructionsZh || instructionsCn,
-      strInstructionsMs: meal?.strInstructionsMs || meal?.instructionsMs || instructionsMs,
+      strInstructions: meal?.strInstructions || meal?.instructions || meal?.method || meal?.directions || meal?.strInstructionsEn || instructionsEn,
+      strInstructionsEn: meal?.strInstructionsEn || meal?.instructionsEn || meal?.methodEn || meal?.directionsEn || meal?.strInstructions || meal?.instructions || instructionsEn,
+      strInstructionsCn: meal?.strInstructionsCn || meal?.strInstructionsCN || meal?.strInstructionsZh || meal?.instructionsCn || meal?.instructionsCN || meal?.instructionsZh || meal?.methodCn || meal?.methodCN || meal?.methodZh || meal?.directionsCn || meal?.directionsCN || meal?.directionsZh || instructionsCn,
+      strInstructionsMs: meal?.strInstructionsMs || meal?.instructionsMs || meal?.methodMs || meal?.directionsMs || instructionsMs,
       type: normalizeMealType(categoryEn, meal?.type),
       imageUrl: imageUrl || undefined,
       strMealThumb: imageUrl || meal?.strMealThumb || '',
@@ -1085,6 +1385,7 @@ export default function RecipeDetailScreen() {
               localIngredients.map((item, index) => {
                 const name = getIngredientName(item);
                 const measure = getIngredientMeasure(item);
+                const displayMeasure = localizeIngredientMeasureText(measure, language);
                 const showMeasure = !!measure && !shouldHideIngredientMeasure(measure);
                 const color = getFoodGroupColor(item.foodGroup || item.category);
 
@@ -1115,12 +1416,12 @@ export default function RecipeDetailScreen() {
 
                     <View style={styles.ingredientTextWrap}>
                       <Text style={styles.ingredientName}>{name}</Text>
-                      {showMeasure && <Text style={styles.ingredientMeasure}>{measure}</Text>}
+                      {showMeasure && <Text style={styles.ingredientMeasure}>{displayMeasure}</Text>}
                     </View>
 
                     {safeNumber(item.gramsEstimated) >= 5 && (
                       <View style={styles.ingredientWeightTag}>
-                        <Text style={styles.ingredientGram}>{round(item.gramsEstimated)}g</Text>
+                        <Text style={styles.ingredientGram}>{formatLocalizedGramValue(item.gramsEstimated, language)}</Text>
                       </View>
                     )}
                   </Pressable>

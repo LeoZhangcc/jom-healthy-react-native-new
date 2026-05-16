@@ -319,6 +319,16 @@ export default function AddChildModal({
     </View>
   );
 
+  const allergySuggestions = [
+    { value: 'Peanuts', label: getText('Peanuts', '花生', 'Kacang tanah') },
+    { value: 'Dairy', label: getText('Dairy', '乳制品', 'Tenusu') },
+    { value: 'Shellfish', label: getText('Shellfish', '贝类海鲜', 'Kerang-kerangan') },
+    { value: 'Eggs', label: getText('Eggs', '鸡蛋', 'Telur') },
+    { value: 'Soy', label: getText('Soy', '大豆', 'Soya') },
+    { value: 'Wheat', label: getText('Wheat', '小麦', 'Gandum') },
+    { value: 'Tree nuts', label: getText('Tree nuts', '坚果', 'Kacang pokok') },
+  ];
+
   return (
     <>
       <Modal
@@ -464,7 +474,7 @@ export default function AddChildModal({
 
             <View style={styles.twoCols}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.label}>{getText('Height (cm)', '身高（厘米）', 'Tinggi (cm)')}</Text>
+                <Text style={styles.label}>{getText('Height (cm)', '身高（厘米）', 'Tinggi (sentimeter)')}</Text>
                 <TextInput
                   value={height}
                   onChangeText={setHeight}
@@ -475,7 +485,7 @@ export default function AddChildModal({
               </View>
 
               <View style={{ flex: 1 }}>
-                <Text style={styles.label}>{getText('Weight (kg)', '体重（公斤）', 'Berat (kg)')}</Text>
+                <Text style={styles.label}>{getText('Weight (kg)', '体重（公斤）', 'Berat (kilogram)')}</Text>
                 <TextInput
                   value={weight}
                   onChangeText={setWeight}
@@ -506,15 +516,7 @@ export default function AddChildModal({
             <TagInput
               tags={allergies}
               onChange={setAllergies}
-              suggestions={[
-                'Peanuts',
-                'Dairy',
-                'Shellfish',
-                'Eggs',
-                'Soy',
-                'Wheat',
-                'Tree nuts',
-              ]}
+              suggestions={allergySuggestions}
               placeholder={getText('Add allergy...', '添加过敏项...', 'Tambah alahan...')}
             />
 

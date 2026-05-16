@@ -61,9 +61,17 @@ type ShoppingCategory = 'vegetables' | 'protein' | 'carbs' | 'others';
 type ShoppingItem = {
   id: string;
   name: string;
+  nameEn?: string;
+  nameCn?: string;
+  nameMs?: string;
   quantity: string;
+  quantityCn?: string;
+  quantityMs?: string;
   category: ShoppingCategory;
   source: string;
+  sourceEn?: string;
+  sourceCn?: string;
+  sourceMs?: string;
   mealId: string;
   checked: boolean;
   picUrl?: string;
@@ -220,31 +228,50 @@ function buildMealLanguageInstruction(language: string) {
 function normalizeAiMeal(meal: any): MealRecipe {
   const rawImageUrl = meal?.strMealThumb || meal?.imageUrl || '';
   const rawYoutubeUrl = meal?.strYoutube || meal?.youtubeUrl || '';
-  const sourceName = meal?.strMeal || meal?.name || meal?.strMealEn || meal?.nameEn || 'AI Recommended Meal';
-  const sourceCategory = meal?.strCategory || meal?.category || 'AI Meal';
-  const sourceArea = meal?.strArea || meal?.area || 'Healthy';
+  const defaultMealEn = 'AI Recommended Meal';
+  const defaultMealCn = 'AI 推荐餐食';
+  const defaultMealMs = 'Hidangan Cadangan AI';
+  const defaultCategoryEn = 'AI Meal';
+  const defaultCategoryCn = 'AI 餐食';
+  const defaultCategoryMs = 'Hidangan AI';
+  const defaultAreaEn = 'Healthy';
+  const defaultAreaCn = '健康';
+  const defaultAreaMs = 'Sihat';
+  const sourceName = meal?.strMeal || meal?.mealName || meal?.recipeName || meal?.title || meal?.name || meal?.strMealEn || meal?.mealNameEn || meal?.recipeNameEn || meal?.titleEn || meal?.nameEn || defaultMealEn;
+  const sourceCategory = meal?.strCategory || meal?.category || defaultCategoryEn;
+  const sourceArea = meal?.strArea || meal?.area || defaultAreaEn;
 
-  const mealNameZh = meal?.strMealCn || meal?.strMealCN || meal?.strMealZh || meal?.nameCn || meal?.nameCN || meal?.nameZh || translateMealName(sourceName, 'zh');
-  const mealNameMs = meal?.strMealMs || meal?.nameMs || translateMealName(sourceName, 'ms');
+  const mealNameZh = meal?.strMealCn || meal?.strMealCN || meal?.strMealZh || meal?.mealNameCn || meal?.mealNameCN || meal?.mealNameZh || meal?.recipeNameCn || meal?.recipeNameCN || meal?.recipeNameZh || meal?.titleCn || meal?.titleCN || meal?.titleZh || meal?.nameCn || meal?.nameCN || meal?.nameZh || (sourceName === defaultMealEn ? defaultMealCn : translateMealName(sourceName, 'zh'));
+  const mealNameMs = meal?.strMealMs || meal?.mealNameMs || meal?.recipeNameMs || meal?.titleMs || meal?.nameMs || (sourceName === defaultMealEn ? defaultMealMs : translateMealName(sourceName, 'ms'));
+  const categoryNameZh = meal?.strCategoryCn || meal?.strCategoryCN || meal?.strCategoryZh || meal?.categoryCn || meal?.categoryCN || meal?.categoryZh || (sourceCategory === defaultCategoryEn ? defaultCategoryCn : translateMealName(sourceCategory, 'zh'));
+  const categoryNameMs = meal?.strCategoryMs || meal?.categoryMs || (sourceCategory === defaultCategoryEn ? defaultCategoryMs : translateMealName(sourceCategory, 'ms'));
+  const areaNameZh = meal?.strAreaCn || meal?.strAreaCN || meal?.strAreaZh || meal?.areaCn || meal?.areaCN || meal?.areaZh || (sourceArea === defaultAreaEn ? defaultAreaCn : translateMealName(sourceArea, 'zh'));
+  const areaNameMs = meal?.strAreaMs || meal?.areaMs || (sourceArea === defaultAreaEn ? defaultAreaMs : translateMealName(sourceArea, 'ms'));
 
   return {
     idMeal: meal?.idMeal || `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     strMeal: sourceName,
-    strMealEn: meal?.strMealEn || meal?.strMeal || meal?.nameEn || meal?.name || sourceName,
+    strMealEn: meal?.strMealEn || meal?.mealNameEn || meal?.recipeNameEn || meal?.titleEn || meal?.strMeal || meal?.mealName || meal?.recipeName || meal?.title || meal?.nameEn || meal?.name || sourceName,
     strMealCn: mealNameZh,
     strMealMs: mealNameMs,
-    nameEn: meal?.nameEn || meal?.strMealEn || meal?.strMeal || meal?.name || sourceName,
-    nameCn: meal?.nameCn || meal?.nameCN || meal?.nameZh || mealNameZh,
-    nameMs: meal?.nameMs || mealNameMs,
+    nameEn: meal?.nameEn || meal?.strMealEn || meal?.mealNameEn || meal?.recipeNameEn || meal?.titleEn || meal?.strMeal || meal?.mealName || meal?.recipeName || meal?.title || meal?.name || sourceName,
+    nameCn: meal?.nameCn || meal?.nameCN || meal?.nameZh || meal?.strMealCn || meal?.strMealCN || meal?.strMealZh || meal?.mealNameCn || meal?.mealNameCN || meal?.mealNameZh || meal?.recipeNameCn || meal?.recipeNameCN || meal?.recipeNameZh || meal?.titleCn || meal?.titleCN || meal?.titleZh || mealNameZh,
+    nameMs: meal?.nameMs || meal?.strMealMs || meal?.mealNameMs || meal?.recipeNameMs || meal?.titleMs || mealNameMs,
     strCategory: sourceCategory,
     strCategoryEn: meal?.strCategoryEn || meal?.strCategory || meal?.categoryEn || meal?.category || sourceCategory,
-    strCategoryCn: meal?.strCategoryCn || meal?.strCategoryCN || meal?.strCategoryZh || meal?.categoryCn || meal?.categoryCN || meal?.categoryZh || translateMealName(sourceCategory, 'zh'),
-    strCategoryMs: meal?.strCategoryMs || meal?.categoryMs || translateMealName(sourceCategory, 'ms'),
+    strCategoryCn: categoryNameZh,
+    strCategoryMs: categoryNameMs,
     strArea: sourceArea,
     strAreaEn: meal?.strAreaEn || meal?.strArea || meal?.areaEn || meal?.area || sourceArea,
-    strAreaCn: meal?.strAreaCn || meal?.strAreaCN || meal?.strAreaZh || meal?.areaCn || meal?.areaCN || meal?.areaZh || translateMealName(sourceArea, 'zh'),
-    strAreaMs: meal?.strAreaMs || meal?.areaMs || translateMealName(sourceArea, 'ms'),
-    strInstructions: meal?.strInstructions || meal?.instructions || '',
+    strAreaCn: areaNameZh,
+    strAreaMs: areaNameMs,
+    strInstructions: meal?.strInstructions || meal?.instructions || meal?.method || meal?.directions || '',
+    strInstructionsEn: meal?.strInstructionsEn || meal?.instructionsEn || meal?.methodEn || meal?.directionsEn || meal?.strInstructions || meal?.instructions || meal?.method || meal?.directions || '',
+    strInstructionsCn: meal?.strInstructionsCn || meal?.strInstructionsCN || meal?.strInstructionsZh || meal?.instructionsCn || meal?.instructionsCN || meal?.instructionsZh || meal?.methodCn || meal?.methodCN || meal?.methodZh || meal?.directionsCn || meal?.directionsCN || meal?.directionsZh || '',
+    strInstructionsMs: meal?.strInstructionsMs || meal?.instructionsMs || meal?.methodMs || meal?.directionsMs || '',
+    instructionsEn: meal?.instructionsEn || meal?.strInstructionsEn || meal?.methodEn || meal?.directionsEn || meal?.strInstructions || meal?.instructions || meal?.method || meal?.directions || '',
+    instructionsCn: meal?.instructionsCn || meal?.instructionsCN || meal?.instructionsZh || meal?.strInstructionsCn || meal?.strInstructionsCN || meal?.strInstructionsZh || meal?.methodCn || meal?.methodCN || meal?.methodZh || meal?.directionsCn || meal?.directionsCN || meal?.directionsZh || '',
+    instructionsMs: meal?.instructionsMs || meal?.strInstructionsMs || meal?.methodMs || meal?.directionsMs || '',
     strMealThumb: isValidImageUrl(rawImageUrl) ? rawImageUrl : null,
     strYoutube: isValidYoutubeUrl(rawYoutubeUrl) ? rawYoutubeUrl : null,
     totalEnergyKcal: safeNumber(meal?.totalEnergyKcal || meal?.calories),
@@ -260,8 +287,8 @@ function normalizeAiMeal(meal: any): MealRecipe {
           normalizedName: item.normalizedName || item.name || item.ingredientName || '',
           gramsEstimated: safeNumber(item.gramsEstimated || item.grams),
           foodNameEn: item.foodNameEn || item.name || item.ingredientName || '',
-          foodNameCn: item.foodNameCn || '',
-          foodNameMs: item.foodNameMs || '',
+          foodNameCn: item.foodNameCn || item.foodNameCN || item.foodNameZh || item.nameCn || item.nameCN || item.nameZh || '食材',
+          foodNameMs: item.foodNameMs || item.nameMs || 'Bahan',
           foodGroup: item.foodGroup || 'others',
           energyKcal: safeNumber(item.energyKcal),
           proteinG: safeNumber(item.proteinG),
@@ -382,6 +409,33 @@ function normalizeIngredientQuantity(item: any) {
   return '';
 }
 
+function localizeMeasureText(value?: string | null, language = 'en') {
+  const raw = String(value || '').trim();
+  if (!raw || language === 'en') return raw;
+
+  const unitLabels: Record<string, Record<string, string>> = {
+    zh: { g: '克', gram: '克', grams: '克', kg: '公斤', kilogram: '公斤', kilograms: '公斤', ml: '毫升', milliliter: '毫升', milliliters: '毫升', millilitre: '毫升', millilitres: '毫升', l: '升', liter: '升', liters: '升', litre: '升', litres: '升' },
+    ms: { g: 'gram', gram: 'gram', grams: 'gram', kg: 'kilogram', kilogram: 'kilogram', kilograms: 'kilogram', ml: 'mL', milliliter: 'mL', milliliters: 'mL', millilitre: 'mL', millilitres: 'mL', l: 'L', liter: 'L', liters: 'L', litre: 'L', litres: 'L' },
+  };
+
+  return raw.replace(
+    /(\d+(?:[.,]\d+)?)\s*(kg|kilograms?|g|grams?|ml|milliliters?|millilitres?|l|liters?|litres?)\b/gi,
+    (_match, amount, unit) => `${amount}${unitLabels[language]?.[String(unit).toLowerCase()] || unit}`
+  );
+}
+
+function getSlotLabel(slot: MealSlotKey, language: string) {
+  if (language === 'zh') return slot === 'Breakfast' ? '早餐' : slot === 'Lunch' ? '午餐' : slot === 'Dinner' ? '晚餐' : '加餐';
+  if (language === 'ms') return slot === 'Breakfast' ? 'Sarapan' : slot === 'Lunch' ? 'Makan Tengah Hari' : slot === 'Dinner' ? 'Makan Malam' : 'Snek';
+  return slot;
+}
+
+function getMealNameByLanguage(meal: any, language: string) {
+  if (language === 'zh') return meal?.strMealCn || meal?.nameCn || meal?.strMeal || 'Recipe';
+  if (language === 'ms') return meal?.strMealMs || meal?.nameMs || meal?.strMeal || 'Recipe';
+  return meal?.strMealEn || meal?.strMeal || meal?.name || 'Recipe';
+}
+
 function classifyIngredientCategory(item: any): ShoppingCategory {
   const name = String(item.foodNameEn || item.ingredientName || item.normalizedName || '').toLowerCase();
   const group = String(item.foodGroup || '').toLowerCase();
@@ -463,13 +517,28 @@ async function generateShoppingListByOwner(allMealPlans: Record<string, Record<s
 
             meal.ingredients.forEach((ingredient: any) => {
               const name = normalizeIngredientName(ingredient);
+              const nameCn = ingredient.foodNameCn || ingredient.foodNameCN || ingredient.foodNameZh || ingredient.nameCn || '';
+              const nameMs = ingredient.foodNameMs || ingredient.nameMs || '';
               const quantity = normalizeIngredientQuantity(ingredient);
+              const quantityCn = localizeMeasureText(quantity, 'zh');
+              const quantityMs = localizeMeasureText(quantity, 'ms');
               const category = classifyIngredientCategory(ingredient);
               const id = `${name.toLowerCase()}-${category}`.replace(/\s+/g, '-');
               const existing = mergedMap.get(id);
+              const mealNameEn = getMealNameByLanguage(meal, 'en');
+              const mealNameCn = getMealNameByLanguage(meal, 'zh');
+              const mealNameMs = getMealNameByLanguage(meal, 'ms');
+              const sourceEn = `${dateKey} · ${getSlotLabel(slot, 'en')}: ${mealNameEn}`;
+              const sourceCn = `${dateKey} · ${getSlotLabel(slot, 'zh')}: ${mealNameCn}`;
+              const sourceMs = `${dateKey} · ${getSlotLabel(slot, 'ms')}: ${mealNameMs}`;
 
               if (existing) {
                 existing.quantity = [existing.quantity, quantity].filter(Boolean).join(' + ');
+                existing.quantityCn = [existing.quantityCn, quantityCn].filter(Boolean).join(' + ');
+                existing.quantityMs = [existing.quantityMs, quantityMs].filter(Boolean).join(' + ');
+                existing.sourceEn = [existing.sourceEn, sourceEn].filter(Boolean).join(', ');
+                existing.sourceCn = [existing.sourceCn, sourceCn].filter(Boolean).join(', ');
+                existing.sourceMs = [existing.sourceMs, sourceMs].filter(Boolean).join(', ');
                 if (!existing.source.includes(meal.strMeal)) {
                   existing.source += `, ${dateKey} · ${slot}: ${meal.strMeal}`;
                 }
@@ -479,9 +548,17 @@ async function generateShoppingListByOwner(allMealPlans: Record<string, Record<s
               mergedMap.set(id, {
                 id,
                 name,
+                nameEn: name,
+                nameCn,
+                nameMs,
                 quantity,
+                quantityCn,
+                quantityMs,
                 category,
                 source: `${dateKey} · ${slot}: ${meal.strMeal}`,
+                sourceEn,
+                sourceCn,
+                sourceMs,
                 mealId: meal.idMeal,
                 checked: checkedMap.get(id) || false,
                 picUrl: ingredient.picUrl || '',
@@ -511,6 +588,12 @@ export function AiMealPlanGenerationProvider({
 }) {
   const { activeChild, getOwnerKey, nutritionNeeds } = useChildProfile();
   const { language } = useLanguage();
+
+  const getText = (en: string, zh: string, ms: string) => {
+    if (language === 'zh') return zh;
+    if (language === 'ms') return ms;
+    return en;
+  };
 
   const [showModal, setShowModal] = useState(false);
   const [prompt, setPrompt] = useState('');
@@ -666,10 +749,22 @@ export function AiMealPlanGenerationProvider({
 
             <Text style={styles.floatingButtonText} numberOfLines={1}>
               {generating
-                ? 'Generating your meal plan...'
+                ? getText(
+                    'Generating your meal plan...',
+                    '正在生成你的膳食计划...',
+                    'Sedang menjana pelan makanan anda...'
+                  )
                 : ready
-                  ? 'AI meal plan is ready. Tap to view.'
-                  : 'Generation failed. Tap to dismiss.'}
+                  ? getText(
+                      'AI meal plan is ready. Tap to view.',
+                      'AI 膳食计划已准备好，点击查看。',
+                      'Pelan makanan AI sudah siap. Ketik untuk lihat.'
+                    )
+                  : getText(
+                      'Generation failed. Tap to dismiss.',
+                      '生成失败，点击关闭。',
+                      'Penjanaan gagal. Ketik untuk tutup.'
+                    )}
             </Text>
           </Pressable>
         )}
@@ -683,8 +778,14 @@ export function AiMealPlanGenerationProvider({
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.modalTitle}>AI Meal Plan</Text>
-                  <Text style={styles.modalSubtitle}>Generate meals and shopping list automatically</Text>
+                  <Text style={styles.modalTitle}>{getText('AI Meal Plan', 'AI 膳食计划', 'Pelan Makanan AI')}</Text>
+                  <Text style={styles.modalSubtitle}>
+                    {getText(
+                      'Generate meals and shopping list automatically',
+                      '自动生成餐食和购物清单',
+                      'Jana hidangan dan senarai belian secara automatik'
+                    )}
+                  </Text>
                 </View>
 
                 <Pressable style={styles.modalClose} onPress={() => setShowModal(false)}>
@@ -697,7 +798,11 @@ export function AiMealPlanGenerationProvider({
                 <TextInput
                   value={prompt}
                   onChangeText={setPrompt}
-                  placeholder="What do you want to eat? e.g. chicken rice"
+                  placeholder={getText(
+                    'What do you want to eat? e.g. chicken rice',
+                    '想吃什么？例如鸡饭',
+                    'Apa yang anda mahu makan? cth. nasi ayam'
+                  )}
                   placeholderTextColor="#94A3B8"
                   style={styles.promptInput}
                   multiline
@@ -709,7 +814,13 @@ export function AiMealPlanGenerationProvider({
                 )}
               </View>
 
-              <Text style={styles.modalHint}>Leave blank to recommend by child profile.</Text>
+              <Text style={styles.modalHint}>
+                {getText(
+                  'Leave blank to recommend by child profile.',
+                  '留空将根据儿童资料推荐。',
+                  'Biarkan kosong untuk cadangan berdasarkan profil kanak-kanak.'
+                )}
+              </Text>
 
               <View style={styles.daySelectorRow}>
                 {[1, 2, 3, 4, 5, 6, 7].map((day) => (
@@ -725,7 +836,13 @@ export function AiMealPlanGenerationProvider({
 
               <Pressable style={styles.generateButton} onPress={generateMealPlan}>
                 <Ionicons name="sparkles" size={18} color="#FFFFFF" />
-                <Text style={styles.generateButtonText}>Generate {days} Day{days > 1 ? 's' : ''} Meal Plan</Text>
+                <Text style={styles.generateButtonText}>
+                  {getText(
+                    `Generate ${days} Day${days > 1 ? 's' : ''} Meal Plan`,
+                    `生成 ${days} 天膳食计划`,
+                    `Jana Pelan Makanan ${days} Hari`
+                  )}
+                </Text>
               </Pressable>
             </Pressable>
           </Pressable>

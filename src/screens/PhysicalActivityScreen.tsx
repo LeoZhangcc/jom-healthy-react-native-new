@@ -177,12 +177,12 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
   // 清空当日活动数据
   const handleClearAll = () => {
     Alert.alert(
-      t('clearConfirmTitle') || 'Clear Records',
-      t('clearConfirmMsg') || "Are you sure you want to clear today's activity records?",
+      t('clearConfirmTitle'),
+      t('clearConfirmMsg'),
       [
-        { text: t('cancel') || 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         { 
-          text: t('clearAll') || 'Clear All', 
+          text: t('clearAll'), 
           style: 'destructive', 
           onPress: () => {
             clearActivity(); 
@@ -197,7 +197,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
     <View style={styles.container}>
       
       {/* 💡 直接调用系统统一配置好的 Header 组件，确保与饮水页面视觉 100% 一致 */}
-      <Header title={t('logActivity') || 'Log Activity'} onBack={() => navigation.goBack()} />
+      <Header title={t('logActivity')} onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         
@@ -206,7 +206,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
           <View style={styles.summaryRow}>
             <View>
               <View style={styles.summaryLabelRow}>
-                <Text style={styles.summaryLabel}>{t('todaysTotal') || "Today's Total"}</Text>
+                <Text style={styles.summaryLabel}>{t('todaysTotal')}</Text>
                 {todayTotal > 0 && (
                   <TouchableOpacity onPress={handleClearAll} style={styles.trashBtn}>
                     <Ionicons name="trash-outline" size={12} color="#EF4444" />
@@ -214,12 +214,12 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
                 )}
               </View>
               <Text style={styles.summaryValue}>
-                {todayTotal} <Text style={styles.unitText}>{t('minutes') || 'mins'}</Text>
+                {todayTotal} <Text style={styles.unitText}>{t('minutes')}</Text>
               </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <View style={styles.goalHeader}>
-                 <Text style={styles.summaryLabel}>{t('dailyGoal') || 'Daily Goal'}</Text>
+                 <Text style={styles.summaryLabel}>{t('dailyGoal')}</Text>
                  <Pressable style={styles.editIcon} onPress={() => {
                     setTempGoal(dailyGoal);
                     setGoalModalVisible(true);
@@ -228,7 +228,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
                 </Pressable>
               </View>
               <Text style={styles.summaryValue}>
-                {dailyGoal} <Text style={styles.unitText}>{t('minutes') || 'mins'}</Text>
+                {dailyGoal} <Text style={styles.unitText}>{t('minutes')}</Text>
               </Text>
             </View>
           </View>
@@ -241,9 +241,9 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
           
           <View style={[styles.summaryRow, { marginBottom: 0 }]}>
             <View>
-              <Text style={styles.summaryLabel}>{t('caloriesBurned') || 'Calories Burned'}</Text>
+              <Text style={styles.summaryLabel}>{t('caloriesBurned')}</Text>
               <Text style={[styles.summaryValue, { color: '#F59E0B' }]}>
-                {todayCalories || 0} <Text style={styles.unitText}>{t('kcal') || 'kcal'}</Text>
+                {todayCalories || 0} <Text style={styles.unitText}>{t('kcal')}</Text>
               </Text>
             </View>
             <View style={styles.calIconBox}>
@@ -257,14 +257,14 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
            <View style={styles.logBox}>
               <Text style={styles.logQuestion}>
                 {getText(
-                  `How many minutes did ${activeChild?.nickname || 'Child'} play today?`,
+                  `How many minutes did ${activeChild?.nickname || 'your child'} play today?`,
                   `${activeChild?.nickname || '孩子'} 今天活动了多少分钟？`,
-                  `Berapa minit ${activeChild?.nickname || 'Anak'} bermain hari ini?`
+                  `Berapa minit ${activeChild?.nickname || 'anak anda'} bermain hari ini?`
                 )}
               </Text>
 
               <Text style={styles.logDisclaimer}>
-                💡 {t('generalLogDisclaimer') || 'Uses average MET for calorie estimation. For better accuracy, log specific activities below.'}
+                💡 {t('generalLogDisclaimer')}
               </Text>
               
               <View style={styles.logActionWrapper}>
@@ -292,7 +292,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
                     <Ionicons name="add" size={24} color="#69B679" />
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.minsLabel}>{t('minutes') || 'minutes'}</Text>
+                <Text style={styles.minsLabel}>{t('minutes')}</Text>
               </View>
 
               <View style={styles.quickSelectRow}>
@@ -303,27 +303,27 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
                     onPress={() => setMinutesToLog(m)}
                   >
                     <Text style={[styles.quickText, minutesToLog === m && styles.quickTextActive]}>
-                      {m} {t('min') || 'min'}
+                      {m} {t('min')}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               <TouchableOpacity style={styles.mainLogBtn} onPress={handleGeneralLogSubmit}>
-                <Text style={styles.mainLogBtnText}>{t('logActivity') || 'Log Activity'}</Text>
+                <Text style={styles.mainLogBtnText}>{t('logActivity')}</Text>
               </TouchableOpacity>
             </View>
         </View>
 
         {/* 系统建议与特定项目推荐列表 */}
         <Text style={styles.sectionTitle}>
-          💡 {getText('Recommended for ', '专属推荐：', 'Disyorkan untuk ')}{activeChild?.nickname || 'Child'}
+          💡 {getText('Recommended for ', '专属推荐：', 'Disyorkan untuk ')}{activeChild?.nickname || getText('your child', '孩子', 'anak anda')}
         </Text>
         
         <View style={styles.adviceBanner}>
           <View style={styles.adviceHeader}>
             <Ionicons name="information-circle" size={16} color="#0284C7" />
-            <Text style={styles.adviceTag}>{t('systemAdvice') || 'System Advice:'}</Text>
+            <Text style={styles.adviceTag}>{t('systemAdvice')}</Text>
           </View>
           <ScrollingText text={getBmiAdvice(activeChild?.status || 'NORMAL')} style={styles.adviceText} />
         </View>
@@ -357,8 +357,8 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
                   key={activity.activityKey}
                   title={title}
                   desc={desc}
-                  tag="15-20 mins" 
-                  subtext={t('sysRecommended') || "System Recommended"}
+                  tag={`15-20 ${t('min')}`} 
+                  subtext={t('sysRecommended')}
                   videoUrl={activity.videoUrl}
                   imageUrl={activity.imageUrl} 
                   t={t} 
@@ -390,7 +390,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
               </TouchableOpacity>
               <View style={{ alignItems: 'center', marginHorizontal: 20 }}>
                 <Text style={styles.popupBigNumber}>{popupMins}</Text>
-                <Text style={styles.popupMinsLabel}>{t('minutes') || 'minutes'}</Text>
+                <Text style={styles.popupMinsLabel}>{t('minutes')}</Text>
               </View>
               <TouchableOpacity style={styles.popupSmallBtn} onPress={() => setPopupMins(popupMins + 1)}>
                 <Ionicons name="add" size={24} color="#69B679" />
@@ -400,10 +400,10 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
 
             <View style={styles.popupActionRow}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
-                    <Text style={styles.cancelBtnText}>{t('cancel') || 'Cancel'}</Text>
+                    <Text style={styles.cancelBtnText}>{t('cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.confirmLogBtn} onPress={handlePopupSubmit}>
-                    <Text style={styles.confirmLogText}>{t('logIt') || 'Log It'}</Text>
+                    <Text style={styles.confirmLogText}>{t('logIt')}</Text>
                 </TouchableOpacity>
             </View>
           </View>
@@ -414,7 +414,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
       <Modal animationType="fade" transparent={true} visible={goalModalVisible} onRequestClose={() => setGoalModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.goalModalContent}>
-            <Text style={styles.popupTitle}>{t('customizeDailyGoal') || 'Customize Daily Goal'}</Text>
+            <Text style={styles.popupTitle}>{t('customizeDailyGoal')}</Text>
             
             <Text style={styles.popupSubtitle}>
               {getText(
@@ -430,7 +430,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
               </TouchableOpacity>
               <View style={styles.goalDisplayBox}>
                 <Text style={styles.goalBigNum}>{tempGoal}</Text>
-                <Text style={styles.goalUnitText}>{t('minutes') || 'mins'} {t('perDay') || '/ day'}</Text>
+                <Text style={styles.goalUnitText}>{t('minutes')} {t('perDay')}</Text>
               </View>
               <TouchableOpacity style={styles.goalAdjBtn} onPress={() => setTempGoal(tempGoal + 5)}>
                 <Ionicons name="add" size={32} color="#69B679" />
@@ -446,10 +446,10 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
 
             <View style={styles.popupActionRow}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setGoalModalVisible(false)}>
-                <Text style={styles.cancelBtnText}>{t('cancel') || 'Cancel'}</Text>
+                <Text style={styles.cancelBtnText}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.confirmLogBtn} onPress={() => { updateGoal(tempGoal); setGoalModalVisible(false); }}>
-                <Text style={styles.confirmLogText}>{t('setGoal') || 'Set Goal'}</Text>
+                <Text style={styles.confirmLogText}>{t('setGoal')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -471,7 +471,7 @@ const ActivityRecommendationCard = ({ title, desc, tag, subtext, onLog, videoUrl
         )}
         {isLogged && (
           <View style={styles.loggedBadge}>
-            <Text style={styles.loggedBadgeText}>{t('logged') || 'Logged'}</Text>
+            <Text style={styles.loggedBadgeText}>{t('logged')}</Text>
           </View>
         )}
       </View>
@@ -489,11 +489,11 @@ const ActivityRecommendationCard = ({ title, desc, tag, subtext, onLog, videoUrl
     <View style={styles.recButtonRow}>
       <TouchableOpacity style={styles.watchBtn} onPress={() => videoUrl && Linking.openURL(videoUrl)}>
         <Ionicons name="play" size={16} color="#475569" style={{ marginRight: 6 }} />
-        <Text style={styles.watchBtnText}>{t('watchVideo') || 'Watch Video'}</Text>
+        <Text style={styles.watchBtnText}>{t('watchVideo')}</Text>
       </TouchableOpacity>
       
       <TouchableOpacity style={styles.tapLogBtnLarge} onPress={onLog}>
-        <Text style={styles.tapLogTextLarge}>{t('tapToLog') || 'Tap to Log'}</Text>
+        <Text style={styles.tapLogTextLarge}>{t('tapToLog')}</Text>
       </TouchableOpacity>
     </View>
   </View>

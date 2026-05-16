@@ -2,13 +2,21 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { colors } from '../theme/colors';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function ProgressRing({ current, target, label, color, size = 82 }: { current: number; target: number; label: string; color: string; size?: number }) {
+  const { language } = useLanguage();
   const percentage = Math.min(target > 0 ? (current / target) * 100 : 0, 100);
   const strokeWidth = size <= 62 ? 6 : 8;
   const radius = (size - strokeWidth - 4) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  const formatGramValue = (value: number) => {
+    if (language === 'zh') return `${value}克`;
+    if (language === 'ms') return `${value}gram`;
+    return `${value}g`;
+  };
 
   return (
     <View style={styles.wrap}>
@@ -28,11 +36,11 @@ export default function ProgressRing({ current, target, label, color, size = 82 
           />
         </Svg>
         <View style={styles.center}>
-          <Text style={styles.current}>{current}g</Text>
+          <Text style={styles.current}>{formatGramValue(current)}</Text>
         </View>
       </View>
       <Text style={styles.label}>{label}</Text>
-      <Text style={styles.target}>/{target}g</Text>
+      <Text style={styles.target}>/{formatGramValue(target)}</Text>
     </View>
   );
 }

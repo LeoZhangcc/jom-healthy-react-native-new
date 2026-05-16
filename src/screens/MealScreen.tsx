@@ -117,6 +117,8 @@ type ShoppingItem = {
   nameCn?: string;
   nameMs?: string;
   quantity: string;
+  quantityCn?: string;
+  quantityMs?: string;
   category: ShoppingCategory;
   source: string;
   sourceEn?: string;
@@ -244,6 +246,71 @@ function normalizeIngredientQuantity(item: any) {
   if (item.measure) return String(item.measure);
   if (item.gramsEstimated !== undefined && item.gramsEstimated !== null) return `${item.gramsEstimated}g`;
   return '';
+}
+
+function localizeMeasureText(value?: string | null, language = 'en') {
+  const raw = String(value || '').trim();
+  if (!raw || language === 'en') return raw;
+
+  const unitLabels: Record<string, Record<string, string>> = {
+    zh: {
+      g: '克',
+      gram: '克',
+      grams: '克',
+      kg: '公斤',
+      kilogram: '公斤',
+      kilograms: '公斤',
+      ml: '毫升',
+      milliliter: '毫升',
+      milliliters: '毫升',
+      millilitre: '毫升',
+      millilitres: '毫升',
+      l: '升',
+      liter: '升',
+      liters: '升',
+      litre: '升',
+      litres: '升',
+    },
+    ms: {
+      g: 'gram',
+      gram: 'gram',
+      grams: 'gram',
+      kg: 'kilogram',
+      kilogram: 'kilogram',
+      kilograms: 'kilogram',
+      ml: 'mL',
+      milliliter: 'mL',
+      milliliters: 'mL',
+      millilitre: 'mL',
+      millilitres: 'mL',
+      l: 'L',
+      liter: 'L',
+      liters: 'L',
+      litre: 'L',
+      litres: 'L',
+    },
+  };
+
+  return raw.replace(
+    /(\d+(?:[.,]\d+)?)\s*(kg|kilograms?|g|grams?|ml|milliliters?|millilitres?|l|liters?|litres?)\b/gi,
+    (_match, amount, unit) => `${amount}${unitLabels[language]?.[String(unit).toLowerCase()] || unit}`
+  );
+}
+
+function formatGramValue(value?: number, language = 'en') {
+  return localizeMeasureText(`${round(value)}g`, language);
+}
+
+function getSlotLabel(slot: MealSlotKey, language: string) {
+  if (language === 'zh') {
+    return slot === 'Breakfast' ? '早餐' : slot === 'Lunch' ? '午餐' : slot === 'Dinner' ? '晚餐' : '加餐';
+  }
+
+  if (language === 'ms') {
+    return slot === 'Breakfast' ? 'Sarapan' : slot === 'Lunch' ? 'Makan Tengah Hari' : slot === 'Dinner' ? 'Makan Malam' : 'Snek';
+  }
+
+  return slot;
 }
 
 function classifyIngredientCategory(item: any): ShoppingCategory {
@@ -420,22 +487,118 @@ function translateMealName(name: string, language: string) {
   return replacements.reduce((current, [pattern, replacement]) => current.replace(pattern as RegExp, replacement as string), text).replace(/\s+/g, ' ').trim();
 }
 
+function localizeEnglishMealText(text: string, language: string) {
+  const lang = normalizeLanguageCode(language);
+  const value = String(text || '').trim();
+  if (!value || lang === 'en') return value;
+
+  const replacements = lang === 'zh'
+    ? [
+        [/\bai recommended meal\b/gi, 'AI 推荐餐食'],
+        [/\bhealthy\b/gi, '健康'],
+        [/\bbalanced\b/gi, '均衡'],
+        [/\bgrilled\b/gi, '烤'],
+        [/\bbaked\b/gi, '烘烤'],
+        [/\bsteamed\b/gi, '蒸'],
+        [/\bstir[-\s]?fried\b/gi, '炒'],
+        [/\bfried\b/gi, '炒'],
+        [/\bboiled\b/gi, '水煮'],
+        [/\bwith\b/gi, '配'],
+        [/\band\b/gi, '和'],
+        [/\bchicken\b/gi, '鸡肉'],
+        [/\bbeef\b/gi, '牛肉'],
+        [/\bfish\b/gi, '鱼'],
+        [/\bsalmon\b/gi, '三文鱼'],
+        [/\btuna\b/gi, '金枪鱼'],
+        [/\bshrimp\b/gi, '虾'],
+        [/\bprawn\b/gi, '虾'],
+        [/\begg(s)?\b/gi, '鸡蛋'],
+        [/\btofu\b/gi, '豆腐'],
+        [/\bbrown rice\b/gi, '糙米饭'],
+        [/\brice\b/gi, '米饭'],
+        [/\bnoodle(s)?\b/gi, '面'],
+        [/\bpasta\b/gi, '意面'],
+        [/\bbread\b/gi, '面包'],
+        [/\boat(s)?\b/gi, '燕麦'],
+        [/\bporridge\b/gi, '粥'],
+        [/\bsoup\b/gi, '汤'],
+        [/\bsalad\b/gi, '沙拉'],
+        [/\bvegetable(s)?\b/gi, '蔬菜'],
+        [/\bcarrot(s)?\b/gi, '胡萝卜'],
+        [/\bbroccoli\b/gi, '西兰花'],
+        [/\bspinach\b/gi, '菠菜'],
+        [/\btomato(es)?\b/gi, '番茄'],
+        [/\bpotato(es)?\b/gi, '土豆'],
+        [/\bsweet potato(es)?\b/gi, '红薯'],
+        [/\bfruit(s)?\b/gi, '水果'],
+        [/\bbanana(s)?\b/gi, '香蕉'],
+        [/\bapple(s)?\b/gi, '苹果'],
+        [/\byogurt\b/gi, '酸奶'],
+        [/\bmilk\b/gi, '牛奶'],
+      ]
+    : [
+        [/\bai recommended meal\b/gi, 'hidangan cadangan AI'],
+        [/\bhealthy\b/gi, 'sihat'],
+        [/\bbalanced\b/gi, 'seimbang'],
+        [/\bgrilled\b/gi, 'panggang'],
+        [/\bbaked\b/gi, 'bakar'],
+        [/\bsteamed\b/gi, 'kukus'],
+        [/\bstir[-\s]?fried\b/gi, 'tumis'],
+        [/\bfried\b/gi, 'goreng'],
+        [/\bboiled\b/gi, 'rebus'],
+        [/\bwith\b/gi, 'dengan'],
+        [/\band\b/gi, 'dan'],
+        [/\bchicken\b/gi, 'ayam'],
+        [/\bbeef\b/gi, 'daging lembu'],
+        [/\bfish\b/gi, 'ikan'],
+        [/\bsalmon\b/gi, 'salmon'],
+        [/\btuna\b/gi, 'tuna'],
+        [/\bshrimp\b/gi, 'udang'],
+        [/\bprawn\b/gi, 'udang'],
+        [/\begg(s)?\b/gi, 'telur'],
+        [/\btofu\b/gi, 'tauhu'],
+        [/\bbrown rice\b/gi, 'nasi perang'],
+        [/\brice\b/gi, 'nasi'],
+        [/\bnoodle(s)?\b/gi, 'mi'],
+        [/\bpasta\b/gi, 'pasta'],
+        [/\bbread\b/gi, 'roti'],
+        [/\boat(s)?\b/gi, 'oat'],
+        [/\bporridge\b/gi, 'bubur'],
+        [/\bsoup\b/gi, 'sup'],
+        [/\bsalad\b/gi, 'salad'],
+        [/\bvegetable(s)?\b/gi, 'sayur'],
+        [/\bcarrot(s)?\b/gi, 'lobak merah'],
+        [/\bbroccoli\b/gi, 'brokoli'],
+        [/\bspinach\b/gi, 'bayam'],
+        [/\btomato(es)?\b/gi, 'tomato'],
+        [/\bpotato(es)?\b/gi, 'kentang'],
+        [/\bsweet potato(es)?\b/gi, 'ubi keledek'],
+        [/\bfruit(s)?\b/gi, 'buah'],
+        [/\bbanana(s)?\b/gi, 'pisang'],
+        [/\bapple(s)?\b/gi, 'epal'],
+        [/\byogurt\b/gi, 'yogurt'],
+        [/\bmilk\b/gi, 'susu'],
+      ];
+
+  return replacements.reduce((current, [pattern, replacement]) => current.replace(pattern as RegExp, replacement as string), value).replace(/\s+/g, ' ').trim();
+}
+
 function getMealName(meal: any, language: string) {
   const localized = pickLocalizedValue(
     language,
-    meal?.strMealEn || meal?.nameEn || meal?.strMeal || meal?.name,
-    meal?.strMealCn || meal?.strMealCN || meal?.strMealZh || meal?.nameCn || meal?.nameCN || meal?.nameZh,
-    meal?.strMealMs || meal?.nameMs,
+    meal?.strMealEn || meal?.mealNameEn || meal?.recipeNameEn || meal?.titleEn || meal?.nameEn || meal?.strMeal || meal?.name || meal?.mealName || meal?.recipeName || meal?.title,
+    meal?.strMealCn || meal?.strMealCN || meal?.strMealZh || meal?.mealNameCn || meal?.mealNameCN || meal?.mealNameZh || meal?.recipeNameCn || meal?.recipeNameCN || meal?.recipeNameZh || meal?.titleCn || meal?.titleCN || meal?.titleZh || meal?.nameCn || meal?.nameCN || meal?.nameZh,
+    meal?.strMealMs || meal?.mealNameMs || meal?.recipeNameMs || meal?.titleMs || meal?.nameMs,
     meal?.strMeal || meal?.name || 'Meal'
   );
 
   if (normalizeLanguageCode(language) === 'zh' || normalizeLanguageCode(language) === 'ms') {
-    if (localized === (meal?.strMealEn || meal?.nameEn || meal?.strMeal || meal?.name)) {
-      return translateMealName(localized, language);
+    if (localized === (meal?.strMealEn || meal?.mealNameEn || meal?.recipeNameEn || meal?.titleEn || meal?.nameEn || meal?.strMeal || meal?.name || meal?.mealName || meal?.recipeName || meal?.title)) {
+      return localizeEnglishMealText(translateMealName(localized, language), language);
     }
   }
 
-  return localized;
+  return localizeEnglishMealText(localized, language);
 }
 
 function getMealCategory(meal: any, language: string, fallback: string) {
@@ -481,37 +644,46 @@ function getIngredientNameByLanguage(item: any, language: string) {
 function normalizeAiMeal(meal: any): MealRecipe {
   const rawImageUrl = meal?.strMealThumb || meal?.imageUrl || '';
   const rawYoutubeUrl = meal?.strYoutube || meal?.youtubeUrl || '';
+  const defaultMealEn = 'AI Recommended Meal';
+  const defaultMealCn = 'AI 推荐餐食';
+  const defaultMealMs = 'Hidangan Cadangan AI';
+  const defaultCategoryEn = 'AI Meal';
+  const defaultCategoryCn = 'AI 餐食';
+  const defaultCategoryMs = 'Hidangan AI';
+  const defaultAreaEn = 'Healthy';
+  const defaultAreaCn = '健康';
+  const defaultAreaMs = 'Sihat';
 
   return {
     idMeal: meal?.idMeal || `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    strMeal: meal?.strMeal || meal?.strMealEn || meal?.name || 'AI Recommended Meal',
-    strMealEn: meal?.strMealEn || meal?.strMeal || meal?.nameEn || meal?.name || 'AI Recommended Meal',
-    strMealCn: meal?.strMealCn || meal?.strMealCN || meal?.strMealZh || meal?.nameCn || meal?.nameCN || meal?.nameZh || '',
-    strMealMs: meal?.strMealMs || meal?.nameMs || '',
-    nameEn: meal?.nameEn || meal?.strMealEn || meal?.strMeal || meal?.name || '',
-    nameCn: meal?.nameCn || meal?.nameCN || meal?.nameZh || meal?.strMealCn || meal?.strMealCN || meal?.strMealZh || '',
-    nameMs: meal?.nameMs || meal?.strMealMs || '',
-    strCategory: meal?.strCategory || meal?.strCategoryEn || meal?.category || 'AI Meal',
-    strCategoryEn: meal?.strCategoryEn || meal?.strCategory || meal?.categoryEn || meal?.category || 'AI Meal',
-    strCategoryCn: meal?.strCategoryCn || meal?.strCategoryCN || meal?.strCategoryZh || meal?.categoryCn || meal?.categoryCN || meal?.categoryZh || '',
-    strCategoryMs: meal?.strCategoryMs || meal?.categoryMs || '',
-    categoryEn: meal?.categoryEn || meal?.strCategoryEn || meal?.strCategory || meal?.category || '',
-    categoryCn: meal?.categoryCn || meal?.categoryCN || meal?.categoryZh || meal?.strCategoryCn || meal?.strCategoryCN || meal?.strCategoryZh || '',
-    categoryMs: meal?.categoryMs || meal?.strCategoryMs || '',
-    strArea: meal?.strArea || meal?.strAreaEn || meal?.area || 'Healthy',
-    strAreaEn: meal?.strAreaEn || meal?.strArea || meal?.areaEn || meal?.area || 'Healthy',
-    strAreaCn: meal?.strAreaCn || meal?.strAreaCN || meal?.strAreaZh || meal?.areaCn || meal?.areaCN || meal?.areaZh || '',
-    strAreaMs: meal?.strAreaMs || meal?.areaMs || '',
-    areaEn: meal?.areaEn || meal?.strAreaEn || meal?.strArea || meal?.area || '',
-    areaCn: meal?.areaCn || meal?.areaCN || meal?.areaZh || meal?.strAreaCn || meal?.strAreaCN || meal?.strAreaZh || '',
-    areaMs: meal?.areaMs || meal?.strAreaMs || '',
-    strInstructions: meal?.strInstructions || meal?.strInstructionsEn || meal?.instructions || '',
-    strInstructionsEn: meal?.strInstructionsEn || meal?.strInstructions || meal?.instructionsEn || meal?.instructions || '',
-    strInstructionsCn: meal?.strInstructionsCn || meal?.strInstructionsCN || meal?.strInstructionsZh || meal?.instructionsCn || meal?.instructionsCN || meal?.instructionsZh || '',
-    strInstructionsMs: meal?.strInstructionsMs || meal?.instructionsMs || '',
-    instructionsEn: meal?.instructionsEn || meal?.strInstructionsEn || meal?.strInstructions || meal?.instructions || '',
-    instructionsCn: meal?.instructionsCn || meal?.instructionsCN || meal?.instructionsZh || meal?.strInstructionsCn || meal?.strInstructionsCN || meal?.strInstructionsZh || '',
-    instructionsMs: meal?.instructionsMs || meal?.strInstructionsMs || '',
+    strMeal: meal?.strMeal || meal?.mealName || meal?.recipeName || meal?.title || meal?.strMealEn || meal?.mealNameEn || meal?.recipeNameEn || meal?.titleEn || meal?.name || defaultMealEn,
+    strMealEn: meal?.strMealEn || meal?.mealNameEn || meal?.recipeNameEn || meal?.titleEn || meal?.strMeal || meal?.mealName || meal?.recipeName || meal?.title || meal?.nameEn || meal?.name || defaultMealEn,
+    strMealCn: meal?.strMealCn || meal?.strMealCN || meal?.strMealZh || meal?.mealNameCn || meal?.mealNameCN || meal?.mealNameZh || meal?.recipeNameCn || meal?.recipeNameCN || meal?.recipeNameZh || meal?.titleCn || meal?.titleCN || meal?.titleZh || meal?.nameCn || meal?.nameCN || meal?.nameZh || defaultMealCn,
+    strMealMs: meal?.strMealMs || meal?.mealNameMs || meal?.recipeNameMs || meal?.titleMs || meal?.nameMs || defaultMealMs,
+    nameEn: meal?.nameEn || meal?.strMealEn || meal?.mealNameEn || meal?.recipeNameEn || meal?.titleEn || meal?.strMeal || meal?.mealName || meal?.recipeName || meal?.title || meal?.name || defaultMealEn,
+    nameCn: meal?.nameCn || meal?.nameCN || meal?.nameZh || meal?.strMealCn || meal?.strMealCN || meal?.strMealZh || meal?.mealNameCn || meal?.mealNameCN || meal?.mealNameZh || meal?.recipeNameCn || meal?.recipeNameCN || meal?.recipeNameZh || meal?.titleCn || meal?.titleCN || meal?.titleZh || defaultMealCn,
+    nameMs: meal?.nameMs || meal?.strMealMs || meal?.mealNameMs || meal?.recipeNameMs || meal?.titleMs || defaultMealMs,
+    strCategory: meal?.strCategory || meal?.strCategoryEn || meal?.category || defaultCategoryEn,
+    strCategoryEn: meal?.strCategoryEn || meal?.strCategory || meal?.categoryEn || meal?.category || defaultCategoryEn,
+    strCategoryCn: meal?.strCategoryCn || meal?.strCategoryCN || meal?.strCategoryZh || meal?.categoryCn || meal?.categoryCN || meal?.categoryZh || defaultCategoryCn,
+    strCategoryMs: meal?.strCategoryMs || meal?.categoryMs || defaultCategoryMs,
+    categoryEn: meal?.categoryEn || meal?.strCategoryEn || meal?.strCategory || meal?.category || defaultCategoryEn,
+    categoryCn: meal?.categoryCn || meal?.categoryCN || meal?.categoryZh || meal?.strCategoryCn || meal?.strCategoryCN || meal?.strCategoryZh || defaultCategoryCn,
+    categoryMs: meal?.categoryMs || meal?.strCategoryMs || defaultCategoryMs,
+    strArea: meal?.strArea || meal?.strAreaEn || meal?.area || defaultAreaEn,
+    strAreaEn: meal?.strAreaEn || meal?.strArea || meal?.areaEn || meal?.area || defaultAreaEn,
+    strAreaCn: meal?.strAreaCn || meal?.strAreaCN || meal?.strAreaZh || meal?.areaCn || meal?.areaCN || meal?.areaZh || defaultAreaCn,
+    strAreaMs: meal?.strAreaMs || meal?.areaMs || defaultAreaMs,
+    areaEn: meal?.areaEn || meal?.strAreaEn || meal?.strArea || meal?.area || defaultAreaEn,
+    areaCn: meal?.areaCn || meal?.areaCN || meal?.areaZh || meal?.strAreaCn || meal?.strAreaCN || meal?.strAreaZh || defaultAreaCn,
+    areaMs: meal?.areaMs || meal?.strAreaMs || defaultAreaMs,
+    strInstructions: meal?.strInstructions || meal?.instructions || meal?.method || meal?.directions || meal?.strInstructionsEn || meal?.instructionsEn || '',
+    strInstructionsEn: meal?.strInstructionsEn || meal?.instructionsEn || meal?.methodEn || meal?.directionsEn || meal?.strInstructions || meal?.instructions || meal?.method || meal?.directions || '',
+    strInstructionsCn: meal?.strInstructionsCn || meal?.strInstructionsCN || meal?.strInstructionsZh || meal?.instructionsCn || meal?.instructionsCN || meal?.instructionsZh || meal?.methodCn || meal?.methodCN || meal?.methodZh || meal?.directionsCn || meal?.directionsCN || meal?.directionsZh || '',
+    strInstructionsMs: meal?.strInstructionsMs || meal?.instructionsMs || meal?.methodMs || meal?.directionsMs || '',
+    instructionsEn: meal?.instructionsEn || meal?.strInstructionsEn || meal?.methodEn || meal?.directionsEn || meal?.strInstructions || meal?.instructions || meal?.method || meal?.directions || '',
+    instructionsCn: meal?.instructionsCn || meal?.instructionsCN || meal?.instructionsZh || meal?.strInstructionsCn || meal?.strInstructionsCN || meal?.strInstructionsZh || meal?.methodCn || meal?.methodCN || meal?.methodZh || meal?.directionsCn || meal?.directionsCN || meal?.directionsZh || '',
+    instructionsMs: meal?.instructionsMs || meal?.strInstructionsMs || meal?.methodMs || meal?.directionsMs || '',
     strMealThumb: isValidImageUrl(rawImageUrl) ? rawImageUrl : null,
     mealIconEmoji: meal?.mealIconEmoji || guessMealEmoji(meal?.strMeal || meal?.name, meal?.strCategory || meal?.category),
     mealIconName: meal?.mealIconName || null,
@@ -530,8 +702,8 @@ function normalizeAiMeal(meal: any): MealRecipe {
           normalizedName: item.normalizedName || item.name || item.ingredientName || '',
           gramsEstimated: safeNumber(item.gramsEstimated || item.grams),
           foodNameEn: item.foodNameEn || item.nameEn || item.name || item.ingredientName || '',
-          foodNameCn: item.foodNameCn || item.foodNameCN || item.foodNameZh || item.nameCn || item.nameCN || item.nameZh || '',
-          foodNameMs: item.foodNameMs || item.nameMs || '',
+          foodNameCn: item.foodNameCn || item.foodNameCN || item.foodNameZh || item.nameCn || item.nameCN || item.nameZh || '食材',
+          foodNameMs: item.foodNameMs || item.nameMs || 'Bahan',
           foodGroup: item.foodGroup || 'others',
           energyKcal: safeNumber(item.energyKcal),
           proteinG: safeNumber(item.proteinG),
@@ -634,23 +806,30 @@ async function generateShoppingListByOwner(
               const nameMs = getIngredientNameByLanguage(ingredient, 'ms');
               const name = nameEn;
               const quantity = normalizeIngredientQuantity(ingredient);
+              const quantityCn = localizeMeasureText(quantity, 'zh');
+              const quantityMs = localizeMeasureText(quantity, 'ms');
               const category = classifyIngredientCategory(ingredient);
               const id = `${name.toLowerCase()}-${category}`.replace(/\s+/g, '-');
               const existing = mergedMap.get(id);
               const mealNameEn = getMealName(meal, 'en');
               const mealNameCn = getMealName(meal, 'zh');
               const mealNameMs = getMealName(meal, 'ms');
+              const localizedSourceEn = `${dateKey} · ${getSlotLabel(slot, 'en')}: ${mealNameEn}`;
+              const localizedSourceCn = `${dateKey} · ${getSlotLabel(slot, 'zh')}: ${mealNameCn}`;
+              const localizedSourceMs = `${dateKey} · ${getSlotLabel(slot, 'ms')}: ${mealNameMs}`;
               const sourceEn = `${dateKey} · ${slot}: ${mealNameEn}`;
               const sourceCn = `${dateKey} · ${slot}: ${mealNameCn}`;
               const sourceMs = `${dateKey} · ${slot}: ${mealNameMs}`;
 
               if (existing) {
                 existing.quantity = [existing.quantity, quantity].filter(Boolean).join(' + ');
+                existing.quantityCn = [existing.quantityCn, quantityCn].filter(Boolean).join(' + ');
+                existing.quantityMs = [existing.quantityMs, quantityMs].filter(Boolean).join(' + ');
                 if (!existing.source.includes(mealNameEn)) {
-                  existing.source += `, ${sourceEn}`;
-                  existing.sourceEn = [existing.sourceEn, sourceEn].filter(Boolean).join(', ');
-                  existing.sourceCn = [existing.sourceCn, sourceCn].filter(Boolean).join(', ');
-                  existing.sourceMs = [existing.sourceMs, sourceMs].filter(Boolean).join(', ');
+                  existing.source += `, ${localizedSourceEn}`;
+                  existing.sourceEn = [existing.sourceEn, localizedSourceEn].filter(Boolean).join(', ');
+                  existing.sourceCn = [existing.sourceCn, localizedSourceCn].filter(Boolean).join(', ');
+                  existing.sourceMs = [existing.sourceMs, localizedSourceMs].filter(Boolean).join(', ');
                 }
                 return;
               }
@@ -662,11 +841,13 @@ async function generateShoppingListByOwner(
                 nameCn,
                 nameMs,
                 quantity,
+                quantityCn,
+                quantityMs,
                 category,
-                source: sourceEn,
-                sourceEn,
-                sourceCn,
-                sourceMs,
+                source: localizedSourceEn,
+                sourceEn: localizedSourceEn,
+                sourceCn: localizedSourceCn,
+                sourceMs: localizedSourceMs,
                 mealId: meal.idMeal,
                 checked: checkedMap.get(id) || false,
                 picUrl: ingredient.picUrl || '',
@@ -685,7 +866,7 @@ async function generateShoppingListByOwner(
   }
 }
 
-function NutritionRing({ value, target, color, label }: { value: number; target: number; color: string; label: string }) {
+function NutritionRing({ value, target, color, label, language }: { value: number; target: number; color: string; label: string; language: string }) {
   const size = 86;
   const strokeWidth = 8;
   const radius = (size - strokeWidth) / 2;
@@ -714,11 +895,11 @@ function NutritionRing({ value, target, color, label }: { value: number; target:
           />
         </Svg>
         <View style={styles.ringCenter}>
-          <Text style={styles.ringValueText}>{round(value)}g</Text>
+          <Text style={styles.ringValueText}>{formatGramValue(value, language)}</Text>
         </View>
       </View>
       <Text style={styles.ringLabel}>{label}</Text>
-      <Text style={styles.ringTarget}>/{round(target)}g</Text>
+      <Text style={styles.ringTarget}>/{formatGramValue(target, language)}</Text>
     </View>
   );
 }
@@ -1364,7 +1545,7 @@ export default function MealScreen() {
           <Text style={styles.suggestionTitle} numberOfLines={2}>{getMealName(meal, language)}</Text>
           <Text style={styles.suggestionMeta}>{getMealCategory(meal, language, getText('Recipe', '食谱', 'Resipi'))} · {getMealArea(meal, language, getText('Meal', '餐食', 'Hidangan'))}</Text>
           <Text style={styles.suggestionNutrition}>
-            {round(meal.totalEnergyKcal)} kcal · {getText('Protein', '蛋白质', 'Protein')} {round(meal.totalProteinG)}g · {getText('Carbs', '碳水', 'Karbo')} {round(meal.totalCarbohydrateG)}g · {getText('Fat', '脂肪', 'Lemak')} {round(meal.totalFatG)}g
+            {round(meal.totalEnergyKcal)} kcal · {getText('Protein', '蛋白质', 'Protein')} {formatGramValue(meal.totalProteinG, language)} · {getText('Carbs', '碳水', 'Karbo')} {formatGramValue(meal.totalCarbohydrateG, language)} · {getText('Fat', '脂肪', 'Lemak')} {formatGramValue(meal.totalFatG, language)}
           </Text>
         </View>
       </Pressable>
@@ -1408,9 +1589,9 @@ export default function MealScreen() {
         <View style={styles.mealContent}>
           <Text style={styles.mealTitle} numberOfLines={2}>{getMealName(meal, language)}</Text>
           <View style={styles.macroTagRow}>
-            <View style={[styles.macroTag, styles.macroCarb]}><Text style={[styles.macroTagText, { color: '#F97316' }]}>{round(meal.totalCarbohydrateG)}g {getText('carbs', '碳水', 'karbo')}</Text></View>
-            <View style={[styles.macroTag, styles.macroProtein]}><Text style={[styles.macroTagText, { color: '#2563EB' }]}>{round(meal.totalProteinG)}g {getText('protein', '蛋白质', 'protein')}</Text></View>
-            <View style={[styles.macroTag, styles.macroFat]}><Text style={[styles.macroTagText, { color: '#16A34A' }]}>{round(meal.totalFatG)}g {getText('fat', '脂肪', 'lemak')}</Text></View>
+            <View style={[styles.macroTag, styles.macroCarb]}><Text style={[styles.macroTagText, { color: '#F97316' }]}>{formatGramValue(meal.totalCarbohydrateG, language)} {getText('carbs', '碳水', 'karbo')}</Text></View>
+            <View style={[styles.macroTag, styles.macroProtein]}><Text style={[styles.macroTagText, { color: '#2563EB' }]}>{formatGramValue(meal.totalProteinG, language)} {getText('protein', '蛋白质', 'protein')}</Text></View>
+            <View style={[styles.macroTag, styles.macroFat]}><Text style={[styles.macroTagText, { color: '#16A34A' }]}>{formatGramValue(meal.totalFatG, language)} {getText('fat', '脂肪', 'lemak')}</Text></View>
           </View>
           <View style={styles.mealButtonRow}>
             <Pressable
@@ -1615,9 +1796,9 @@ export default function MealScreen() {
             <Text style={styles.nutritionProgressText}>{getText('Progress', '进度', 'Kemajuan')}</Text>
           </View>
           <View style={styles.ringRow}>
-            <NutritionRing label={getText('Carbs', '碳水', 'Karbo')} value={totals.carbs} target={currentTargets.carbs} color="#F39B5F" />
-            <NutritionRing label={getText('Protein', '蛋白质', 'Protein')} value={totals.protein} target={currentTargets.protein} color="#72C3E6" />
-            <NutritionRing label={getText('Fat', '脂肪', 'Lemak')} value={totals.fat} target={currentTargets.fat} color="#56B277" />
+            <NutritionRing label={getText('Carbs', '碳水', 'Karbo')} value={totals.carbs} target={currentTargets.carbs} color="#F39B5F" language={language} />
+            <NutritionRing label={getText('Protein', '蛋白质', 'Protein')} value={totals.protein} target={currentTargets.protein} color="#72C3E6" language={language} />
+            <NutritionRing label={getText('Fat', '脂肪', 'Lemak')} value={totals.fat} target={currentTargets.fat} color="#56B277" language={language} />
           </View>
         </View>
 
@@ -1721,7 +1902,7 @@ export default function MealScreen() {
                             {getMealArea(recipe, language, '') ? ` · ${getMealArea(recipe, language, '')}` : ''}
                           </Text>
                           <Text style={styles.savedRecipeNutrition} numberOfLines={1}>
-                            {round(recipe.totalEnergyKcal)} kcal · {getText('Protein', '蛋白质', 'Protein')} {round(recipe.totalProteinG)}g
+                            {round(recipe.totalEnergyKcal)} kcal · {getText('Protein', '蛋白质', 'Protein')} {formatGramValue(recipe.totalProteinG, language)}
                           </Text>
                         </View>
                       </Pressable>
@@ -1995,13 +2176,13 @@ const styles = StyleSheet.create({
   ringLabel: { marginTop: 6, fontSize: 13, color: '#6B7280', fontWeight: '600' },
   ringTarget: { marginTop: 2, fontSize: 12, color: '#94A3B8', fontWeight: '600' },
   planWrapper: { backgroundColor: '#FFFFFF', borderRadius: 28, padding: 18, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  planHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  planHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
-  savedRecipeButton: { minHeight: 34, borderRadius: 17, backgroundColor: '#EAF7F0', borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, flexShrink: 1 },
-  savedRecipeButtonText: { color: colors.primaryDark, fontSize: 12, fontWeight: '900', flexShrink: 1 },
-  planTitle: { fontSize: 18, fontWeight: '900', color: '#111827' },
-  clearPlanButton: { minHeight: 34, borderRadius: 17, backgroundColor: '#FEF2F2', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
-  clearPlanButtonText: { color: '#EF4444', fontSize: 12, fontWeight: '900' },
+  planHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
+  planHeaderActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexShrink: 1, minWidth: 0 },
+  savedRecipeButton: { height: 34, maxWidth: 124, borderRadius: 17, backgroundColor: '#EAF7F0', borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, flexShrink: 1, overflow: 'hidden' },
+  savedRecipeButtonText: { color: colors.primaryDark, fontSize: 11, lineHeight: 13, fontWeight: '900', flexShrink: 1, minWidth: 0 },
+  planTitle: { flex: 1, minWidth: 0, fontSize: 18, fontWeight: '900', color: '#111827' },
+  clearPlanButton: { height: 34, maxWidth: 118, borderRadius: 17, backgroundColor: '#FEF2F2', paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, flexShrink: 1, overflow: 'hidden' },
+  clearPlanButtonText: { color: '#EF4444', fontSize: 11, lineHeight: 13, fontWeight: '900', flexShrink: 1, minWidth: 0 },
   aiHint: { marginTop: 3, fontSize: 12, color: '#94A3B8', fontWeight: '700' },
   refreshButton: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
   refreshButtonGenerating: { backgroundColor: '#EAF7F0', borderColor: '#BBF7D0' },

@@ -4,6 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { Chip } from './Common';
 
+export type TagSuggestion = string | {
+  value: string;
+  label: string;
+};
+
 export default function TagInput({
   tags,
   onChange,
@@ -12,10 +17,22 @@ export default function TagInput({
 }: {
   tags: string[];
   onChange: (tags: string[]) => void;
-  suggestions: string[];
+  suggestions: TagSuggestion[];
   placeholder?: string;
 }) {
   const [value, setValue] = useState('');
+  const getSuggestionValue = (suggestion: TagSuggestion) =>
+    typeof suggestion === 'string' ? suggestion : suggestion.value;
+  const getSuggestionLabel = (suggestion: TagSuggestion) =>
+    typeof suggestion === 'string' ? suggestion : suggestion.label;
+  const getTagLabel = (tag: string) => {
+    const match = suggestions.find(
+      (suggestion) => getSuggestionValue(suggestion) === tag
+    );
+
+    return match ? getSuggestionLabel(match) : tag;
+  };
+
   const addTag = (tag: string) => {
     const trimmed = tag.trim();
     if (trimmed && !tags.includes(trimmed)) onChange([...tags, trimmed]);
@@ -29,7 +46,7 @@ export default function TagInput({
         <View style={styles.tags}>
           {tags.map((tag) => (
             <Pressable key={tag} onPress={() => removeTag(tag)} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
+              <Text style={styles.tagText}>{getTagLabel(tag)}</Text>
               <Ionicons name="close" size={12} color="white" />
             </Pressable>
           ))}
@@ -49,9 +66,19 @@ export default function TagInput({
         </Pressable>
       </View>
       <View style={styles.suggestions}>
-        {suggestions.map((suggestion) => (
-          <Chip key={suggestion} label={suggestion} selected={tags.includes(suggestion)} onPress={() => (tags.includes(suggestion) ? removeTag(suggestion) : addTag(suggestion))} />
-        ))}
+        {suggestions.map((suggestion) => {
+          const suggestionValue = getSuggestionValue(suggestion);
+          const selected = tags.includes(suggestionValue);
+
+          return (
+            <Chip
+              key={suggestionValue}
+              label={getSuggestionLabel(suggestion)}
+              selected={selected}
+              onPress={() => (selected ? removeTag(suggestionValue) : addTag(suggestionValue))}
+            />
+          );
+        })}
       </View>
     </View>
   );

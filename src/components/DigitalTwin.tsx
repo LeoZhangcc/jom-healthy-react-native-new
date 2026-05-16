@@ -1,8 +1,12 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function DigitalTwin({ tip, nickname, isComplete }: { tip: string; nickname: string; isComplete: boolean }) {
+  const { language } = useLanguage();
+  const fallbackName = language === 'zh' ? '数字分身' : language === 'ms' ? 'Kembar Digital' : 'Digital Twin';
+
   return (
     <View style={styles.card}>
       <View style={styles.avatarWrap}>
@@ -14,7 +18,7 @@ export default function DigitalTwin({ tip, nickname, isComplete }: { tip: string
         </View>
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={styles.name}>{nickname || 'Digital Twin'}</Text>
+        <Text style={styles.name}>{nickname || fallbackName}</Text>
         <View style={styles.bubble}>
           <Text style={styles.tip}>{tip}</Text>
         </View>

@@ -104,7 +104,7 @@ export default function ChildrenProfilesModal({ visible, onClose }: { visible: b
                       <View style={{ flex: 1 }}>
                         <Text style={styles.childName}>{child.nickname}</Text>
                         <Text style={styles.childInfo}>
-                          {child.age} {getText('years', '岁', 'tahun')} · {child.height}cm · {child.weight}kg
+                          {child.age} {getText('years', '岁', 'tahun')} · {child.height}{getText('cm', '厘米', ' sentimeter')} · {child.weight}{getText('kg', '公斤', ' kilogram')}
                         </Text>
                         {active && <Text style={styles.activeText}>{getText('Active profile', '当前资料', 'Profil aktif')}</Text>}
                       </View>

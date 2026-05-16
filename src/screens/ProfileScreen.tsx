@@ -309,6 +309,14 @@ export default function ProfileScreen() {
     if (value.includes('lactose')) return getText('Lactose intolerance', '乳糖不耐受', 'Intoleransi laktosa');
     if (value.includes('seafood')) return getText('No seafood', '不吃海鲜', 'Tiada makanan laut');
 
+    if (value.includes('peanut')) return getText('Peanuts', '花生', 'Kacang tanah');
+    if (value.includes('dairy')) return getText('Dairy', '乳制品', 'Tenusu');
+    if (value.includes('shellfish')) return getText('Shellfish', '贝类海鲜', 'Kerang-kerangan');
+    if (value === 'eggs' || value.includes('egg')) return getText('Eggs', '鸡蛋', 'Telur');
+    if (value.includes('soy')) return getText('Soy', '大豆', 'Soya');
+    if (value.includes('wheat')) return getText('Wheat', '小麦', 'Gandum');
+    if (value.includes('tree nut')) return getText('Tree nuts', '坚果', 'Kacang pokok');
+
     return tag;
   };
 
@@ -553,8 +561,8 @@ export default function ProfileScreen() {
 
                 {activeChild && (
                   <Text style={styles.meta}>
-                    {activeChild.age} {getText('years', '岁', 'tahun')} · {getGenderText(activeChild.gender)} · {activeChild.height}cm ·{' '}
-                    {activeChild.weight}kg
+                    {activeChild.age} {getText('years', '岁', 'tahun')} · {getGenderText(activeChild.gender)} · {activeChild.height}{getText('cm', '厘米', ' sentimeter')} ·{' '}
+                    {activeChild.weight}{getText('kg', '公斤', ' kilogram')}
                   </Text>
                 )}
               </View>

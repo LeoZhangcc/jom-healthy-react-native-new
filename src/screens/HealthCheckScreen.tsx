@@ -204,13 +204,17 @@ export default function HealthCheckScreen() {
         const mDiff = today.getMonth() - birthdayDate.getMonth();
         const yDiff = today.getFullYear() - birthdayDate.getFullYear();
         ageInMonths = yDiff * 12 + mDiff;
-        ageText = `${Math.floor(ageInMonths / 12)}${t('yearsOld') || 'Years'} ${ageInMonths % 12}Months`;
+        ageText = getText(
+          `${Math.floor(ageInMonths / 12)} years ${ageInMonths % 12} months`,
+          `${Math.floor(ageInMonths / 12)}岁 ${ageInMonths % 12}个月`,
+          `${Math.floor(ageInMonths / 12)} tahun ${ageInMonths % 12} bulan`
+        );
       }
 
       const record = {
         id: Date.now().toString(),
         date: new Date().toISOString(),
-        nickname: child.nickname || 'Child',
+        nickname: child.nickname || getText('Child', '孩子', 'Anak'),
         ageText: ageText,
         ageInMonths: ageInMonths,
         height: Number(height),
@@ -270,7 +274,7 @@ export default function HealthCheckScreen() {
           {/* 儿童档案选择区域 */}
           {children && children.length > 0 && (
             <View style={[styles.fieldGroup, styles.profileSelectorSection]}>
-              <Text style={styles.label}>{t('selectProfile') || 'Quick Select Profile'}</Text>
+              <Text style={styles.label}>{t('selectProfile')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.profileScroll}>
                 {children.map((child: any) => {
                   const isSelected = selectedChildId === child.id;
@@ -296,7 +300,7 @@ export default function HealthCheckScreen() {
 
           {/* 性别选择区域 */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{t('gender') || 'Gender'}</Text>
+            <Text style={styles.label}>{t('gender')}</Text>
             {selectedChildId ? (
               <View style={styles.lockedBox}>
                 <Text style={styles.lockedText}>
@@ -323,7 +327,7 @@ export default function HealthCheckScreen() {
 
           {/* 出生日期选择区域 */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{t('birthday') || 'Date of Birth'}</Text>
+            <Text style={styles.label}>{t('birthday')}</Text>
             {selectedChildId ? (
               <View style={styles.lockedBox}>
                 <View style={styles.dateInputLeft}>
@@ -366,13 +370,13 @@ export default function HealthCheckScreen() {
 
           {/* 身高输入区域 */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{t('height') || 'Current Height (cm)'}</Text>
+            <Text style={styles.label}>{t('height')}</Text>
             <View style={styles.inputWithAddon}>
               <View style={styles.inputIconBox}><Ruler color="#22BBF7" size={18} /></View>
               <TextInput 
                 value={height} 
                 onChangeText={(val) => { setHeight(val); setBmi(null); setAdviceText(""); }} 
-                placeholder={t('enterHeight') || "118"} 
+                placeholder={t('enterHeight')} 
                 keyboardType="numeric" 
                 style={styles.flexInput} 
               />
@@ -384,13 +388,13 @@ export default function HealthCheckScreen() {
 
           {/* 体重输入区域 */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{t('weight') || 'Current Weight (kg)'}</Text>
+            <Text style={styles.label}>{t('weight')}</Text>
             <View style={styles.inputWithAddon}>
               <View style={[styles.inputIconBox, { backgroundColor: '#EAF7F0' }]}><Weight color="#16A34A" size={18} /></View>
               <TextInput 
                 value={weight} 
                 onChangeText={(val) => { setWeight(val); setBmi(null); setAdviceText(""); }} 
-                placeholder={t('enterWeight') || "23"} 
+                placeholder={t('enterWeight')} 
                 keyboardType="numeric" 
                 style={styles.flexInput} 
               />
