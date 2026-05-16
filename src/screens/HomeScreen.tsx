@@ -992,7 +992,7 @@ export default function HomeScreen() {
                       {getText('Progress', '进度', 'Kemajuan')}
                     </Text>
                     <Text style={styles.newHydrationProgressValue}>
-                      {todayWaterIntake} / {dailyWaterGoal} mL
+                      {todayWaterIntake} / {dailyWaterGoal} {t('ml')}
                     </Text>
                   </View>
                   

@@ -35,6 +35,8 @@ const getDrinkCategory = (name: string) => {
 export default function HydrationScreen({ navigation }: any) {
   const { t , language} = useLanguage();
 
+  const unitText = language === 'zh' ? '毫升' : 'mL';
+
   const getDrinkName = (drink: any) => {
     if (language === 'zh' && drink.title_zh) return drink.title_zh;
     if (language === 'ms' && drink.title_ms) return drink.title_ms;
@@ -44,11 +46,13 @@ export default function HydrationScreen({ navigation }: any) {
   const { activeChild, todayWaterIntake, dailyWaterGoal, addWater, hydrationHistory } = useChildProfile();
 
   const drinkOptions = useMemo(() => [
-    { id: 'Water', emoji: '💧', title: t('water'), amountValue: 200, description: t('bestForHydration'), type: 'healthy' as const },
-    { id: 'Milk', emoji: '🥛', title: t('milk'), amountValue: 250, description: t('goodSourceOfCalcium'), type: 'healthy' as const },
-    { id: 'Fresh Juice', emoji: '🧃', title: t('freshJuice'), amountValue: 150, description: t('naturalHydration'), type: 'healthy' as const },
-    { id: 'Packaged Juice', emoji: '🥤', title: t('packagedJuice'), amountValue: 200, description: t('highSugarContent'), type: 'unhealthy' as const },
-  ], [t]);
+    { id: 'Water', emoji: '💧', title: t('water') || 'Water', amountValue: 200 },
+    { id: 'Milk', emoji: '🥛', title: t('milk') || 'Milk', amountValue: 250 },
+    { id: 'Juice', emoji: '🧃', title: t('juice') || 'Juice', amountValue: 150 },
+    { id: 'Soft Drink', emoji: '🥤', title: t('softDrink') || 'Soft Drink', amountValue: 250 },
+    { id: 'Coffee & Tea', emoji: '☕', title: t('coffeeTea') || 'Coffee & Tea', amountValue: 250 },
+    { id: 'Alcohol', emoji: '🍷', title: t('alcohol') || 'Alcohol', amountValue: 150 },
+  ], [t, language]); // added language dependency so it refreshes when language changes
 
   const [amount, setAmount] = useState(200);
   const [customAmount, setCustomAmount] = useState('200');
@@ -269,8 +273,8 @@ export default function HydrationScreen({ navigation }: any) {
             <View style={styles.progressCard}>
               <View style={styles.progressHeader}>
                 <View>
-                  <Text style={styles.progressCurrentText}>{todayWaterIntake}<Text style={styles.progressUnitText}>mL</Text></Text>
-                  <Text style={styles.progressGoalText}>{t('of')} {dailyWaterGoal}mL {t('dailyGoal')}</Text>
+                  <Text style={styles.progressCurrentText}>{todayWaterIntake}<Text style={styles.progressUnitText}>{unitText}</Text></Text>
+                  <Text style={styles.progressGoalText}>{t('of')} {dailyWaterGoal}{unitText} {t('dailyGoal')}</Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={styles.progressPercentText}>{Math.round(progressPercent)}%</Text>
@@ -286,7 +290,7 @@ export default function HydrationScreen({ navigation }: any) {
                 <View style={[styles.statusBadge, isWellHydrated ? styles.statusBadgeGood : styles.statusBadgeNeeds]}>
                   <Text style={styles.statusBadgeText}>{isWellHydrated ? t('wellHydrated') : t('needsMoreWater')}</Text>
                 </View>
-                <Text style={styles.remainingText}>{isWellHydrated ? t('goalAchieved') : `${dailyWaterGoal - todayWaterIntake}mL ${t('remaining')}`}</Text>
+                <Text style={styles.remainingText}>{isWellHydrated ? t('goalAchieved') : `${dailyWaterGoal - todayWaterIntake}${unitText} ${t('remaining')}`}</Text>
               </View>
             </View>
 
@@ -294,11 +298,11 @@ export default function HydrationScreen({ navigation }: any) {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{t('selectDrinkType')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
-                {[...drinkOptions, { id: 'Other', emoji: '🥤', title: t('other') || 'Other', type: 'healthy' as const }].map((drink) => {
-                  const isSelected = (selectedDrinkType.id || selectedDrinkType.title) === (drink.id || drink.title);
+                {[...drinkOptions, { id: 'Other', emoji: '🍹', title: t('other') || 'Other' }].map((drink) => {
+                  const isSelected = selectedDrinkType.id === drink.id;
                   return (
                     <Pressable
-                      key={drink.id || drink.title}
+                      key={drink.id}
                       onPress={() => setSelectedDrinkType(drink as any)}
                       style={[styles.chip, isSelected && styles.chipActive]}
                     >
@@ -339,13 +343,13 @@ export default function HydrationScreen({ navigation }: any) {
                   keyboardType="number-pad"
                   maxLength={4}
                 />
-                <Text style={styles.amountUnit}>mL</Text>
+                <Text style={styles.amountUnit}>{unitText}</Text>
               </View>
 
               <View style={styles.quickAddRow}>
                 {[100, 200, 250].map((val) => (
                   <Pressable key={val} onPress={() => handleQuickAdd(val)} style={[styles.quickAddBtn, amount === val && styles.quickAddBtnActive]}>
-                    <Text style={[styles.quickAddText, amount === val && styles.quickAddTextActive]}>{val} mL</Text>
+                    <Text style={[styles.quickAddText, amount === val && styles.quickAddTextActive]}>{val} {unitText}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -417,7 +421,7 @@ export default function HydrationScreen({ navigation }: any) {
                           </View>
                           <View style={styles.legendRight}>
                             <Text style={styles.legendPercent}>{drink.percentage}%</Text>
-                            <Text style={styles.legendMl}>({drink.value}mL)</Text>
+                            <Text style={styles.legendMl}>({drink.value}{unitText})</Text>
                           </View>
                         </View>
                       );
@@ -459,7 +463,7 @@ export default function HydrationScreen({ navigation }: any) {
                     <Pressable onPress={() => setExpandedHistoryDate(isExpanded ? null : record.date)} style={styles.historyHeader}>
                       <Text style={styles.historyDate}>{dateStr}</Text>
                       <View style={styles.historyRight}>
-                        <Text style={styles.historyTotal}>{record.total}mL</Text>
+                        <Text style={styles.historyTotal}>{record.total}{unitText}</Text>
                         <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#9CA3AF" />
                       </View>
                     </Pressable>
@@ -487,7 +491,7 @@ export default function HydrationScreen({ navigation }: any) {
                                 </Text>
                                 
                               </View>
-                              <Text style={styles.historyDrinkAmount}>{drink.amount}mL</Text>
+                              <Text style={styles.historyDrinkAmount}>{drink.amount}{unitText}</Text>
                             </View>
                           );
                         })}
@@ -589,7 +593,7 @@ export default function HydrationScreen({ navigation }: any) {
 
               <View style={styles.modalInputWrap}>
                 <TextInput style={styles.modalInput} value={inputAmount} onChangeText={setInputAmount} keyboardType="number-pad" />
-                <Text style={styles.modalUnit}>mL</Text>
+                <Text style={styles.modalUnit}>{unitText}</Text>
               </View>
 
               <View style={styles.modalActions}>
@@ -614,9 +618,32 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 12 },
   
   // Search
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 24 },
-  searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, fontSize: 15, color: '#333' },
+  // --- UPGRADED SEARCH BAR STYLES ---
+  searchContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFFFFF', // Changed to solid white
+    borderRadius: 24, // Matches the Home Screen cards
+    paddingHorizontal: 20, 
+    paddingVertical: 14, 
+    marginBottom: 24,
+    // Added Home Screen style shadow
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3, 
+  },
+  searchIcon: { 
+    marginRight: 12,
+    color: '#6B7280'
+  },
+  searchInput: { 
+    flex: 1, 
+    fontSize: 16, 
+    color: '#1F2937',
+    fontWeight: '400'
+  },
 
   // Progress Card
   progressCard: { backgroundColor: '#2563EB', borderRadius: 24, padding: 20, marginBottom: 24 },

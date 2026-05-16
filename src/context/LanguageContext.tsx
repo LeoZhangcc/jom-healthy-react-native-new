@@ -236,6 +236,12 @@ const translations = {
     needsMore: 'needs',
     moreToReach: 'mL more to reach today\'s goal. Keep drinking water!',
 
+    "juice": "Juice",
+    "softDrink": "Soft Drink",
+    "coffeeTea": "Coffee & Tea",
+    "alcohol": "Alcohol",
+    "ml": "mL",
+
     "nutritionalAnalysis": "Nutritional Analysis (per 100g)",
     "energy": "Energy",
     "carbohydrates": "Carbohydrates",
@@ -319,7 +325,13 @@ const translations = {
     howMuchDid: '',
     drinkQuestion: '喝了多少？',
     needsMore: '还需要',
-    moreToReach: 'mL 才能达到今天的目标。继续喝水吧！',
+    moreToReach: '毫升 才能达到今天的目标。继续喝水吧！',
+
+    "juice": "果汁",
+    "softDrink": "汽水",
+    "coffeeTea": "咖啡和茶",
+    "alcohol": "酒精",
+    "ml": "毫升",
 
     "nutritionalAnalysis": "营养分析 (每100克)",
     "energy": "能量",
@@ -548,6 +560,12 @@ const translations = {
     "highSugarDescPart1": "Minuman ini mengandungi",
     "highSugarDescPart2": "g gula. Pengambilan yang kerap mungkin melebihi had harian yang disyorkan untuk",
     "highSugarDescPart3": ".",
+
+    "juice": "Jus",
+    "softDrink": "Minuman Ringan",
+    "coffeeTea": "Kopi & Teh",
+    "alcohol": "Alkohol",
+    "ml": "mL",
 
     // Meal Page
     mealPlan: 'Rancangan Makanan',
