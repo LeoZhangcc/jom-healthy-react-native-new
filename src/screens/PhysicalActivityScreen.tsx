@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   View, Text, StyleSheet, Modal, ScrollView, Pressable, 
-  TouchableOpacity, Dimensions, TouchableWithoutFeedback, ActivityIndicator, Linking, Animated, Easing, Image, Alert
+  TouchableOpacity, Dimensions, TouchableWithoutFeedback, ActivityIndicator, Linking, Animated, Easing, Image, Alert, TextInput
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useActivity } from '../context/PhysicalActivityContext'; 
@@ -10,6 +10,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
+// 运动类别元数据配置
 const CATEGORY_META: Record<string, { label: string; icon: string }> = {
   'MODERATE_AEROBIC': { label: 'Moderate', icon: '🚶‍♂️' },
   'VIGOROUS_AEROBIC': { label: 'Vigorous', icon: '🏃‍♂️' },
@@ -17,6 +18,7 @@ const CATEGORY_META: Record<string, { label: string; icon: string }> = {
   'BONE_STRENGTHENING': { label: 'Bone Health', icon: '🦒' },
 };
 
+// 跑马灯滚动文本组件
 const ScrollingText = ({ text, style }: { text: string; style: any }) => {
   const scrollX = React.useRef(new Animated.Value(0)).current;
   const [textWidth, setTextWidth] = React.useState(0);
@@ -64,7 +66,7 @@ const ScrollingText = ({ text, style }: { text: string; style: any }) => {
 };
 
 const PhysicalActivityScreen = ({ navigation }: any) => {
-  // 💡 修复：移除了废弃的 logMinutes，引入了新版的 logActivity 和 clearActivity
+  // 全局状态与上下文
   const { todayTotal, dailyGoal, updateGoal, todayCalories, logActivity, clearActivity } = useActivity() as any; 
   const { activeChild } = useChildProfile();
   const { t, language } = useLanguage(); 
@@ -76,6 +78,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
   CATEGORY_META['MUSCLE_STRENGTHENING'].label = getText('Strength', '肌肉强化', 'Kekuatan Otot');
   CATEGORY_META['BONE_STRENGTHENING'].label = getText('Bone Health', '骨骼强化', 'Kesihatan Tulang');
 
+  // 本地组件状态
   const [minutesToLog, setMinutesToLog] = useState(15);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -83,13 +86,11 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
   const [popupMins, setPopupMins] = useState(20);
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [tempGoal, setTempGoal] = useState(dailyGoal);
-
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // 💡 追踪具体哪些运动被记录了 (存储其 title)
   const [loggedActivities, setLoggedActivities] = useState<Set<string>>(new Set());
 
+  // 获取不同体重的系统建议
   const getBmiAdvice = (status: string) => {
     switch (status.toUpperCase()) {
       case 'UNDERWEIGHT':
@@ -115,6 +116,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
     }
   };
 
+  // 请求后端推荐数据
   useEffect(() => {
     const fetchRecommendations = async () => {
       setIsLoading(true);
@@ -139,9 +141,9 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
 
   const availableCategories = Array.from(new Set(recommendations.map(item => item.categoryKey)));
   const activeActivities = recommendations.filter(item => item.categoryKey === selectedCategory);
-
   const childWeight = activeChild?.weight || 20;
 
+  // 动态计算平均代谢当量 (MET)
   const averageMetValue = useMemo(() => {
     if (recommendations.length === 0) return 4.0; 
     const sum = recommendations.reduce((acc, curr) => acc + (curr.metValue || 4.0), 0);
@@ -152,27 +154,28 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
     return Math.round(met * childWeight * (mins / 60));
   };
 
-  // 💡 修复：通用打卡功能（调用全局 logActivity）
+  // 处理通用时长记录提交
   const handleGeneralLogSubmit = () => {
     const burned = calculateBurnedCals(minutesToLog, averageMetValue);
-    logActivity(minutesToLog, burned); // 同时传分钟和卡路里
+    logActivity(minutesToLog, burned);
   };
 
+  // 打开特定活动的记录弹窗
   const openLogPopup = (title: string, defaultMins: number, metValue: number) => {
     setActiveRecommendation({ title, mins: defaultMins, metValue: metValue || 4.0 });
     setPopupMins(defaultMins);
     setModalVisible(true);
   };
 
-  // 💡 修复：卡片专属打卡功能（调用全局 logActivity）
+  // 处理特定活动记录提交
   const handlePopupSubmit = () => {
     const burned = calculateBurnedCals(popupMins, activeRecommendation.metValue);
-    logActivity(popupMins, burned); // 同时传分钟和卡路里
+    logActivity(popupMins, burned);
     setLoggedActivities(prev => new Set(prev).add(activeRecommendation.title));
     setModalVisible(false);
   };
 
-  // 💡 修复：调用新版的一键清空方法
+  // 清空当日活动数据
   const handleClearAll = () => {
     Alert.alert(
       t('clearConfirmTitle') || 'Clear Records',
@@ -183,8 +186,8 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
           text: t('clearAll') || 'Clear All', 
           style: 'destructive', 
           onPress: () => {
-            clearActivity(); // 🌟 直接调用 Context 提供的一键清空（同时清空时间与卡路里）
-            setLoggedActivities(new Set()); // 清除卡片上的已记录标志
+            clearActivity(); 
+            setLoggedActivities(new Set()); 
           }
         }
       ]
@@ -193,6 +196,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
+      {/* 顶部导航栏 */}
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#334155" />
@@ -203,8 +207,58 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         
-        {/* 1. Log Activity Card */}
-{/* 1. Log Activity Card */}
+        {/* 数据看板：展示今日目标与进度 */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <View>
+              <View style={styles.summaryLabelRow}>
+                <Text style={styles.summaryLabel}>{t('todaysTotal') || "Today's Total"}</Text>
+                {todayTotal > 0 && (
+                  <TouchableOpacity onPress={handleClearAll} style={styles.trashBtn}>
+                    <Ionicons name="trash-outline" size={12} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
+              <Text style={styles.summaryValue}>
+                {todayTotal} <Text style={styles.unitText}>{t('minutes') || 'mins'}</Text>
+              </Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <View style={styles.goalHeader}>
+                 <Text style={styles.summaryLabel}>{t('dailyGoal') || 'Daily Goal'}</Text>
+                 <Pressable style={styles.editIcon} onPress={() => {
+                    setTempGoal(dailyGoal);
+                    setGoalModalVisible(true);
+                  }}>
+                    <Ionicons name="pencil" size={12} color="#69B679" />
+                </Pressable>
+              </View>
+              <Text style={styles.summaryValue}>
+                {dailyGoal} <Text style={styles.unitText}>{t('minutes') || 'mins'}</Text>
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.progressBarBg}>
+             <View style={[styles.progressBarFill, { width: `${Math.min((todayTotal / dailyGoal) * 100, 100)}%` }]} />
+          </View>
+
+          <View style={styles.divider} />
+          
+          <View style={[styles.summaryRow, { marginBottom: 0 }]}>
+            <View>
+              <Text style={styles.summaryLabel}>{t('caloriesBurned') || 'Calories Burned'}</Text>
+              <Text style={[styles.summaryValue, { color: '#F59E0B' }]}>
+                {todayCalories || 0} <Text style={styles.unitText}>{t('kcal') || 'kcal'}</Text>
+              </Text>
+            </View>
+            <View style={styles.calIconBox}>
+               <Ionicons name="flame" size={20} color="#F59E0B" />
+            </View>
+          </View>
+        </View>
+
+        {/* 快速打卡：无特定项目的时长记录 */}
         <View style={styles.inlineLogContainer}>
            <View style={styles.logBox}>
               <Text style={styles.logQuestion}>
@@ -215,40 +269,36 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
                 )}
               </Text>
 
-              {/* 👇 新增：顶部迷你总结面板 (Mini Summary) 👇 */}
-              <View style={styles.miniSummaryRow}>
-                <View style={styles.miniStat}>
-                  <Ionicons name="time" size={18} color="#69B679" />
-                  <Text style={styles.miniStatValue}>
-                    {todayTotal} <Text style={styles.miniStatUnit}>{t('min') || 'min'}</Text>
-                  </Text>
-                </View>
-                <View style={styles.miniDivider} />
-                <View style={styles.miniStat}>
-                  <Ionicons name="flame" size={18} color="#F59E0B" />
-                  <Text style={styles.miniStatValue}>
-                    {todayCalories || 0} <Text style={styles.miniStatUnit}>{t('kcal') || 'kcal'}</Text>
-                  </Text>
-                </View>
-              </View>
-              {/* 👆 新增结束 👆 */}
-
               <Text style={styles.logDisclaimer}>
                 💡 {t('generalLogDisclaimer') || 'Uses average MET for calorie estimation. For better accuracy, log specific activities below.'}
               </Text>
-
               
-              <View style={styles.counterRow}>
-                <TouchableOpacity onPress={() => setMinutesToLog(Math.max(0, minutesToLog - 1))} style={styles.roundBtn}>
-                  <Ionicons name="remove" size={28} color="#69B679" />
-                </TouchableOpacity>
-                <View style={{ alignItems: 'center', minWidth: 100 }}>
-                  <Text style={styles.bigNumber}>{minutesToLog}</Text>
-                  <Text style={styles.minsLabel}>{t('minutes') || 'minutes'}</Text>
+              <View style={styles.logActionWrapper}>
+                <View style={styles.counterRow}>
+                  <TouchableOpacity onPress={() => setMinutesToLog(Math.max(0, minutesToLog - 1))} style={styles.roundBtn}>
+                    <Ionicons name="remove" size={24} color="#69B679" />
+                  </TouchableOpacity>
+                  
+                  <View style={styles.numberInputContainer}>
+                    <TextInput
+                      style={styles.bigNumberInput}
+                      keyboardType="number-pad"
+                      value={minutesToLog ? String(minutesToLog) : ''}
+                      placeholder="0"
+                      placeholderTextColor="#A7D7B0"
+                      maxLength={3} 
+                      onChangeText={(text) => {
+                        const parsed = parseInt(text.replace(/[^0-9]/g, ''), 10);
+                        setMinutesToLog(isNaN(parsed) ? 0 : parsed);
+                      }}
+                    />
+                  </View>
+
+                  <TouchableOpacity onPress={() => setMinutesToLog(minutesToLog + 1)} style={styles.roundBtn}>
+                    <Ionicons name="add" size={24} color="#69B679" />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => setMinutesToLog(minutesToLog + 1)} style={styles.roundBtn}>
-                  <Ionicons name="add" size={28} color="#69B679" />
-                </TouchableOpacity>
+                <Text style={styles.minsLabel}>{t('minutes') || 'minutes'}</Text>
               </View>
 
               <View style={styles.quickSelectRow}>
@@ -271,13 +321,14 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
             </View>
         </View>
 
+        {/* 系统建议与特定项目推荐列表 */}
         <Text style={styles.sectionTitle}>
           💡 {getText('Recommended for ', '专属推荐：', 'Disyorkan untuk ')}{activeChild?.nickname || 'Child'}
         </Text>
         
         <View style={styles.adviceBanner}>
           <View style={styles.adviceHeader}>
-            <Ionicons name="information-circle" size={18} color="#0284C7" />
+            <Ionicons name="information-circle" size={16} color="#0284C7" />
             <Text style={styles.adviceTag}>{t('systemAdvice') || 'System Advice:'}</Text>
           </View>
           <ScrollingText text={getBmiAdvice(activeChild?.status || 'NORMAL')} style={styles.adviceText} />
@@ -303,7 +354,6 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
               })}
             </ScrollView>
 
-            {/* 3. Recommendation Cards */}
             {activeActivities.map((activity) => {
               const title = language === 'zh' ? activity.nameCn : language === 'ms' ? activity.nameMs : activity.nameEn;
               const desc = language === 'zh' ? activity.descCn : language === 'ms' ? activity.descMs : activity.descEn;
@@ -325,61 +375,9 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
             })}
           </>
         )}
-
-        {/* 4. Synced Summary Card with Calories! */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <View>
-              <View style={styles.summaryLabelRow}>
-                <Text style={styles.summaryLabel}>{t('todaysTotal') || "Today's Total"}</Text>
-                {todayTotal > 0 && (
-                  <TouchableOpacity onPress={handleClearAll} style={styles.trashBtn}>
-                    <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                  </TouchableOpacity>
-                )}
-              </View>
-              <Text style={styles.summaryValue}>
-                {todayTotal} <Text style={styles.unitText}>{t('minutes') || 'mins'}</Text>
-              </Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <View style={styles.goalHeader}>
-                 <Text style={styles.summaryLabel}>{t('dailyGoal') || 'Daily Goal'}</Text>
-                 <Pressable style={styles.editIcon} onPress={() => {
-                    setTempGoal(dailyGoal);
-                    setGoalModalVisible(true);
-                  }}>
-                    <Ionicons name="pencil" size={14} color="#69B679" />
-                </Pressable>
-              </View>
-              <Text style={styles.summaryValue}>
-                {dailyGoal} <Text style={styles.unitText}>{t('minutes') || 'mins'}</Text>
-              </Text>
-            </View>
-          </View>
-          
-          <View style={styles.progressBarBg}>
-             <View style={[styles.progressBarFill, { width: `${Math.min((todayTotal / dailyGoal) * 100, 100)}%` }]} />
-          </View>
-
-          {/* 卡路里显示框 (直接绑定全局 todayCalories) */}
-          <View style={styles.divider} />
-          <View style={[styles.summaryRow, { marginBottom: 0 }]}>
-            <View>
-              <Text style={styles.summaryLabel}>{t('caloriesBurned') || 'Calories Burned'}</Text>
-              <Text style={[styles.summaryValue, { color: '#F59E0B' }]}>
-                {todayCalories || 0} <Text style={styles.unitText}>{t('kcal') || 'kcal'}</Text>
-              </Text>
-            </View>
-            <View style={styles.calIconBox}>
-               <Ionicons name="flame" size={24} color="#F59E0B" />
-            </View>
-          </View>
-
-        </View>
       </ScrollView>
 
-      {/* --- QUICK ADJUST MODAL --- */}
+      {/* 具体项目记录弹窗 */}
       <Modal animationType="fade" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
@@ -418,7 +416,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
         </View>
       </Modal>
 
-      {/* --- GOAL MODAL --- */}
+      {/* 每日目标设定弹窗 */}
       <Modal animationType="fade" transparent={true} visible={goalModalVisible} onRequestClose={() => setGoalModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.goalModalContent}>
@@ -467,18 +465,16 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
   );
 };
 
+// 推荐列表的单体卡片组件
 const ActivityRecommendationCard = ({ title, desc, tag, subtext, onLog, videoUrl, imageUrl, t, isLogged }: any) => (
   <View style={styles.recCard}>
     <View style={styles.recHeader}>
-      
-      {/* 图片与已记录标签区域 */}
       <View style={styles.recImageContainer}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={styles.recImage} resizeMode="cover" />
         ) : (
           <View style={styles.recIconCircle}><Text style={{ fontSize: 24 }}>🏃</Text></View>
         )}
-        {/* 绿色的 Logged 遮罩 */}
         {isLogged && (
           <View style={styles.loggedBadge}>
             <Text style={styles.loggedBadgeText}>{t('logged') || 'Logged'}</Text>
@@ -514,68 +510,77 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 15, backgroundColor: '#FFF' },
   backBtn: { padding: 8, marginLeft: -8 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B' },
-  inlineLogContainer: { padding: 20 },
-  logBox: { backgroundColor: '#ECF9F1', padding: 24, borderRadius: 35, borderWidth: 1, borderColor: '#DCFCE7' },
-  logQuestion: { textAlign: 'center', fontSize: 16, color: '#334155', fontWeight: '700', marginBottom: 20 },
-  counterRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 25, marginBottom: 25 },
-  roundBtn: { width: 55, height: 55, backgroundColor: '#FFF', borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
-  bigNumber: { fontSize: 56, fontWeight: '800', color: '#69B679' },
-  minsLabel: { color: '#64748B', marginTop: -5, fontWeight: '600' },
-  quickSelectRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 25 },
-  quickBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#69B67930' },
+  inlineLogContainer: { paddingHorizontal: 20, paddingBottom: 10 },
+  
+  // 顶部总结看板样式 (调整高度比例)
+  summaryCard: { marginHorizontal: 20, marginTop: 10, marginBottom: 12, paddingVertical: 18, paddingHorizontal: 20, borderRadius: 22, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }, 
+  summaryLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }, 
+  trashBtn: { padding: 4, backgroundColor: '#FEE2E2', borderRadius: 6 }, 
+  summaryLabel: { color: '#64748B', fontSize: 12 }, 
+  summaryValue: { fontSize: 24, fontWeight: '800', color: '#1E293B' }, 
+  unitText: { fontSize: 12, color: '#94A3B8', fontWeight: '500' }, 
+  goalHeader: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }, 
+  editIcon: { backgroundColor: '#F0FDF4', padding: 4, borderRadius: 8 }, 
+  progressBarBg: { height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden' }, 
+  progressBarFill: { height: '100%', backgroundColor: '#69B679' },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }, 
+  calIconBox: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center' }, 
+
+  // 中部通用打卡区样式 (整体压缩 20%)
+  logBox: { backgroundColor: '#ECF9F1', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#DCFCE7' },
+  logQuestion: { textAlign: 'center', fontSize: 15, color: '#334155', fontWeight: '700', marginBottom: 12 },
+  logDisclaimer: { textAlign: 'center', fontSize: 11, color: '#94A3B8', marginBottom: 16, paddingHorizontal: 10, lineHeight: 16 },
+  logActionWrapper: { alignItems: 'center', marginBottom: 20 },
+  counterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 8 },
+  roundBtn: { width: 44, height: 44, backgroundColor: '#FFF', borderRadius: 22, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 2 } },
+  numberInputContainer: { backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#93D0A2', borderRadius: 16, width: 80, height: 60, justifyContent: 'center', alignItems: 'center', shadowColor: '#69B679', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  bigNumberInput: { fontSize: 36, fontWeight: '800', color: '#69B679', textAlign: 'center', width: '100%', height: '100%', padding: 0 },
+  minsLabel: { color: '#64748B', fontWeight: '500', fontSize: 12 },
+  quickSelectRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 20 },
+  quickBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#69B67930' },
   quickBtnActive: { backgroundColor: '#69B679', borderColor: '#69B679' },
-  quickText: { color: '#69B679', fontWeight: '600' },
+  quickText: { color: '#69B679', fontWeight: '600', fontSize: 13 },
   quickTextActive: { color: '#FFF' },
-  mainLogBtn: { backgroundColor: '#69B679', padding: 18, borderRadius: 25, alignItems: 'center' },
-  mainLogBtnText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginLeft: 20, marginBottom: 12, color: '#334155' },
-  adviceBanner: { backgroundColor: '#F0F9FF', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 16, marginHorizontal: 20, marginBottom: 20, borderWidth: 1, borderColor: '#E0F2FE', height: 50, flexDirection: 'row', alignItems: 'center' },
+  mainLogBtn: { backgroundColor: '#69B679', paddingVertical: 14, borderRadius: 20, alignItems: 'center' },
+  mainLogBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+
+  // 底部推荐列表样式 (同步压缩排版与字体)
+  sectionTitle: { fontSize: 15, fontWeight: '700', marginLeft: 20, marginBottom: 12, color: '#334155' },
+  adviceBanner: { backgroundColor: '#F0F9FF', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 16, marginHorizontal: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E0F2FE', height: 46, flexDirection: 'row', alignItems: 'center' },
   adviceHeader: { flexDirection: 'row', alignItems: 'center', marginRight: 8, borderRightWidth: 1, borderRightColor: '#BAE6FD', paddingRight: 8, zIndex: 10, backgroundColor: '#F0F9FF' },
   adviceTag: { fontSize: 12, fontWeight: 'bold', color: '#0369A1', marginLeft: 4 },
   scrollingContainer: { flex: 1, height: '100%', overflow: 'hidden', justifyContent: 'center', position: 'relative' },
-  adviceText: { fontSize: 13, color: '#0369A1', fontWeight: '500', textAlignVertical: 'center' },
-  categoryScroll: { marginBottom: 20 },
+  adviceText: { fontSize: 12, color: '#0369A1', fontWeight: '500', textAlignVertical: 'center' },
+  categoryScroll: { marginBottom: 16 },
   categoryScrollContent: { paddingHorizontal: 20, gap: 10 },
-  categoryBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 15, backgroundColor: '#F1F5F9' },
+  categoryBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: '#F1F5F9' },
   categoryBtnActive: { backgroundColor: '#69B679' },
-  categoryIcon: { marginRight: 8, fontSize: 16 },
-  categoryLabel: { fontWeight: '600', color: '#475569' },
+  categoryIcon: { marginRight: 8, fontSize: 14 },
+  categoryLabel: { fontWeight: '600', color: '#475569', fontSize: 13 },
   categoryLabelActive: { color: '#FFF' },
-  recCard: { marginHorizontal: 20, marginBottom: 16, padding: 20, backgroundColor: '#FFF', borderRadius: 32, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
-  recHeader: { flexDirection: 'row', marginBottom: 18 },
   
-  recImageContainer: { width: 60, height: 60, borderRadius: 20, overflow: 'hidden', backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  // 推荐活动单卡样式
+  recCard: { marginHorizontal: 20, marginBottom: 12, padding: 16, backgroundColor: '#FFF', borderRadius: 24, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  recHeader: { flexDirection: 'row', marginBottom: 14 },
+  recImageContainer: { width: 56, height: 56, borderRadius: 16, overflow: 'hidden', backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center', position: 'relative' },
   recImage: { width: '100%', height: '100%' },
   recIconCircle: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F0FDF4' },
-  loggedBadge: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(16, 185, 129, 0.9)', paddingVertical: 3, alignItems: 'center' },
+  loggedBadge: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(16, 185, 129, 0.9)', paddingVertical: 2, alignItems: 'center' },
   loggedBadgeText: { color: '#FFF', fontSize: 9, fontWeight: '900' },
-
   recTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  recTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B', flex: 1, marginRight: 8 },
-  timeTag: { backgroundColor: '#ECF9F1', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
-  timeTagText: { color: '#69B679', fontSize: 13, fontWeight: '700' },
-  recDesc: { color: '#64748B', fontSize: 14, marginTop: 4, lineHeight: 20 },
-  recGreenSub: { color: '#69B679', fontSize: 13, fontWeight: '600', marginTop: 10 },
-  recButtonRow: { flexDirection: 'row', gap: 12 },
-  watchBtn: { flex: 1, flexDirection: 'row', backgroundColor: '#F1F5F9', paddingVertical: 14, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  watchBtnText: { color: '#475569', fontWeight: '700', fontSize: 15 },
-  tapLogBtnLarge: { flex: 1, backgroundColor: '#73BC7D', paddingVertical: 14, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  tapLogTextLarge: { color: '#FFF', fontWeight: '700', fontSize: 15 },
-  
-  summaryCard: { margin: 20, padding: 24, borderRadius: 24, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9' },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  summaryLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }, 
-  trashBtn: { padding: 4, backgroundColor: '#FEE2E2', borderRadius: 8 }, 
-  summaryLabel: { color: '#64748B', fontSize: 14 },
-  summaryValue: { fontSize: 28, fontWeight: '800', color: '#1E293B' },
-  unitText: { fontSize: 14, color: '#94A3B8', fontWeight: '400' },
-  goalHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  editIcon: { backgroundColor: '#F0FDF4', padding: 4, borderRadius: 10 },
-  progressBarBg: { height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: '#69B679' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
-  calIconBox: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center' },
+  recTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', flex: 1, marginRight: 8 },
+  timeTag: { backgroundColor: '#ECF9F1', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  timeTagText: { color: '#69B679', fontSize: 11, fontWeight: '700' },
+  recDesc: { color: '#64748B', fontSize: 12, marginTop: 4, lineHeight: 18 },
+  recGreenSub: { color: '#69B679', fontSize: 11, fontWeight: '600', marginTop: 8 },
+  recButtonRow: { flexDirection: 'row', gap: 10 },
+  watchBtn: { flex: 1, flexDirection: 'row', backgroundColor: '#F1F5F9', paddingVertical: 12, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  watchBtnText: { color: '#475569', fontWeight: '700', fontSize: 14 },
+  tapLogBtnLarge: { flex: 1, backgroundColor: '#73BC7D', paddingVertical: 12, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  tapLogTextLarge: { color: '#FFF', fontWeight: '700', fontSize: 14 },
 
+  // 弹窗通用样式
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalBackgroundClick: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   modalContent: { width: '85%', backgroundColor: '#FFF', borderRadius: 40, padding: 30, alignItems: 'center' },
@@ -600,51 +605,6 @@ const styles = StyleSheet.create({
   goalUnitText: { fontSize: 16, color: '#475569', fontWeight: '600', marginTop: -10 },
   recommendationTag: { backgroundColor: '#FFFBEB', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, marginBottom: 30 },
   recommendationText: { color: '#D97706', fontWeight: '700', fontSize: 14 },
-  logDisclaimer: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#94A3B8', 
-    marginBottom: 20,
-    paddingHorizontal: 10,
-    lineHeight: 18,
-  },
-  // --- 新增的迷你总结样式 ---
-  miniSummaryRow: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF', // 白色背景在浅绿色卡片上很突出
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#69B679',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  miniStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  miniStatValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1E293B',
-  },
-  miniStatUnit: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  miniDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#E2E8F0',
-  },
-  // -----------------------
 });
 
 export default PhysicalActivityScreen;
