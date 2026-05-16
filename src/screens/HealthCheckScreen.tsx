@@ -9,33 +9,31 @@ import {
   TextInput, 
   TouchableOpacity, 
   View,
-  ActivityIndicator // Add Loading Indicator
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { Calendar, ChevronDown, Ruler, Weight, X, CheckCircle2, HeartPulse } from 'lucide-react-native'; // 💡 新增 HeartPulse 图标
+import { Calendar, ChevronDown, Ruler, Weight, X, CheckCircle2, HeartPulse } from 'lucide-react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { useChildProfile } from '../context/ChildProfileContext';
 import { colors } from '../theme/colors';
 import { Card, Header, PrimaryButton, Screen } from '../components/Common';
 import ChildAvatar from '../components/ChildAvatar';
-import { saveHealthRecord } from '../utils/storage';
+import { loadHealthRecords, saveHealthRecord } from '../utils/storage';
 
-const HEIGHT_STANDARDS = Array.from({ length: 230 }, (_, i) => i.toString()); // 0cm - 230cm
-const WEIGHT_STANDARDS = Array.from({ length: 200 }, (_, i) => i.toString()); // 0kg - 200kg
-const BASE_URL = "https://jom-healthy-java.onrender.com";  //Backend URL
-
+const HEIGHT_STANDARDS = Array.from({ length: 230 }, (_, i) => i.toString());
+const WEIGHT_STANDARDS = Array.from({ length: 200 }, (_, i) => i.toString());
+const BASE_URL = "https://jom-healthy-java.onrender.com";
 
 export default function HealthCheckScreen() {
   const navigation = useNavigation<any>();
   const { t, language } = useLanguage();
-  
-  // 💡 修改点 1：把 syncLatestHealthRecord 提取出来
   const { children, syncLatestHealthRecord } = useChildProfile();
   
   const getText = (en: string, zh: string, ms: string) => language === 'zh' ? zh : language === 'ms' ? ms : en;
   
-  // --- The state for the form ---
+  // 表单状态管理
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
   const [gender, setGender] = useState<number | null>(null);
   const [birthday, setBirthday] = useState("");
@@ -43,17 +41,18 @@ export default function HealthCheckScreen() {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   
-  // --- The state for the modals ---
+  // 弹窗状态管理
   const [showHeightPicker, setShowHeightPicker] = useState(false);
   const [showWeightPicker, setShowWeightPicker] = useState(false);
 
-  // --- The state for the results and backend engine ---
+  // 测量结果与后端请求状态
   const [bmi, setBmi] = useState<number | null>(null);
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [adviceText, setAdviceText] = useState("");
   const [isError, setIsError] = useState(false);
 
+  // 切换选中儿童档案
   const handleSelectChild = (child: any) => {
     if (selectedChildId === child.id) {
       setSelectedChildId(null);
@@ -65,10 +64,10 @@ export default function HealthCheckScreen() {
       setBirthday(child.birthday || "");
     }
     setBmi(null); 
-    setAdviceText(""); //  Clear old data
+    setAdviceText(""); 
   };
 
-  // Birthday handling logic
+  // 生日日期格式化与处理逻辑
   const formatBirthday = (value: Date) => {
     const year = value.getFullYear();
     const month = String(value.getMonth() + 1).padStart(2, '0');
@@ -123,7 +122,7 @@ export default function HealthCheckScreen() {
     if (parsed) setBirthday(formatBirthday(parsed));
   };
 
-  // Text formatting tool (from old code)
+  // 格式化后端返回的医学建议文本
   const formatAdviceText = (text: string) => {
     if (!text) return "";
     return text
@@ -132,11 +131,10 @@ export default function HealthCheckScreen() {
       .replace("- It is recommended", "\n\n💡 Advice:\nIt is recommended");
   };
 
-  // Core method combining frontend calculations with backend API
+  // 触发 BMI 计算并请求后端医疗引擎
   const calculateBMI = async () => {
     if (!isFormValid) return;
     
-    // 1. Frontend calculation of basic values for large display
     const h = Number(height) / 100;
     const w = Number(weight);
     if (h > 0 && w > 0) {
@@ -144,13 +142,12 @@ export default function HealthCheckScreen() {
       setBmi(Number(value.toFixed(1)));
       setStatus(value < 14 ? t('underweight') : value < 18 ? t('normal') : t('overweight'));
       
-      // 2. Trigger the backend WHO evaluation engine
       setIsLoading(true);
       setIsError(false);
       setAdviceText("");
 
       try {
-        const url = `${BASE_URL}/api/bmi/evaluate?heightCm=${height}&weightKg=${weight}&birthDateStr=${birthday}&gender=${gender}`; //Server URL
+        const url = `${BASE_URL}/api/bmi/evaluate?heightCm=${height}&weightKg=${weight}&birthDateStr=${birthday}&gender=${gender}`; 
         const response = await fetch(url, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
@@ -161,7 +158,7 @@ export default function HealthCheckScreen() {
         const text = await response.text(); 
         setAdviceText(text);
       } catch (error) {
-        console.error("Request to backend failed:", error);
+        console.error("请求后端医疗引擎失败:", error);
         setIsError(true);
       } finally {
         setIsLoading(false);
@@ -169,50 +166,75 @@ export default function HealthCheckScreen() {
     }
   };
 
+  // 保存健康记录
   const handleSaveRecord = async () => {
     if (!selectedChildId || !bmi) return;
     const child = children.find(c => c.id === selectedChildId);
     if (!child) return;
 
-    // Calculate ageInMonths
-    let ageInMonths = 0;
-    let ageText = "";
-    if (birthdayDate) {
-      const today = new Date();
-      const mDiff = today.getMonth() - birthdayDate.getMonth();
-      const yDiff = today.getFullYear() - birthdayDate.getFullYear();
-      ageInMonths = yDiff * 12 + mDiff;
-      ageText = `${Math.floor(ageInMonths / 12)}${t('yearsOld') || 'Years'} ${ageInMonths % 12}Months`;
-    }
-
-    const record = {
-      id: Date.now().toString(),
-      date: new Date().toISOString(),
-      nickname: child.nickname || 'Child',
-      ageText: ageText,
-      ageInMonths: ageInMonths,
-      height: Number(height),
-      weight: Number(weight),
-      gender: gender ?? 1,
-      bmiValue: bmi,
-      adviceText: adviceText,
-      status: status
-    };
-
     try {
+      // 检查今日是否已经记录过该儿童的测量数据
+      const existingRecords = await loadHealthRecords();
+      const todayString = new Date().toDateString();
+      const hasRecordedToday = existingRecords.some(
+        (record) => record.nickname === child.nickname && new Date(record.date).toDateString() === todayString
+      );
+
+      if (hasRecordedToday) {
+        // 如果今天已记录，弹出防呆提示并中止保存流程
+        Alert.alert(
+          getText('Already Measured Today', '今日已测量', 'Telah Diukur Hari Ini'),
+          getText(
+            "You can only save one measurement per day. You can still view today's BMI analysis, but this new data won't be saved to the growth trend.",
+            "一天只能保存一次测量结果。您可以继续查看当前的 BMI 分析，但本次数据不会被叠加记录在成长趋势中。",
+            "Anda hanya boleh menyimpan satu ukuran sehari. Anda masih boleh melihat analisis BMI hari ini, tetapi data baru ini tidak akan disimpan ke dalam trend pertumbuhan."
+          ),
+          [
+            { text: getText('Got it', '我知道了', 'Faham'), style: 'default' }
+          ]
+        );
+        return; 
+      }
+
+      // 计算保存所需的精确月龄
+      let ageInMonths = 0;
+      let ageText = "";
+      if (birthdayDate) {
+        const today = new Date();
+        const mDiff = today.getMonth() - birthdayDate.getMonth();
+        const yDiff = today.getFullYear() - birthdayDate.getFullYear();
+        ageInMonths = yDiff * 12 + mDiff;
+        ageText = `${Math.floor(ageInMonths / 12)}${t('yearsOld') || 'Years'} ${ageInMonths % 12}Months`;
+      }
+
+      const record = {
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        nickname: child.nickname || 'Child',
+        ageText: ageText,
+        ageInMonths: ageInMonths,
+        height: Number(height),
+        weight: Number(weight),
+        gender: gender ?? 1,
+        bmiValue: bmi,
+        adviceText: adviceText,
+        status: status
+      };
+
       await saveHealthRecord(record);
       
-      // 💡 修改点 2：保存完毕后，立即通知全局大脑更新档案！
+      // 同步全局状态
       if (syncLatestHealthRecord) {
         await syncLatestHealthRecord();
       }
 
       navigation.goBack();
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error("保存健康记录失败:", error);
     }
   };
 
+  // 通用范围选择器模态框组件
   const RangeModal = ({ visible, title, options, onClose, onSelect, unit }: any) => (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -245,6 +267,7 @@ export default function HealthCheckScreen() {
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <Card>
           
+          {/* 儿童档案选择区域 */}
           {children && children.length > 0 && (
             <View style={[styles.fieldGroup, styles.profileSelectorSection]}>
               <Text style={styles.label}>{t('selectProfile') || 'Quick Select Profile'}</Text>
@@ -271,6 +294,7 @@ export default function HealthCheckScreen() {
             </View>
           )}
 
+          {/* 性别选择区域 */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>{t('gender') || 'Gender'}</Text>
             {selectedChildId ? (
@@ -297,6 +321,7 @@ export default function HealthCheckScreen() {
             )}
           </View>
 
+          {/* 出生日期选择区域 */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>{t('birthday') || 'Date of Birth'}</Text>
             {selectedChildId ? (
@@ -339,6 +364,7 @@ export default function HealthCheckScreen() {
             )}
           </View>
 
+          {/* 身高输入区域 */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>{t('height') || 'Current Height (cm)'}</Text>
             <View style={styles.inputWithAddon}>
@@ -356,6 +382,7 @@ export default function HealthCheckScreen() {
             </View>
           </View>
 
+          {/* 体重输入区域 */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>{t('weight') || 'Current Weight (kg)'}</Text>
             <View style={styles.inputWithAddon}>
@@ -381,7 +408,7 @@ export default function HealthCheckScreen() {
           />
         </Card>
 
-        {/* Result Card */}
+        {/* 结果呈现区域 */}
         {bmi !== null && (
           <Card style={styles.resultCard}>
             <Text style={styles.resultLabel}>{t('bmiResult')}</Text>
@@ -390,7 +417,7 @@ export default function HealthCheckScreen() {
               {status}
             </Text>
 
-            {/* WHO Rendering Area */}
+            {/* WHO 医学引擎建议模块 */}
             <View style={styles.adviceContainer}>
               {isLoading ? (
                 <View style={styles.loadingBox}>
@@ -412,6 +439,7 @@ export default function HealthCheckScreen() {
               ) : null}
             </View>
 
+            {/* 保存记录判定 */}
             {selectedChildId ? (
               <PrimaryButton 
                 title={t('saveRecommendations') || getText('Save Record', '保存记录', 'Simpan Rekod')} 
@@ -432,7 +460,7 @@ export default function HealthCheckScreen() {
         
       </ScrollView>
 
-      {/* 选择面板 Modals */}
+      {/* 数值选择模态框 */}
       <RangeModal 
         visible={showHeightPicker} 
         title={getText('Select Height', '选择身高', 'Pilih Tinggi')} 
@@ -500,7 +528,6 @@ const styles = StyleSheet.create({
   sheetItemText: { fontSize: 16, fontWeight: '600', color: colors.text, textAlign: 'center' },
   sheetItemUnit: { fontSize: 14, color: colors.muted, fontWeight: '400' },
 
-  // 💡 结果卡片及 WHO 引擎排版样式
   resultCard: { alignItems: 'center', paddingTop: 24, paddingBottom: 24 },
   resultLabel: { color: colors.muted, fontWeight: '700', fontSize: 15 },
   bmi: { color: colors.text, fontSize: 54, fontWeight: '900', marginVertical: 8 },
