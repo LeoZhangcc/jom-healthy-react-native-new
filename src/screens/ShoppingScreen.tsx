@@ -259,10 +259,48 @@ function getShoppingItemName(item: ShoppingItem, language: string) {
   return item.nameEn || item.name;
 }
 
+function formatSummedGramQuantity(value?: string | null) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  const parts = raw
+    .split('+')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length <= 1) {
+    return raw;
+  }
+
+  const gramValues = parts.map((part) => {
+    const normalized = part.replace(/,/g, '.').replace(/\s+/g, '');
+    const match = normalized.match(/^(\d+(?:\.\d+)?)(?:g|克)$/i);
+    return match ? Number(match[1]) : NaN;
+  });
+
+  if (gramValues.some((value) => !Number.isFinite(value))) {
+    return raw;
+  }
+
+  const total = gramValues.reduce((sum, value) => sum + value, 0);
+  const rounded = Math.round(total * 100) / 100;
+  const formatted = rounded
+    .toFixed(2)
+    .replace(/\.00$/, '')
+    .replace(/(\.\d)0$/, '$1');
+
+  return `${formatted}g`;
+}
+
 function getShoppingItemQuantity(item: ShoppingItem, language: string) {
-  if (language === 'zh') return item.quantityCn || item.quantity;
-  if (language === 'ms') return item.quantityMs || item.quantity;
-  return item.quantity;
+  const rawQuantity =
+    language === 'zh'
+      ? item.quantityCn || item.quantity
+      : language === 'ms'
+        ? item.quantityMs || item.quantity
+        : item.quantity;
+
+  return formatSummedGramQuantity(rawQuantity);
 }
 
 function getShoppingItemSource(item: ShoppingItem, language: string) {
