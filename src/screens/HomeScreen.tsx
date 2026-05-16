@@ -35,7 +35,6 @@ import ChildAvatar from '../components/ChildAvatar';
 import DigitalTwin from '../components/DigitalTwin';
 import LanguageModal from '../components/LanguageModal';
 import AddChildModal from '../components/AddChildModal';
-import ChildrenProfilesModal from '../components/ChildrenProfilesModal';
 import { useAiMealPlanGeneration } from '../context/AiMealPlanGenerationContext';
 import Markdown from 'react-native-markdown-display';
 import { FileText, X, ExternalLink } from 'lucide-react-native';
@@ -64,9 +63,7 @@ export default function HomeScreen() {
   const { openAiMealPlanModal } = useAiMealPlanGeneration();
   const { language, t } = useLanguage();
   const {
-    children,
     activeChild,
-    switchToChild,
     nutritionProgress,
     getTip,
     todayWaterIntake, 
@@ -79,7 +76,6 @@ export default function HomeScreen() {
 
   const [showLanguage, setShowLanguage] = useState(false);
   const [showAddChild, setShowAddChild] = useState(false);
-  const [showChildren, setShowChildren] = useState(false);
   const currentLanguage = language; 
 
   const [searchText, setSearchText] = useState('');
@@ -171,17 +167,6 @@ export default function HomeScreen() {
     return typeof candidate === 'string' && /^https?:\/\//i.test(candidate.trim())
       ? candidate.trim()
       : '';
-  };
-
-  const getChildChipLabel = (child: any) => {
-    const avatarValue = String(child?.avatar || '').trim();
-    const isBuiltInImageAvatar = avatarValue.startsWith('kid-avatar-');
-
-    if (child?.avatarImageUri || isBuiltInImageAvatar || !avatarValue) {
-      return child?.nickname || getText('Child', '小孩', 'Anak');
-    }
-
-    return `${avatarValue} ${child?.nickname || getText('Child', '小孩', 'Anak')}`.trim();
   };
 
   const getStatusLabel = (status?: string | null) => {
@@ -620,14 +605,12 @@ export default function HomeScreen() {
             <>
               <Card style={styles.profileSummaryCard}>
                 <View style={styles.profileSummaryTop}>
-                  <Pressable onPress={() => setShowChildren(true)}>
-                    <ChildAvatar
-                      avatar={activeChild.avatar}
-                      avatarImageUri={activeChild.avatarImageUri}
-                      size={58}
-                      style={styles.profileAvatar}
-                    />
-                  </Pressable>
+                  <ChildAvatar
+                    avatar={activeChild.avatar}
+                    avatarImageUri={activeChild.avatarImageUri}
+                    size={58}
+                    style={styles.profileAvatar}
+                  />
 
                   <View style={styles.profileInfo}>
                     <View style={styles.profileNameRow}>
@@ -655,23 +638,6 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                 </View>
-
-                {children.length > 1 && (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.childSwitcher}
-                  >
-                    {children.map((child: any) => (
-                      <Chip
-                        key={child.id}
-                        label={getChildChipLabel(child)}
-                        selected={child.id === activeChild.id}
-                        onPress={() => switchToChild(child.id)}
-                      />
-                    ))}
-                  </ScrollView>
-                )}
 
                 <View style={styles.profileActions}>
                   <Pressable
@@ -744,8 +710,8 @@ export default function HomeScreen() {
                   </View>
 
                   {/* Right Side: Navigation Arrow */}
-                  <View style={styles.newHydrationChevronContainer}>
-                    <Ionicons name="chevron-forward" size={16} color="#4CAF7A" />
+                  <View style={styles.sectionArrowButton}>
+                    <Ionicons name="chevron-forward" size={18} color={colors.primaryDark} />
                   </View>
                 </View>
 
@@ -778,7 +744,8 @@ export default function HomeScreen() {
 
           {/* --- RESTORED PHYSICAL ACTIVITY CARD --- */}
           {activeChild && (
-            <Card style={styles.newActivityCard}>
+            <Pressable onPress={() => navigation.navigate('PhysicalActivity')}>
+              <Card style={styles.newActivityCard}>
               <View style={styles.cardTopRow}>
                 {/* Left Icon Section */}
                 <View style={styles.iconContainer}>
@@ -797,12 +764,9 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Right Navigation Button */}
-                <Pressable 
-                  style={styles.circleChevron} 
-                  onPress={() => navigation.navigate('PhysicalActivity')}
-                >
-                  <Ionicons name="chevron-forward" size={18} color="#10B981" />
-                </Pressable>
+                <View style={styles.sectionArrowButton}>
+                  <Ionicons name="chevron-forward" size={18} color={colors.primaryDark} />
+                </View>
               </View>
 
               {/* Progress Label and Values Row */}
@@ -822,7 +786,8 @@ export default function HomeScreen() {
                   ]} 
                 /> 
               </View>
-            </Card>
+              </Card>
+            </Pressable>
           )}
           
           {/* Growth Overview */}
@@ -841,7 +806,7 @@ export default function HomeScreen() {
                 )}
               </View>
 
-              <View style={styles.growthArrow}>
+              <View style={styles.sectionArrowButton}>
                 <Ionicons
                   name="chevron-forward"
                   size={18}
@@ -1002,19 +967,14 @@ export default function HomeScreen() {
         onClose={() => setShowAddChild(false)}
       />
 
-      <ChildrenProfilesModal
-        visible={showChildren}
-        onClose={() => setShowChildren(false)}
-      />
-      
-    </>
+</>
   );
 }
 
 const styles = StyleSheet.create({
   body: {
     padding: 20,
-    gap: 14,
+    gap: 16,
     paddingBottom: 110,
   },
 
@@ -1201,10 +1161,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  childSwitcher: {
-    marginTop: 14,
-  },
-
   profileActions: {
     flexDirection: 'row',
     gap: 12,
@@ -1251,7 +1207,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     minHeight: 150,
-    marginBottom: 16,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 16,
@@ -1273,15 +1228,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0F172A',
     marginBottom: 4,
-  },
-
-  growthArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 
   growthLineWrap: {
@@ -1533,7 +1479,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
-    marginBottom: 16,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -1576,14 +1521,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  circleChevron: {
-    width: 32,
-    height: 32,
-    backgroundColor: '#F0FDF4', 
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   progressLabelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1616,7 +1553,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
-    marginBottom: 16,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 20,
@@ -1670,11 +1606,11 @@ const styles = StyleSheet.create({
   newHydrationBadgeTextNeeds: {
     color: '#B45309',
   },
-  newHydrationChevronContainer: {
-    width: 28,
-    height: 28,
-    backgroundColor: '#E8F5E9',
-    borderRadius: 14,
+  sectionArrowButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
