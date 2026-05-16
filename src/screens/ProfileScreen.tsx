@@ -19,6 +19,7 @@ import * as Sharing from 'expo-sharing';
 import { useChildProfile } from '../context/ChildProfileContext';
 import { useLanguage } from '../context/LanguageContext';
 import { colors } from '../theme/colors';
+import ChildAvatar from '../components/ChildAvatar';
 import {
   Card,
   Header,
@@ -548,7 +549,12 @@ export default function ProfileScreen() {
         <View style={styles.body}>
           <Card>
             <View style={styles.profileRow}>
-              <Text style={styles.avatar}>{activeChild?.avatar || '👶'}</Text>
+              <ChildAvatar
+                avatar={activeChild?.avatar || '👶'}
+                avatarImageUri={activeChild?.avatarImageUri}
+                size={58}
+                style={styles.profileAvatar}
+              />
 
               <View style={styles.profileInfo}>
                 <Text style={styles.name} numberOfLines={1}>
@@ -584,21 +590,12 @@ export default function ProfileScreen() {
                           ]}
                           onPress={() => handleSwitchChild(child.id)}
                         >
-                          <Text style={styles.childPillAvatar}>
-                            {child.avatar || '👶'}
-                          </Text>
+                          <ChildAvatar
+                            avatar={child.avatar || '👶'}
+                            avatarImageUri={child.avatarImageUri}
+                            size={20}
+                          />
 
-                          <Text
-                            numberOfLines={1}
-                            style={[
-                              styles.childPillName,
-                              isActive
-                                ? styles.childPillNameActive
-                                : styles.childPillNameInactive,
-                            ]}
-                          >
-                            {child.nickname || 'Child'}
-                          </Text>
                         </Pressable>
                       );
                     })}
@@ -901,8 +898,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
-  avatar: {
-    fontSize: 42,
+  profileAvatar: {
+    borderWidth: 2,
+    borderColor: colors.border,
   },
 
   profileInfo: {
@@ -923,7 +921,7 @@ const styles = StyleSheet.create({
   },
 
   childSwitchSlot: {
-    width: 138,
+    width: 108,
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
@@ -931,18 +929,15 @@ const styles = StyleSheet.create({
   childSwitchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
 
   childPill: {
-    width: 64,
-    height: 42,
-    borderRadius: 21,
-    paddingHorizontal: 7,
-    flexDirection: 'row',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
   },
 
   childPillActive: {
@@ -951,24 +946,6 @@ const styles = StyleSheet.create({
 
   childPillInactive: {
     backgroundColor: colors.primaryLight,
-  },
-
-  childPillAvatar: {
-    fontSize: 17,
-  },
-
-  childPillName: {
-    fontSize: 13,
-    fontWeight: '900',
-    maxWidth: 28,
-  },
-
-  childPillNameActive: {
-    color: '#FFFFFF',
-  },
-
-  childPillNameInactive: {
-    color: colors.primaryDark,
   },
 
   moreChildrenButton: {

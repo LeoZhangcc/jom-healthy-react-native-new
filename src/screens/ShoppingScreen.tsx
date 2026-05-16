@@ -19,6 +19,7 @@ import * as Location from 'expo-location';
 import { useChildProfile } from '../context/ChildProfileContext';
 import { useLanguage } from '../context/LanguageContext';
 import { colors } from '../theme/colors';
+import ChildAvatar from '../components/ChildAvatar';
 import {
   Card,
   EmptyState,
@@ -64,6 +65,7 @@ type OwnerOption = {
   label: string;
   subtitle?: string;
   avatar?: string;
+  avatarImageUri?: string;
   icon?: keyof typeof Ionicons.glyphMap;
 };
 
@@ -335,7 +337,7 @@ export default function ShoppingScreen() {
   const [selectedNearbyPlaceId, setSelectedNearbyPlaceId] = useState<string | null>(null);
   const [nearbyMapReady, setNearbyMapReady] = useState(false);
   const nearbyMapRef = useRef<MapView | null>(null);
-  const nearbyMarkerRefs = useRef<Record<string, Marker | null>>({});
+  const nearbyMarkerRefs = useRef<Record<string, React.ElementRef<typeof Marker> | null>>({});
 
   const getText = (en: string, zh: string, ms: string) => {
     if (language === 'zh') return zh;
@@ -435,6 +437,7 @@ export default function ShoppingScreen() {
         key: getOwnerKeyForChild(child),
         label: child.nickname || getText('Child', '小孩', 'Anak'),
         avatar: child.avatar || '👶',
+        avatarImageUri: child.avatarImageUri || '',
         subtitle: getText('Child list', '小孩清单', 'Senarai anak'),
       });
     });
@@ -1086,7 +1089,11 @@ export default function ShoppingScreen() {
                 >
                   <View style={[styles.ownerDropdownIcon, selected && styles.ownerDropdownIconActive]}>
                     {option.avatar ? (
-                      <Text style={styles.ownerDropdownAvatar}>{option.avatar}</Text>
+                      <ChildAvatar
+                        avatar={option.avatar}
+                        avatarImageUri={option.avatarImageUri}
+                        size={28}
+                      />
                     ) : (
                       <Ionicons
                         name={option.icon || 'person'}

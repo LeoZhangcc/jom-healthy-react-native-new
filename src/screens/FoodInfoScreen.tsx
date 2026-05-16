@@ -282,25 +282,20 @@ export default function FoodInfoScreen() {
 
   const nutritionInfo = [
     {
-      icon: 'flame' as const,
-      label: 'Calories',
+      label: getText('Calories', '卡路里', 'Kalori'),
       value: `${nutrition.calories || '-'} kcal`,
-      color: '#FF9F6E',
-      bg: '#FFE8DC',
     },
     {
-      icon: 'cube' as const,
-      label: 'Sugar',
-      value: `${nutrition.sugar || 0}g`,
-      color: '#FF8C8C',
-      bg: '#FFE8E8',
+      label: getText('Carbs', '碳水', 'Karbohidrat'),
+      value: `${nutrition.carbs || 0}g`,
     },
     {
-      icon: 'water' as const,
-      label: 'Fat',
+      label: getText('Protein', '蛋白质', 'Protein'),
+      value: `${nutrition.protein || 0}g`,
+    },
+    {
+      label: getText('Fat', '脂肪', 'Lemak'),
       value: `${nutrition.fat || 0}g`,
-      color: '#7EC8E3',
-      bg: '#EAF6FB',
     },
   ];
 
@@ -402,16 +397,7 @@ export default function FoodInfoScreen() {
                       <Text style={{ backgroundColor: 'white', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, overflow: 'hidden', color: '#15803D', fontWeight: 'bold' }}>🥛 Fresh Milk</Text>
                     </View>
                   </View>
-                ) : (
-                  <View style={{ backgroundColor: '#F0FDF4', padding: 16, borderRadius: 12 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Ionicons name="checkmark-circle" size={24} color="#22C55E" />
-                      <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#166534', marginLeft: 8 }}>
-                        Great Hydration Choice!
-                      </Text>
-                    </View>
-                  </View>
-                )}
+                ) : null}
               </View>
             )}
 
@@ -421,38 +407,16 @@ export default function FoodInfoScreen() {
               <View style={styles.nutritionGrid}>
                 {nutritionInfo.map((item) => (
                   <View key={item.label} style={styles.nutritionCard}>
-                    <View
-                      style={[
-                        styles.nutritionIconBox,
-                        { backgroundColor: item.bg },
-                      ]}
-                    >
-                      <Ionicons name={item.icon} size={22} color={item.color} />
-                    </View>
-
-                    <Text style={styles.nutritionLabel}>{item.label}</Text>
-                    <Text style={styles.nutritionValue}>{item.value}</Text>
+                    <Text style={styles.nutritionValue} numberOfLines={1}>
+                      {item.value}
+                    </Text>
+                    <Text style={styles.nutritionLabel} numberOfLines={2}>
+                      {item.label}
+                    </Text>
                   </View>
                 ))}
               </View>
 
-              <View style={styles.additionalCard}>
-                <View style={styles.additionalItem}>
-                  <Text style={styles.additionalLabel}>{getText('Protein', '蛋白质', 'Protein')}</Text>
-                  <Text style={styles.additionalValue}>
-                    {nutrition.protein || 0}g
-                  </Text>
-                </View>
-
-                <View style={styles.additionalDivider} />
-
-                <View style={styles.additionalItem}>
-                  <Text style={styles.additionalLabel}>{getText('Carbs', '碳水', 'Karbohidrat')}</Text>
-                  <Text style={styles.additionalValue}>
-                    {nutrition.carbs || 0}g
-                  </Text>
-                </View>
-              </View>
             </View>
 
             <View style={styles.tipsCard}>
@@ -499,7 +463,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingBottom: 120,
-    gap: 18,
+    gap: 16,
   },
 
   loadingCard: {
@@ -584,7 +548,8 @@ const styles = StyleSheet.create({
   },
 
   foodNameWrap: {
-    padding: 22,
+    paddingHorizontal: 22,
+    paddingVertical: 20,
   },
 
   foodName: {
@@ -596,7 +561,7 @@ const styles = StyleSheet.create({
 
   statusCard: {
     borderRadius: 22,
-    padding: 20,
+    padding: 18,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 14,
@@ -641,84 +606,48 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
     color: '#2F3A3A',
-    marginBottom: 14,
+    marginBottom: 12,
     paddingHorizontal: 4,
   },
 
   nutritionGrid: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
+    alignItems: 'stretch',
+    gap: 8,
   },
 
   nutritionCard: {
     flex: 1,
+    minWidth: 0,
+    minHeight: 82,
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
-    padding: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
 
-  nutritionIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-
   nutritionLabel: {
-    fontSize: 12,
+    marginTop: 6,
+    fontSize: 11,
+    lineHeight: 14,
     color: '#7A8A8A',
-    marginBottom: 4,
     textAlign: 'center',
+    fontWeight: '700',
   },
 
   nutritionValue: {
     fontSize: 13,
+    lineHeight: 17,
     fontWeight: '900',
     color: '#2F3A3A',
     textAlign: 'center',
-  },
-
-  additionalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 18,
-    flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 2,
-  },
-
-  additionalItem: {
-    flex: 1,
-  },
-
-  additionalDivider: {
-    width: 1,
-    backgroundColor: '#E5E7EB',
-    marginHorizontal: 14,
-  },
-
-  additionalLabel: {
-    fontSize: 12,
-    color: '#7A8A8A',
-    marginBottom: 5,
-  },
-
-  additionalValue: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#2F3A3A',
   },
 
   tipsCard: {
