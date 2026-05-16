@@ -194,6 +194,143 @@ function AnimatedHomeHeader({
   );
 }
 
+
+function AnimatedProfileAvatar({
+  avatar,
+  avatarImageUri,
+}: {
+  avatar: string;
+  avatarImageUri?: string;
+}) {
+  const floatY = useRef(new Animated.Value(0)).current;
+  const glowScale = useRef(new Animated.Value(0.96)).current;
+  const glowOpacity = useRef(new Animated.Value(0.16)).current;
+  const tapScale = useRef(new Animated.Value(1)).current;
+  const tapY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const floating = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(floatY, {
+            toValue: -3,
+            duration: 1100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowScale, {
+            toValue: 1.08,
+            duration: 1100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowOpacity, {
+            toValue: 0.28,
+            duration: 1100,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(floatY, {
+            toValue: 0,
+            duration: 1100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowScale, {
+            toValue: 0.96,
+            duration: 1100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowOpacity, {
+            toValue: 0.16,
+            duration: 1100,
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
+    );
+
+    floating.start();
+
+    return () => {
+      floating.stop();
+    };
+  }, [floatY, glowOpacity, glowScale]);
+
+  const popAvatar = () => {
+    tapScale.stopAnimation();
+    tapY.stopAnimation();
+    tapScale.setValue(1);
+    tapY.setValue(0);
+
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(tapScale, {
+          toValue: 1.16,
+          duration: 125,
+          useNativeDriver: true,
+        }),
+        Animated.timing(tapY, {
+          toValue: -8,
+          duration: 125,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.spring(tapScale, {
+          toValue: 1,
+          friction: 4.2,
+          tension: 95,
+          useNativeDriver: true,
+        }),
+        Animated.spring(tapY, {
+          toValue: 0,
+          friction: 4.2,
+          tension: 95,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  };
+
+  return (
+    <Pressable
+      style={styles.profileAvatarPressArea}
+      onPress={popAvatar}
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel="Animate child avatar"
+    >
+      <Animated.View
+        style={[
+          styles.profileAvatarAnimatedWrap,
+          {
+            transform: [
+              { translateY: Animated.add(floatY, tapY) },
+              { scale: tapScale },
+            ],
+          },
+        ]}
+      >
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.profileAvatarGlow,
+            {
+              opacity: glowOpacity,
+              transform: [{ scale: glowScale }],
+            },
+          ]}
+        />
+        <ChildAvatar
+          avatar={avatar}
+          avatarImageUri={avatarImageUri}
+          size={58}
+          style={styles.profileAvatar}
+        />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const { openAiMealPlanModal } = useAiMealPlanGeneration();
@@ -740,11 +877,9 @@ export default function HomeScreen() {
             <>
               <Card style={styles.profileSummaryCard}>
                 <View style={styles.profileSummaryTop}>
-                  <ChildAvatar
+                  <AnimatedProfileAvatar
                     avatar={activeChild.avatar}
                     avatarImageUri={activeChild.avatarImageUri}
-                    size={58}
-                    style={styles.profileAvatar}
                   />
 
                   <View style={styles.profileInfo}>
@@ -1306,8 +1441,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  profileAvatarPressArea: {
+    width: 72,
+    height: 72,
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  profileAvatarAnimatedWrap: {
+    width: 72,
+    height: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  profileAvatarGlow: {
+    position: 'absolute',
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: colors.primaryLight,
+  },
+
   profileAvatar: {
-    marginRight: 14,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
 
   profileInfo: {
