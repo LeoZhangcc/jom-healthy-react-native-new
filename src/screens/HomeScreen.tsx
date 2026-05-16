@@ -43,9 +43,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import FloatingAIChat from "../components/FloatingAIChat";
 import { useActivity } from '../context/PhysicalActivityContext';
 
-type FoodSuggestion = {
-  label: string;
+type FoodHistoryItem = {
   query: string;
+  foodNameEn?: string;
+  foodNameCn?: string;
+  foodNameMs?: string;
+  foodNameOriginal?: string;
+  fallbackLabel?: string;
+};
+
+type FoodSuggestion = FoodHistoryItem & {
+  label: string;
+  imageUrl?: string;
 };
 
 const BASE_URL = 'https://jom-healthy-java.onrender.com';
@@ -74,7 +83,7 @@ export default function HomeScreen() {
   const currentLanguage = language; 
 
   const [searchText, setSearchText] = useState('');
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [searchHistory, setSearchHistory] = useState<FoodHistoryItem[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [suggestions, setSuggestions] = useState<FoodSuggestion[]>([]);
@@ -134,6 +143,34 @@ export default function HomeScreen() {
     if (language === 'zh') return zh;
     if (language === 'ms') return ms;
     return en;
+  };
+
+  const getLocalizedFoodLabel = (item?: Partial<FoodHistoryItem> | null) => {
+    if (!item) return '';
+
+    const localizedLabel =
+      language === 'zh'
+        ? item.foodNameCn || item.foodNameOriginal || item.foodNameEn || item.foodNameMs
+        : language === 'ms'
+          ? item.foodNameMs || item.foodNameOriginal || item.foodNameEn || item.foodNameCn
+          : item.foodNameEn || item.foodNameOriginal || item.foodNameMs || item.foodNameCn;
+
+    return localizedLabel || item.fallbackLabel || item.query || '';
+  };
+
+  const getFoodImageUrl = (item: any) => {
+    const candidate =
+      item?.picUrl ||
+      item?.pic_url ||
+      item?.imageUrl ||
+      item?.image_url ||
+      item?.foodImageUrl ||
+      item?.food_image_url ||
+      '';
+
+    return typeof candidate === 'string' && /^https?:\/\//i.test(candidate.trim())
+      ? candidate.trim()
+      : '';
   };
 
   const getChildChipLabel = (child: any) => {
@@ -278,24 +315,27 @@ export default function HomeScreen() {
         const data = Array.isArray(payload?.data) ? payload.data : [];
 
         const nextSuggestions: FoodSuggestion[] = data.slice(0, 6).map((item: any) => {
-          const label =
-            language === 'zh'
-              ? item.foodNameCn || item.foodNameOriginal || item.foodNameEn || item.foodNameMs
-              : language === 'ms'
-                ? item.foodNameMs || item.foodNameOriginal || item.foodNameEn || item.foodNameCn
-                : item.foodNameEn || item.foodNameOriginal || item.foodNameMs || item.foodNameCn;
-
           const backendQuery =
             item.foodNameCombine ||
             item.foodNameOriginal ||
             item.foodNameEn ||
             item.foodNameMs ||
             item.foodNameCn ||
-            label;
+            query;
+
+          const suggestionBase: FoodHistoryItem = {
+            query: backendQuery || query,
+            foodNameEn: item.foodNameEn,
+            foodNameCn: item.foodNameCn,
+            foodNameMs: item.foodNameMs,
+            foodNameOriginal: item.foodNameOriginal,
+            fallbackLabel: query,
+          };
 
           return {
-            label: label || query,
-            query: backendQuery || query,
+            ...suggestionBase,
+            label: getLocalizedFoodLabel(suggestionBase) || query,
+            imageUrl: getFoodImageUrl(item),
           };
         });
 
@@ -326,8 +366,10 @@ export default function HomeScreen() {
   const habitTopics = allTopics.filter(t => t.category === 'HABIT');
   const displayTopics = [...reportTopics, ...habitTopics, ...sportTopics, ...dietTopics];
 
-  const handleFoodSearch = (value?: string) => {
-    const foodName = (value ?? searchText).trim();
+  const handleFoodSearch = (value?: string | FoodHistoryItem) => {
+    const selectedItem = typeof value === 'string' || value === undefined ? null : value;
+    const fallbackInput = typeof value === 'string' ? value : searchText;
+    const foodName = (selectedItem?.query || fallbackInput || '').trim();
 
     if (!foodName) {
       Alert.alert(
@@ -336,11 +378,25 @@ export default function HomeScreen() {
       return;
     }
 
+    const historyItem: FoodHistoryItem = selectedItem
+      ? {
+          query: foodName,
+          foodNameEn: selectedItem.foodNameEn,
+          foodNameCn: selectedItem.foodNameCn,
+          foodNameMs: selectedItem.foodNameMs,
+          foodNameOriginal: selectedItem.foodNameOriginal,
+          fallbackLabel: selectedItem.fallbackLabel || getLocalizedFoodLabel(selectedItem) || foodName,
+        }
+      : {
+          query: foodName,
+          fallbackLabel: foodName,
+        };
+
     setSearchHistory((prev) =>
       [
-        foodName,
+        historyItem,
         ...prev.filter(
-          (item) => item.toLowerCase() !== foodName.toLowerCase()
+          (item) => item.query.toLowerCase() !== historyItem.query.toLowerCase()
         ),
       ].slice(0, 6)
     );
@@ -458,19 +514,32 @@ export default function HomeScreen() {
                 ) : suggestions.length > 0 ? (
                   suggestions.map((item, index) => (
                     <Pressable
-                      key={`${item.label}-${index}`}
+                      key={`${item.query}-${index}`}
                       style={[
                         styles.suggestionItem,
                         index === suggestions.length - 1 && styles.suggestionItemLast,
                       ]}
-                      onPress={() => handleFoodSearch(item.query)}
+                      onPress={() => handleFoodSearch(item)}
                     >
-                      <Ionicons
-                        name="restaurant-outline"
-                        size={17}
-                        color={colors.primaryDark}
-                      />
-                      <Text style={styles.suggestionText}>{item.label}</Text>
+                      {item.imageUrl ? (
+                        <Image
+                          source={{ uri: item.imageUrl }}
+                          style={styles.suggestionImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.suggestionImageFallback}>
+                          <Ionicons
+                            name="restaurant-outline"
+                            size={18}
+                            color={colors.primaryDark}
+                          />
+                        </View>
+                      )}
+
+                      <Text style={styles.suggestionText} numberOfLines={2}>
+                        {item.label}
+                      </Text>
                     </Pressable>
                   ))
                 ) : (
@@ -506,10 +575,10 @@ export default function HomeScreen() {
                   showsHorizontalScrollIndicator={false}
                   style={styles.suggestionsRow}
                 >
-                  {searchHistory.map((food) => (
+                  {searchHistory.map((food, index) => (
                     <Chip
-                      key={food}
-                      label={food}
+                      key={`${food.query}-${index}`}
+                      label={getLocalizedFoodLabel(food)}
                       onPress={() => handleFoodSearch(food)}
                     />
                   ))}
@@ -994,6 +1063,22 @@ const styles = StyleSheet.create({
 
   suggestionItemLast: {
     borderBottomWidth: 0,
+  },
+
+  suggestionImage: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+  },
+
+  suggestionImageFallback: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   suggestionText: {

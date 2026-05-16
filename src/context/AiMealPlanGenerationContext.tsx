@@ -303,6 +303,53 @@ function normalizeDayPlan(dayPlan: any): MealPlanForDay {
   return normalized;
 }
 
+function extractGeneratedDayPlans(responseData: any, requestedDays: number): any[] {
+  const data = responseData?.data || responseData || {};
+  const directPlan = data?.plan || data?.mealPlan || data;
+
+  const arrayCandidates = [
+    data?.plans,
+    data?.mealPlans,
+    data?.days,
+    directPlan?.plans,
+    directPlan?.mealPlans,
+    directPlan?.days,
+    Array.isArray(directPlan) ? directPlan : null,
+  ].find((value) => Array.isArray(value));
+
+  if (Array.isArray(arrayCandidates)) {
+    return arrayCandidates
+      .map((item) => item?.plan || item?.mealPlan || item)
+      .filter((item) => item && typeof item === 'object')
+      .slice(0, requestedDays);
+  }
+
+  if (directPlan && typeof directPlan === 'object') {
+    const dayEntries = Object.entries(directPlan)
+      .filter(([key, value]) => {
+        const normalizedKey = String(key || '').trim().toLowerCase();
+        const looksLikeDayKey =
+          /^day\s*\d+$/.test(normalizedKey) ||
+          /^day_?\d+$/.test(normalizedKey) ||
+          /^\d+$/.test(normalizedKey);
+
+        return looksLikeDayKey && value && typeof value === 'object';
+      })
+      .sort(([left], [right]) => {
+        const leftNumber = Number(String(left).match(/\d+/)?.[0] || 0);
+        const rightNumber = Number(String(right).match(/\d+/)?.[0] || 0);
+        return leftNumber - rightNumber;
+      })
+      .map(([, value]) => (value as any)?.plan || (value as any)?.mealPlan || value);
+
+    if (dayEntries.length > 0) {
+      return dayEntries.slice(0, requestedDays);
+    }
+  }
+
+  return directPlan && typeof directPlan === 'object' ? [directPlan] : [];
+}
+
 function normalizeMealPlansByOwner(raw: any): Record<string, Record<string, MealPlanForDay>> {
   const normalized: Record<string, Record<string, MealPlanForDay>> = {};
 
@@ -499,48 +546,48 @@ export function AiMealPlanGenerationProvider({
       const allMealPlans: Record<string, Record<string, MealPlanForDay>> = normalizeMealPlansByOwner(raw ? JSON.parse(raw) : {});
       const ownerPlans = allMealPlans[ownerKey] || {};
 
-      for (let i = 0; i < days; i += 1) {
-        const targetDate = addDays(startDate, i);
+      const result = await generateMealPlanByAi({
+        childName: activeChild?.nickname || 'Guest',
+        age: activeChild?.age || 7,
+        gender: activeChild?.gender || 'boy',
+        heightCm: activeChild?.height || 120,
+        weightKg: activeChild?.weight || 20,
+        allergies: activeChild?.allergies || [],
+        restrictions: activeChild?.restrictions || {},
+        targetCarbs: targets.carbs,
+        targetProtein: targets.protein,
+        targetFat: targets.fat,
+        days,
+        language: normalizeLanguageCode(language),
+        mealPreference: prompt.trim()
+          ? `${prompt.trim()}. Generate ${days} varied day${days > 1 ? 's' : ''} in one response. ${buildMealLanguageInstruction(language)}`
+          : `Recommend by child profile. Generate ${days} varied day${days > 1 ? 's' : ''} in one response. ${buildMealLanguageInstruction(language)}`,
+      });
+
+      if (!result.ok) {
+        throw new Error(result.message || 'Failed to generate meal plan.');
+      }
+
+      const generatedPlans = extractGeneratedDayPlans(result.data, days);
+
+      if (generatedPlans.length < days) {
+        throw new Error(
+          `The backend returned ${generatedPlans.length} day${generatedPlans.length === 1 ? '' : 's'}, but ${days} day${days === 1 ? '' : 's'} were requested. Update the backend to return all requested days in one response.`
+        );
+      }
+
+      generatedPlans.slice(0, days).forEach((plan, index) => {
+        const targetDate = addDays(startDate, index);
         const dateKey = formatDateKey(targetDate);
-
-        const result = await generateMealPlanByAi({
-          childName: activeChild?.nickname || 'Guest',
-          age: activeChild?.age || 7,
-          gender: activeChild?.gender || 'boy',
-          heightCm: activeChild?.height || 120,
-          weightKg: activeChild?.weight || 20,
-          allergies: activeChild?.allergies || [],
-          restrictions: activeChild?.restrictions || {},
-          targetCarbs: targets.carbs,
-          targetProtein: targets.protein,
-          targetFat: targets.fat,
-          days: 1,
-          language: normalizeLanguageCode(language),
-          mealPreference: prompt.trim()
-            ? `${prompt.trim()} for day ${i + 1}, make it varied from other days. ${buildMealLanguageInstruction(language)}`
-            : `Recommend by child profile for day ${i + 1}, make it varied from other days. ${buildMealLanguageInstruction(language)}`,
-        });
-
-        if (!result.ok) {
-          throw new Error(result.message || 'Failed to generate meal plan.');
-        }
-
-        const data = result.data?.data || result.data || {};
-        const plan = data.plan || data.mealPlan || data;
-        const nextDayPlan: MealPlanForDay = {};
-
-        if (plan.breakfast) nextDayPlan.Breakfast = normalizeSlotMeals(plan.breakfast);
-        if (plan.lunch) nextDayPlan.Lunch = normalizeSlotMeals(plan.lunch);
-        if (plan.dinner) nextDayPlan.Dinner = normalizeSlotMeals(plan.dinner);
-        if (plan.snack) nextDayPlan.Snack = normalizeSlotMeals(plan.snack);
+        const nextDayPlan = normalizeDayPlan(plan);
 
         const hasAnyMeal = SLOT_ORDER.some((slot) => (nextDayPlan[slot]?.length || 0) > 0);
         if (!hasAnyMeal) {
-          throw new Error('AI did not return a valid meal plan.');
+          throw new Error(`AI did not return a valid meal plan for day ${index + 1}.`);
         }
 
         ownerPlans[dateKey] = nextDayPlan;
-      }
+      });
 
       allMealPlans[ownerKey] = ownerPlans;
       await AsyncStorage.setItem(MEAL_PLANS_STORAGE_KEY, JSON.stringify(allMealPlans));
