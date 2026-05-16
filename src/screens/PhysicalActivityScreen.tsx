@@ -204,6 +204,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         
         {/* 1. Log Activity Card */}
+{/* 1. Log Activity Card */}
         <View style={styles.inlineLogContainer}>
            <View style={styles.logBox}>
               <Text style={styles.logQuestion}>
@@ -213,6 +214,24 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
                   `Berapa minit ${activeChild?.nickname || 'Anak'} bermain hari ini?`
                 )}
               </Text>
+
+              {/* 👇 新增：顶部迷你总结面板 (Mini Summary) 👇 */}
+              <View style={styles.miniSummaryRow}>
+                <View style={styles.miniStat}>
+                  <Ionicons name="time" size={18} color="#69B679" />
+                  <Text style={styles.miniStatValue}>
+                    {todayTotal} <Text style={styles.miniStatUnit}>{t('min') || 'min'}</Text>
+                  </Text>
+                </View>
+                <View style={styles.miniDivider} />
+                <View style={styles.miniStat}>
+                  <Ionicons name="flame" size={18} color="#F59E0B" />
+                  <Text style={styles.miniStatValue}>
+                    {todayCalories || 0} <Text style={styles.miniStatUnit}>{t('kcal') || 'kcal'}</Text>
+                  </Text>
+                </View>
+              </View>
+              {/* 👆 新增结束 👆 */}
 
               <Text style={styles.logDisclaimer}>
                 💡 {t('generalLogDisclaimer') || 'Uses average MET for calorie estimation. For better accuracy, log specific activities below.'}
@@ -589,6 +608,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     lineHeight: 18,
   },
+  // --- 新增的迷你总结样式 ---
+  miniSummaryRow: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF', // 白色背景在浅绿色卡片上很突出
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#69B679',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  miniStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  miniStatValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  miniStatUnit: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  miniDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#E2E8F0',
+  },
+  // -----------------------
 });
 
 export default PhysicalActivityScreen;

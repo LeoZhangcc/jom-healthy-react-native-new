@@ -19,7 +19,7 @@ import { documentDirectory, readAsStringAsync, writeAsStringAsync } from 'expo-f
 import * as Sharing from 'expo-sharing';
 
 import { useLanguage } from '../context/LanguageContext';
-import { useChildProfile } from '../context/ChildProfileContext'; // 💡 新增：导入 Context
+import { useChildProfile } from '../context/ChildProfileContext'; 
 import { colors } from '../theme/colors';
 import { Card, Chip, Header, Screen, SectionTitle } from '../components/Common';
 import { HealthRecord, deleteHealthRecords, loadHealthRecords, saveHealthRecord } from '../utils/storage';
@@ -53,7 +53,7 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
     );
   }
 
-  // 1. Extract all visible values ​​to calculate the Y-axis scale.
+  // 1. Extract all visible values to calculate the Y-axis scale.
   const values = data.flatMap((d) => 
     showWhoLines && d.sd1 && d.neg1 ? [d.value, d.sd1, d.neg1] : [d.value]
   );
@@ -65,38 +65,48 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
   const min = rawMin - valuePadding;
   const max = rawMax + valuePadding;
 
-  // 2. Dynamically calculate X-axis layout (ensure at most 8 points visible on screen)
-  const chartViewportWidth = SCREEN_WIDTH - 40 - yAxisWidth - 20; //减去屏幕和卡片边距
+  // 💡 判断是否为单点数据
+  const isSingle = data.length === 1;
+
+  // 2. Dynamically calculate X-axis layout
+  const chartViewportWidth = SCREEN_WIDTH - 40 - yAxisWidth - 20; 
   const maxVisiblePoints = 8;
   const pointSpacing = chartViewportWidth / (maxVisiblePoints - 1);
   
-  // X-axis start and end offsets, to prevent circles from being cut off
-  const xOffset = 15; 
-  const dynamicWidth = Math.max(chartViewportWidth, (data.length - 1) * pointSpacing + xOffset * 2);
+  // 如果只有一个点，宽度就是屏幕可视宽度；否则根据点数动态延伸
+  const dynamicWidth = isSingle 
+    ? chartViewportWidth 
+    : Math.max(chartViewportWidth, (data.length - 1) * pointSpacing + 15 * 2);
 
+  // 如果只有一个点，让点居中；如果是多个点，靠左排列
+  const xOffset = isSingle ? dynamicWidth / 2 : 15; 
   const x = (i: number) => xOffset + i * pointSpacing;
   const y = (v: number) => containerHeight - bottomPadding - ((v - min) * (containerHeight - bottomPadding - topPadding)) / Math.max(1, max - min);
 
   const points = data.map((d, i) => `${x(i)},${y(d.value)}`).join(' ');
 
-  // Draw WHO lines if requested and data is available
-  const sd0Points = showWhoLines && data[0]?.sd0 ? data.map((d, i) => `${x(i)},${y(d.sd0!)}`).join(' ') : '';
-  const sd1Points = showWhoLines && data[0]?.sd1 ? data.map((d, i) => `${x(i)},${y(d.sd1!)}`).join(' ') : '';
-  const neg1Points = showWhoLines && data[0]?.neg1 ? data.map((d, i) => `${x(i)},${y(d.neg1!)}`).join(' ') : '';
+  const hasSd0 = showWhoLines && data.some(d => d.sd0 !== undefined);
+  const hasSd1 = showWhoLines && data.some(d => d.sd1 !== undefined);
+  const hasNeg1 = showWhoLines && data.some(d => d.neg1 !== undefined);
+
+  // 💡 视觉魔法：如果只有一个点，我们克隆这个点，并在 X 轴首尾相连，让背景铺满整个屏幕
+  const whoRenderData = isSingle ? [data[0], data[0]] : data;
+  const whoX = (i: number) => isSingle ? (i === 0 ? 0 : dynamicWidth) : x(i);
+
+  const sd0Points = hasSd0 ? whoRenderData.map((d, i) => `${whoX(i)},${y(d.sd0 ?? d.value)}`).join(' ') : '';
+  const sd1Points = hasSd1 ? whoRenderData.map((d, i) => `${whoX(i)},${y(d.sd1 ?? d.value)}`).join(' ') : '';
+  const neg1Points = hasNeg1 ? whoRenderData.map((d, i) => `${whoX(i)},${y(d.neg1 ?? d.value)}`).join(' ') : '';
   
   // 3. 计算健康区域 (中间绿色)
-  const healthyTop = showWhoLines && data[0]?.sd1 ? data.map((d, i) => `${x(i)},${y(d.sd1!)}`).join(' ') : '';
-  const healthyBottom = showWhoLines && data[0]?.neg1 ? data.map((d, i) => `${x(i)},${y(d.neg1!)}`).reverse().join(' ') : '';
+  const healthyTop = hasSd1 ? whoRenderData.map((d, i) => `${whoX(i)},${y(d.sd1 ?? d.value)}`).join(' ') : '';
+  const healthyBottom = hasNeg1 ? whoRenderData.map((d, i) => `${whoX(i)},${y(d.neg1 ?? d.value)}`).reverse().join(' ') : '';
 
-  // 4. 计算风险区域的多边形阴影 (浅黄色背景)
-  // 上部风险区 (sd1之上 到 y轴最大值)
-  const riskTopArea = showWhoLines && data[0]?.sd1 ? 
-    data.map((d, i) => `${x(i)},${y(d.sd1!)}`).join(' ') + ` ${x(data.length - 1)},${y(max)} ${x(0)},${y(max)}` : '';
+  // 4. 计算风险区域的多边形阴影 (浅黄色背景) - 使用 whoX 替代原来的 x
+  const riskTopArea = hasSd1 ? 
+    whoRenderData.map((d, i) => `${whoX(i)},${y(d.sd1 ?? d.value)}`).join(' ') + ` ${dynamicWidth},${y(max)} 0,${y(max)}` : '';
   
-  // 下部风险区 (neg1之下 到 y轴最小值)
-  const riskBottomArea = showWhoLines && data[0]?.neg1 ? 
-    data.map((d, i) => `${x(i)},${y(d.neg1!)}`).join(' ') + ` ${x(data.length - 1)},${y(min)} ${x(0)},${y(min)}` : '';
-
+  const riskBottomArea = hasNeg1 ? 
+    whoRenderData.map((d, i) => `${whoX(i)},${y(d.neg1 ?? d.value)}`).join(' ') + ` ${dynamicWidth},${y(min)} 0,${y(min)}` : '';
 
   return (
     <View style={styles.chartWrap}>
@@ -108,7 +118,6 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
           <Text style={[styles.yAxisLabel, { top: topPadding - 6 }]}>{max.toFixed(1)}</Text>
           <Text style={[styles.yAxisLabel, { top: containerHeight - bottomPadding - 6 }]}>{min.toFixed(1)}</Text>
           
-          {/* Y-axis vertical grid lines */}
           <View style={styles.yAxisLine} />
           <View style={styles.yAxisTick} />
         </View>
@@ -116,10 +125,8 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
         {/* ================= Right side horizontal scrolling area ================= */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
           <Svg width={dynamicWidth} height={containerHeight}>
-            {/* 底部 X 轴网格线 */}
             <Line x1={0} y1={containerHeight - bottomPadding} x2={dynamicWidth} y2={containerHeight - bottomPadding} stroke="#E5E7EB" strokeWidth="1" />
 
-            {/* 风险范围阴影区 (浅黄色) */}
             {riskTopArea && (
               <Polyline points={riskTopArea} fill="rgba(245, 158, 11, 0.12)" stroke="none" />
             )}
@@ -127,21 +134,17 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
               <Polyline points={riskBottomArea} fill="rgba(245, 158, 11, 0.12)" stroke="none" />
             )}
 
-            {/* 健康范围阴影区 (浅绿色) */}
             {healthyTop && healthyBottom && (
               <Polyline points={`${healthyTop} ${healthyBottom}`} fill="rgba(76, 175, 122, 0.1)" stroke="none" />
             )}
 
-            {/* WHO Basic Lines */}
             {sd1Points && <Polyline points={sd1Points} fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeDasharray="4 4" />}
             {sd0Points && <Polyline points={sd0Points} fill="none" stroke="#3B82F6" strokeWidth="2" strokeDasharray="4 4" />}
             {neg1Points && <Polyline points={neg1Points} fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeDasharray="4 4" />}
 
-            {/* User's real data cable */}
             <Polyline points={points} fill="none" stroke={colors.primaryDark} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
             {data.map((d, i) => <Circle key={`pt-${i}`} cx={x(i)} cy={y(d.value)} r="4.5" fill={colors.primaryDark} stroke="#FFFFFF" strokeWidth="1.5" />)}
             
-            {/* X-axis text (month labels) */}
             {data.map((d, i) => (
               <SvgText key={`lbl-${i}`} x={x(i)} y={containerHeight - 10} fontSize="10" textAnchor="middle" fill="#9CA3AF" fontWeight="600">
                 {d.label}
@@ -172,7 +175,6 @@ export default function GrowthScreen() {
   const navigation = useNavigation<any>();
   const { t, language } = useLanguage();
   
-  // 💡 提取 activeChild
   const { activeChild } = useChildProfile();
   
   const getText = (en: string, zh: string, ms: string) => language === 'zh' ? zh : language === 'ms' ? ms : en;
@@ -185,7 +187,6 @@ export default function GrowthScreen() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // 💡 依赖项加入 activeChild
   useFocusEffect(
     useCallback(() => {
       setIsEditMode(false); 
@@ -197,7 +198,6 @@ export default function GrowthScreen() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 💡 保护逻辑：如果当前没有活跃的小孩档案，直接置空
       if (!activeChild) {
         setRecords([]);
         setWhoData(null);
@@ -205,17 +205,14 @@ export default function GrowthScreen() {
       }
 
       const stored = await loadHealthRecords();
-      
-      // 💡 核心修复：过滤出当前 activeChild 的记录！
       const childRecords = stored.filter(record => record.nickname === activeChild.nickname);
-      
       const sortedRecords = childRecords.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       setRecords(sortedRecords);
 
       if (selectedTab === "BMI" && sortedRecords.length > 0) {
-        // 💡 修复：直接使用 activeChild.gender 获取 WHO 数据，更稳定
-        const gender = activeChild.gender; 
-        const response = await fetch(`${BASE_URL}/api/bmi/who-standards?type=MONTH&gender=${gender}`);
+        const genderInt = activeChild.gender === 'boy' ? 1 : 2; 
+        
+        const response = await fetch(`${BASE_URL}/api/bmi/who-standards?type=MONTH&gender=${genderInt}`);
         const data = await response.json();
         setWhoData(data);
       } else {
@@ -318,10 +315,26 @@ export default function GrowthScreen() {
     };
 
     if (selectedTab === 'BMI' && whoData) {
-      const age = r.ageInMonths || 0;
-      if (whoData.sd0 && whoData.sd0[age]) point.sd0 = whoData.sd0[age].value;
-      if (whoData.sd1 && whoData.sd1[age]) point.sd1 = whoData.sd1[age].value;
-      if (whoData.neg1 && whoData.neg1[age]) point.neg1 = whoData.neg1[age].value;
+      let age = r.ageInMonths;
+      if (!age && activeChild?.birthday) {
+        const birth = new Date(activeChild.birthday);
+        const recordDate = new Date(r.date);
+        age = (recordDate.getFullYear() - birth.getFullYear()) * 12 + (recordDate.getMonth() - birth.getMonth());
+      }
+      age = age || 0; 
+
+      if (Array.isArray(whoData)) {
+        const standard = whoData.find((w: any) => w.month === age || w.Month === age || w.ageInMonths === age);
+        if (standard) {
+          point.sd0 = standard.sd0?.value ?? standard.sd0;
+          point.sd1 = standard.sd1?.value ?? standard.sd1;
+          point.neg1 = standard.neg1?.value ?? standard.neg1;
+        }
+      } else {
+        if (whoData.sd0 && whoData.sd0[age]) point.sd0 = whoData.sd0[age].value ?? whoData.sd0[age];
+        if (whoData.sd1 && whoData.sd1[age]) point.sd1 = whoData.sd1[age].value ?? whoData.sd1[age];
+        if (whoData.neg1 && whoData.neg1[age]) point.neg1 = whoData.neg1[age].value ?? whoData.neg1[age];
+      }
     }
     return point;
   });
@@ -355,7 +368,6 @@ export default function GrowthScreen() {
             {selectedTab === 'HEIGHT' ? t('heightTrend') : selectedTab === 'WEIGHT' ? t('weightTrend') : getText('BMI Trend', 'BMI趋势', 'Trend BMI')}
           </Text>
           
-          {/* 💡 这里添加了对 activeChild 的判断保护 UI */}
           {loading ? (
             <ActivityIndicator size="large" color={colors.primaryDark} style={{ height: 200 }} />
           ) : !activeChild ? (
@@ -466,10 +478,8 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
   chartTitle: { color: colors.text, fontWeight: '900', fontSize: 18, marginBottom: 10 },
   
-  // Update chartWrap styles to support Y-axis separation
   chartWrap: { backgroundColor: colors.bg, borderRadius: 18, paddingTop: 16, paddingBottom: 8, overflow: 'hidden' },
   
-  // Style with the Y-axis fixed on the left. 
   yAxisContainer: { width: 45, height: '100%', zIndex: 10, backgroundColor: colors.bg },
   yAxisUnit: { position: 'absolute', top: 0, right: 6, fontSize: 11, fontWeight: 'bold', color: '#9CA3AF' },
   yAxisLabel: { position: 'absolute', right: 6, fontSize: 10, color: '#9CA3AF', fontWeight: '600' },
