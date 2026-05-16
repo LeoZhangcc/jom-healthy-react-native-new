@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   View, Text, StyleSheet, Modal, ScrollView, Pressable, 
-  TouchableOpacity, Dimensions, TouchableWithoutFeedback, ActivityIndicator, Linking, Animated, Easing, Image, Alert, TextInput
+  TouchableOpacity, TouchableWithoutFeedback, ActivityIndicator, Linking, Animated, Easing, Image, Alert, TextInput
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useActivity } from '../context/PhysicalActivityContext'; 
 import { useChildProfile } from '../context/ChildProfileContext';
 import { useLanguage } from '../context/LanguageContext'; 
-
-const { width } = Dimensions.get('window');
+import { Header } from '../components/Common'; // 💡 引入你们封装好的通用 Header
 
 // 运动类别元数据配置
 const CATEGORY_META: Record<string, { label: string; icon: string }> = {
@@ -196,14 +195,9 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
-      {/* 顶部导航栏 */}
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#334155" />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t('logActivity') || 'Log Activity'}</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      
+      {/* 💡 直接调用系统统一配置好的 Header 组件，确保与饮水页面视觉 100% 一致 */}
+      <Header title={t('logActivity') || 'Log Activity'} onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         
@@ -507,12 +501,9 @@ const ActivityRecommendationCard = ({ title, desc, tag, subtext, onLog, videoUrl
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 15, backgroundColor: '#FFF' },
-  backBtn: { padding: 8, marginLeft: -8 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B' },
   inlineLogContainer: { paddingHorizontal: 20, paddingBottom: 10 },
   
-  // 顶部总结看板样式 (调整高度比例)
+  // 顶部总结看板样式
   summaryCard: { marginHorizontal: 20, marginTop: 10, marginBottom: 12, paddingVertical: 18, paddingHorizontal: 20, borderRadius: 22, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }, 
   summaryLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }, 
@@ -527,7 +518,7 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }, 
   calIconBox: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center' }, 
 
-  // 中部通用打卡区样式 (整体压缩 20%)
+  // 中部通用打卡区样式
   logBox: { backgroundColor: '#ECF9F1', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#DCFCE7' },
   logQuestion: { textAlign: 'center', fontSize: 15, color: '#334155', fontWeight: '700', marginBottom: 12 },
   logDisclaimer: { textAlign: 'center', fontSize: 11, color: '#94A3B8', marginBottom: 16, paddingHorizontal: 10, lineHeight: 16 },
@@ -545,7 +536,7 @@ const styles = StyleSheet.create({
   mainLogBtn: { backgroundColor: '#69B679', paddingVertical: 14, borderRadius: 20, alignItems: 'center' },
   mainLogBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 
-  // 底部推荐列表样式 (同步压缩排版与字体)
+  // 底部推荐列表样式
   sectionTitle: { fontSize: 15, fontWeight: '700', marginLeft: 20, marginBottom: 12, color: '#334155' },
   adviceBanner: { backgroundColor: '#F0F9FF', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 16, marginHorizontal: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E0F2FE', height: 46, flexDirection: 'row', alignItems: 'center' },
   adviceHeader: { flexDirection: 'row', alignItems: 'center', marginRight: 8, borderRightWidth: 1, borderRightColor: '#BAE6FD', paddingRight: 8, zIndex: 10, backgroundColor: '#F0F9FF' },
