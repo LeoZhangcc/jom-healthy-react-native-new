@@ -116,6 +116,18 @@ export default function HydrationScreen({ navigation }: any) {
     setCustomAmount(String(ml));
   };
 
+  const handleIncrement = () => {
+    const current = parseInt(customAmount) || 0;
+    setCustomAmount((current + 50).toString());
+  };
+
+  const handleDecrement = () => {
+    const current = parseInt(customAmount) || 0;
+    if (current > 50) {
+      setCustomAmount((current - 50).toString());
+    }
+  };
+
   const handleCustomAmountChange = (value: string) => {
     setCustomAmount(value);
     const numValue = parseInt(value);
@@ -335,15 +347,25 @@ export default function HydrationScreen({ navigation }: any) {
                 })()}
               </Text>
               
-              <View style={styles.amountInputWrap}>
-                <TextInput
-                  style={styles.amountInput}
-                  value={customAmount}
-                  onChangeText={handleCustomAmountChange}
-                  keyboardType="number-pad"
-                  maxLength={4}
-                />
-                <Text style={styles.amountUnit}>{unitText}</Text>
+              <View style={styles.stepperContainer}>
+                <Pressable 
+                  onPress={handleDecrement} 
+                  style={({pressed}) => [styles.stepperBtn, pressed && styles.stepperBtnPressed]}
+                >
+                  <Ionicons name="remove" size={28} color="#6B7280" />
+                </Pressable>
+
+                <View style={styles.amountInputWrap}>
+                  <Text style={styles.stepperValue}>{customAmount}</Text>
+                  <Text style={styles.stepperUnit}>{unitText}</Text>
+                </View>
+
+                <Pressable 
+                  onPress={handleIncrement} 
+                  style={({pressed}) => [styles.stepperBtn, pressed && styles.stepperBtnPressed]}
+                >
+                  <Ionicons name="add" size={28} color="#3B82F6" />
+                </Pressable>
               </View>
 
               <View style={styles.quickAddRow}>
@@ -744,4 +766,48 @@ const styles = StyleSheet.create({
   modalCancelText: { color: '#4B5563', fontWeight: '600', fontSize: 16 },
   modalConfirmBtn: { flex: 1, paddingVertical: 14, borderRadius: 16, backgroundColor: '#2563EB', alignItems: 'center' },
   modalConfirmText: { color: 'white', fontWeight: '600', fontSize: 16 },
+
+  // --- NEW STEPPER STYLES ---
+  stepperContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 24, // Creates the space between the buttons and the box
+    marginBottom: 24,
+  },
+  stepperBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  stepperBtnPressed: {
+    transform: [{ scale: 0.9 }],
+    backgroundColor: '#F3F4F6',
+  },
+  stepperValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  stepperValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  stepperUnit: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
 });
