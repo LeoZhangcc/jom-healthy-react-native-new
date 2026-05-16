@@ -611,6 +611,7 @@ async function generateShoppingListByOwner(
     const oldRaw = await AsyncStorage.getItem(SHOPPING_LIST_STORAGE_KEY);
     const oldByOwner: Record<string, ShoppingItem[]> = oldRaw ? JSON.parse(oldRaw) : {};
     const nextByOwner: Record<string, ShoppingItem[]> = {};
+    const todayKey = formatDateKey(new Date());
 
     Object.entries(allMealPlans).forEach(([ownerKey, mealPlans]) => {
       const oldItems = oldByOwner[ownerKey] || [];
@@ -619,6 +620,8 @@ async function generateShoppingListByOwner(
       const mergedMap = new Map<string, ShoppingItem>();
 
       Object.entries(mealPlans).forEach(([dateKey, dayPlan]) => {
+        if (dateKey < todayKey) return;
+
         SLOT_ORDER.forEach((slot) => {
           const slotMeals = dayPlan?.[slot] || [];
 

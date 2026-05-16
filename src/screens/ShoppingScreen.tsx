@@ -206,6 +206,61 @@ function normalizeOwnerKey(value?: string | null) {
   return text.length > 0 ? text : GUEST_OWNER_KEY;
 }
 
+function formatDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayDateKey() {
+  return formatDateKey(new Date());
+}
+
+function getDateKeysFromText(value?: string | null) {
+  return String(value || '').match(/\b\d{4}-\d{2}-\d{2}\b/g) || [];
+}
+
+function prunePastSourceText(value: string | undefined, todayKey: string) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+
+  const parts = text
+    .split(/,\s*(?=\d{4}-\d{2}-\d{2}\b)/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return text;
+
+  const futureParts = parts.filter((part) => {
+    const dates = getDateKeysFromText(part);
+    return dates.length === 0 || dates.some((dateKey) => dateKey >= todayKey);
+  });
+
+  return futureParts.join(', ');
+}
+
+function prunePastShoppingList(items: ShoppingItem[], todayKey = getTodayDateKey()) {
+  return normalizeShoppingList(items)
+    .filter((item) => {
+      const dateKeys = [
+        ...getDateKeysFromText(item.source),
+        ...getDateKeysFromText(item.sourceEn),
+        ...getDateKeysFromText(item.sourceCn),
+        ...getDateKeysFromText(item.sourceMs),
+      ];
+
+      return dateKeys.length === 0 || dateKeys.some((dateKey) => dateKey >= todayKey);
+    })
+    .map((item) => ({
+      ...item,
+      source: prunePastSourceText(item.source, todayKey),
+      sourceEn: prunePastSourceText(item.sourceEn, todayKey),
+      sourceCn: prunePastSourceText(item.sourceCn, todayKey),
+      sourceMs: prunePastSourceText(item.sourceMs, todayKey),
+    }));
+}
+
 function getOwnerKeyForChild(child: any) {
   return `child_${child.id}`;
 }
@@ -455,14 +510,22 @@ export default function ShoppingScreen() {
       const raw = await AsyncStorage.getItem(SHOPPING_LIST_STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : {};
       const nextByOwner: Record<string, ShoppingItem[]> = {};
+      const todayKey = getTodayDateKey();
 
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         Object.entries(parsed).forEach(([owner, list]) => {
-          nextByOwner[normalizeOwnerKey(owner)] = normalizeShoppingList(list);
+          nextByOwner[normalizeOwnerKey(owner)] = prunePastShoppingList(
+            normalizeShoppingList(list),
+            todayKey
+          );
         });
       }
 
       setShoppingByOwner(nextByOwner);
+
+      if (JSON.stringify(nextByOwner) !== JSON.stringify(parsed)) {
+        await AsyncStorage.setItem(SHOPPING_LIST_STORAGE_KEY, JSON.stringify(nextByOwner));
+      }
     } catch (error) {
       console.log('Load shopping list failed:', error);
       setShoppingByOwner({});
@@ -500,7 +563,7 @@ export default function ShoppingScreen() {
   const selectedShoppingList = useMemo<DisplayShoppingItem[]>(() => {
     if (selectedOwnerKey === ALL_OWNER_KEY) {
       return childOwnerKeys.flatMap((owner: string) =>
-        normalizeShoppingList(shoppingByOwner[owner]).map((item) => ({
+        prunePastShoppingList(shoppingByOwner[owner]).map((item) => ({
           ...item,
           ownerKey: owner,
           ownerLabel: getOwnerLabel(owner),
@@ -509,7 +572,7 @@ export default function ShoppingScreen() {
       );
     }
 
-    return normalizeShoppingList(shoppingByOwner[selectedOwnerKey]).map((item) => ({
+    return prunePastShoppingList(shoppingByOwner[selectedOwnerKey]).map((item) => ({
       ...item,
       ownerKey: selectedOwnerKey,
       ownerLabel: getOwnerLabel(selectedOwnerKey),
@@ -957,14 +1020,14 @@ export default function ShoppingScreen() {
                     />
                     <Text style={styles.secondaryButtonText}>{getText('Reset', '重置', 'Tetapkan Semula')}</Text>
                   </Pressable>
-
+{/* 
                   <Pressable
                     style={styles.dangerButton}
                     onPress={clearCheckedItems}
                   >
                     <Ionicons name="trash-outline" size={16} color="#EF4444" />
                     <Text style={styles.dangerButtonText}>{getText('Clear Checked', '清除已勾选', 'Kosongkan Yang Ditanda')}</Text>
-                  </Pressable>
+                  </Pressable> */}
                 </View>
               </Card>
 
