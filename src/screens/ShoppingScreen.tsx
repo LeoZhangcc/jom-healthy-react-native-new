@@ -1146,7 +1146,7 @@ export default function ShoppingScreen() {
             <View style={styles.modalHandle} />
 
             <View style={styles.modalHeader}>
-              <View>
+              <View style={styles.modalHeaderText}>
                 <Text style={styles.modalTitle}>{getText('Nearby Supermarkets', '附近超市', 'Pasar Raya Berdekatan')}</Text>
                 <Text style={styles.modalSubtitle}>
                   {getText('Choose a supermarket below to focus the map. Tap a map pin to open Google Maps.', '从下方选择超市，地图会自动定位。点击地图上的标记可打开 Google Maps。', 'Pilih pasar raya di bawah untuk fokus pada peta. Ketik penanda peta untuk buka Google Maps.')}
@@ -1868,6 +1868,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+    gap: 12,
+  },
+
+  modalHeaderText: {
+    flex: 1,
+    minWidth: 0,
   },
 
   modalTitle: {
@@ -1890,6 +1896,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
 
   supermarketList: {

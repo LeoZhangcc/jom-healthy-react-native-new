@@ -441,6 +441,14 @@ function formatGramMeasure(grams: number) {
   return `${formatted}g`;
 }
 
+function shouldHideIngredientMeasure(measure?: string | null) {
+  const text = String(measure || '').trim().toLowerCase();
+  if (!text) return false;
+  if (/^\d+(?:\.\d+)?$/.test(text)) return true;
+
+  return /^(?:\d+(?:\.\d+)?(?:\s*(?:-|to)\s*\d+(?:\.\d+)?)?\s*)?(?:g|gram|grams|kg|kilogram|kilograms|ml|milliliter|milliliters|millilitre|millilitres|kl|kiloliter|kiloliters|kilolitre|kilolitres)$/i.test(text);
+}
+
 function getIngredientPer100gNutrition(item: Ingredient) {
   const grams = safeNumber(item.gramsEstimated);
 
@@ -1077,6 +1085,7 @@ export default function RecipeDetailScreen() {
               localIngredients.map((item, index) => {
                 const name = getIngredientName(item);
                 const measure = getIngredientMeasure(item);
+                const showMeasure = !!measure && !shouldHideIngredientMeasure(measure);
                 const color = getFoodGroupColor(item.foodGroup || item.category);
 
                 return (
@@ -1106,10 +1115,10 @@ export default function RecipeDetailScreen() {
 
                     <View style={styles.ingredientTextWrap}>
                       <Text style={styles.ingredientName}>{name}</Text>
-                      {!!measure && <Text style={styles.ingredientMeasure}>{measure}</Text>}
+                      {showMeasure && <Text style={styles.ingredientMeasure}>{measure}</Text>}
                     </View>
 
-                    {safeNumber(item.gramsEstimated) >= 10 && (
+                    {safeNumber(item.gramsEstimated) >= 5 && (
                       <View style={styles.ingredientWeightTag}>
                         <Text style={styles.ingredientGram}>{round(item.gramsEstimated)}g</Text>
                       </View>
