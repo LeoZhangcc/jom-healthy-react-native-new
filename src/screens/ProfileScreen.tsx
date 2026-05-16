@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   Image,
@@ -264,7 +264,6 @@ export default function ProfileScreen() {
     activeChild,
     savedRecipes = [],
     removeSavedRecipe,
-    switchToChild,
   } = childProfile;
 
   const [showChildren, setShowChildren] = useState(false);
@@ -334,19 +333,6 @@ export default function ProfileScreen() {
       : []),
     ...(activeChild?.restrictions?.noSeafood ? ['No seafood'] : []),
   ];
-
-  /**
-   * Keep children original order.
-   * After switching children, button position will not jump.
-   */
-  const visibleChildren = useMemo<any[]>(() => {
-    if (!children || children.length === 0) return [];
-    return children.slice(0, 2);
-  }, [children]);
-
-  const handleSwitchChild = (childId: number) => {
-    switchToChild(childId);
-  };
 
   const exportAllDataToLocal = async () => {
     if (exportingData) return;
@@ -573,57 +559,6 @@ export default function ProfileScreen() {
                 )}
               </View>
 
-              <View style={styles.childSwitchSlot}>
-                {visibleChildren.length > 0 ? (
-                  <View style={styles.childSwitchWrap}>
-                    {visibleChildren.map((child: any) => {
-                      const isActive = activeChild?.id === child.id;
-
-                      return (
-                        <Pressable
-                          key={child.id}
-                          style={[
-                            styles.childPill,
-                            isActive
-                              ? styles.childPillActive
-                              : styles.childPillInactive,
-                          ]}
-                          onPress={() => handleSwitchChild(child.id)}
-                        >
-                          <ChildAvatar
-                            avatar={child.avatar || '👶'}
-                            avatarImageUri={child.avatarImageUri}
-                            size={20}
-                          />
-
-                        </Pressable>
-                      );
-                    })}
-
-                    {children.length > 2 && (
-                      <Pressable
-                        style={styles.moreChildrenButton}
-                        onPress={() => setShowChildren(true)}
-                      >
-                        <Text style={styles.moreChildrenText}>
-                          +{children.length - 2}
-                        </Text>
-                      </Pressable>
-                    )}
-                  </View>
-                ) : (
-                  <Pressable
-                    style={styles.emptySwitchButton}
-                    onPress={() => setShowChildren(true)}
-                  >
-                    <Ionicons
-                      name="people"
-                      size={22}
-                      color={colors.primaryDark}
-                    />
-                  </Pressable>
-                )}
-              </View>
             </View>
 
             <PrimaryButton
@@ -918,58 +853,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginTop: 3,
     fontSize: 12,
-  },
-
-  childSwitchSlot: {
-    width: 108,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-
-  childSwitchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-
-  childPill: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  childPillActive: {
-    backgroundColor: colors.primaryDark,
-  },
-
-  childPillInactive: {
-    backgroundColor: colors.primaryLight,
-  },
-
-  moreChildrenButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  moreChildrenText: {
-    color: colors.primaryDark,
-    fontWeight: '900',
-    fontSize: 12,
-  },
-
-  emptySwitchButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 
   sectionHeading: {
