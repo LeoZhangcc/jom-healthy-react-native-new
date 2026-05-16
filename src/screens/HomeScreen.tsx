@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Polyline, Circle as SvgCircle } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
 import { useChildProfile } from '../context/ChildProfileContext';
@@ -25,7 +27,6 @@ import {
   Card,
   Chip,
   EmptyState,
-  Header,
   IconButton,
   PrimaryButton,
   Screen,
@@ -57,6 +58,141 @@ type FoodSuggestion = FoodHistoryItem & {
 };
 
 const BASE_URL = 'https://jom-healthy-java.onrender.com';
+
+
+function AnimatedHomeHeader({
+  title,
+  subtitle,
+  right,
+}: {
+  title: string;
+  subtitle?: string;
+  right?: React.ReactNode;
+}) {
+  const insets = useSafeAreaInsets();
+  const heartScale = useRef(new Animated.Value(1)).current;
+  const haloScale = useRef(new Animated.Value(0.86)).current;
+  const haloOpacity = useRef(new Animated.Value(0.18)).current;
+
+  useEffect(() => {
+    const heartbeat = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(heartScale, {
+            toValue: 1.18,
+            duration: 170,
+            useNativeDriver: true,
+          }),
+          Animated.timing(haloScale, {
+            toValue: 1.22,
+            duration: 170,
+            useNativeDriver: true,
+          }),
+          Animated.timing(haloOpacity, {
+            toValue: 0.36,
+            duration: 170,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(heartScale, {
+            toValue: 0.96,
+            duration: 120,
+            useNativeDriver: true,
+          }),
+          Animated.timing(haloScale, {
+            toValue: 0.96,
+            duration: 120,
+            useNativeDriver: true,
+          }),
+          Animated.timing(haloOpacity, {
+            toValue: 0.16,
+            duration: 120,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(heartScale, {
+            toValue: 1.1,
+            duration: 135,
+            useNativeDriver: true,
+          }),
+          Animated.timing(haloScale, {
+            toValue: 1.12,
+            duration: 135,
+            useNativeDriver: true,
+          }),
+          Animated.timing(haloOpacity, {
+            toValue: 0.28,
+            duration: 135,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(heartScale, {
+            toValue: 1,
+            duration: 190,
+            useNativeDriver: true,
+          }),
+          Animated.timing(haloScale, {
+            toValue: 0.86,
+            duration: 190,
+            useNativeDriver: true,
+          }),
+          Animated.timing(haloOpacity, {
+            toValue: 0.18,
+            duration: 190,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.delay(760),
+      ])
+    );
+
+    heartbeat.start();
+
+    return () => {
+      heartbeat.stop();
+    };
+  }, [haloOpacity, haloScale, heartScale]);
+
+  return (
+    <View style={[styles.animatedHeader, { paddingTop: Math.max(insets.top, 24) + 12 }]}>
+      <View style={styles.animatedHeaderGlowOne} />
+      <View style={styles.animatedHeaderGlowTwo} />
+
+      <View style={styles.animatedHeaderRow}>
+        <View style={styles.heartIconWrap}>
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.heartHalo,
+              {
+                opacity: haloOpacity,
+                transform: [{ scale: haloScale }],
+              },
+            ]}
+          />
+
+          <Animated.View
+            style={{
+              transform: [{ scale: heartScale }],
+            }}
+          >
+            <Ionicons name="heart" size={24} color="white" />
+          </Animated.View>
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.animatedHeaderTitle}>{title}</Text>
+          {!!subtitle && <Text style={styles.animatedHeaderSubtitle}>{subtitle}</Text>}
+        </View>
+
+        {right}
+      </View>
+    </View>
+  );
+}
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -431,10 +567,9 @@ export default function HomeScreen() {
   return (
     <>
       <Screen padded={false}>
-        <Header
+        <AnimatedHomeHeader
           title={t('appName')}
           subtitle={t('tagline')}
-          icon="heart"
           right={
             <Pressable
               style={styles.langButton}
@@ -972,6 +1107,69 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  animatedHeader: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
+    paddingBottom: 26,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    overflow: 'hidden',
+  },
+
+  animatedHeaderGlowOne: {
+    position: 'absolute',
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    left: -50,
+    top: -20,
+  },
+
+  animatedHeaderGlowTwo: {
+    position: 'absolute',
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    right: -20,
+    bottom: -10,
+  },
+
+  animatedHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    zIndex: 1,
+  },
+
+  heartIconWrap: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  heartHalo: {
+    position: 'absolute',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFFFFF',
+  },
+
+  animatedHeaderTitle: {
+    color: 'white',
+    fontSize: 28,
+    fontWeight: '700',
+  },
+
+  animatedHeaderSubtitle: {
+    color: 'rgba(255,255,255,0.92)',
+    marginTop: 5,
+    fontSize: 14,
+  },
+
   body: {
     padding: 20,
     gap: 16,
