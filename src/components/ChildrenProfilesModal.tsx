@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useChildProfile } from '../context/ChildProfileContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import { Card, IconButton, PrimaryButton, SecondaryButton } from './Common';
 import AddChildModal from './AddChildModal';
@@ -26,6 +26,8 @@ type Child = {
 export default function ChildrenProfilesModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { children, activeChild, removeChild, switchToChild } = useChildProfile();
   const { language } = useLanguage();
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const [showAdd, setShowAdd] = useState(false);
   const [childToEdit, setChildToEdit] = useState<Child | null>(null);
   const [toast, setToast] = useState('');
@@ -56,8 +58,6 @@ export default function ChildrenProfilesModal({ visible, onClose }: { visible: b
         : getText('Profile Created!', '资料已创建！', 'Profil dicipta!')
     );
 
-    // After editing an existing profile, close the whole Children Profiles flow
-    // instead of returning the user to the Children Profiles list again.
     if (wasEditing) {
       setShowAdd(false);
       setChildToEdit(null);
@@ -135,19 +135,19 @@ export default function ChildrenProfilesModal({ visible, onClose }: { visible: b
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: themeColors.overlay, justifyContent: 'flex-end' },
   sheet: { maxHeight: '90%', borderBottomLeftRadius: 0, borderBottomRightRadius: 0, paddingBottom: 30 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  title: { color: colors.text, fontSize: 22, fontWeight: '800' },
-  childCard: { marginBottom: 12, borderRadius: 20, padding: 14, backgroundColor: colors.bg, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 2, borderColor: 'transparent' },
-  childCardActive: { borderColor: colors.primaryDark, backgroundColor: '#F0FDF4' },
-  childName: { fontSize: 17, color: colors.text, fontWeight: '800' },
-  childInfo: { color: colors.muted, marginTop: 3 },
-  activeText: { color: colors.primaryDark, fontSize: 12, fontWeight: '800', marginTop: 4 },
+  title: { color: themeColors.text, fontSize: 22, fontWeight: '800' },
+  childCard: { marginBottom: 12, borderRadius: 20, padding: 14, backgroundColor: themeColors.surfaceAlt, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 2, borderColor: 'transparent' },
+  childCardActive: { borderColor: themeColors.primaryDark, backgroundColor: themeColors.primaryLight },
+  childName: { fontSize: 17, color: themeColors.text, fontWeight: '800' },
+  childInfo: { color: themeColors.muted, marginTop: 3 },
+  activeText: { color: themeColors.primaryDark, fontSize: 12, fontWeight: '800', marginTop: 4 },
   actions: { flexDirection: 'row', gap: 8 },
   emptyBox: { alignItems: 'center', paddingVertical: 36 },
   emptyEmoji: { fontSize: 42 },
-  emptyText: { color: colors.text, fontWeight: '900', marginTop: 8, fontSize: 16 },
-  emptySub: { color: colors.muted, fontWeight: '600', marginTop: 6, fontSize: 12 },
+  emptyText: { color: themeColors.text, fontWeight: '900', marginTop: 8, fontSize: 16 },
+  emptySub: { color: themeColors.muted, fontWeight: '600', marginTop: 6, fontSize: 12 },
 });

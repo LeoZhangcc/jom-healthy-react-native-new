@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Calendar, ChevronDown, Ruler, Weight, X, CheckCircle2, HeartPulse } from 'lucide-react-native';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { useChildProfile } from '../context/ChildProfileContext';
 import { colors } from '../theme/colors';
 import { Card, Header, PrimaryButton, Screen } from '../components/Common';
@@ -27,6 +28,8 @@ const WEIGHT_STANDARDS = Array.from({ length: 200 }, (_, i) => i.toString());
 const BASE_URL = "https://jom-healthy-java.onrender.com";
 
 export default function HealthCheckScreen() {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const navigation = useNavigation<any>();
   const { t, language } = useLanguage();
   const { children, syncLatestHealthRecord } = useChildProfile();
@@ -288,7 +291,7 @@ export default function HealthCheckScreen() {
                       <Text style={styles.profileNickname} numberOfLines={1}>{child.nickname}</Text>
                       {isSelected && (
                         <View style={styles.selectedCheckmark}>
-                          <CheckCircle2 color="#FFFFFF" size={12} fill={colors.primaryDark} />
+                          <CheckCircle2 color="#FFFFFF" size={12} fill={theme.colors.primaryDark} />
                         </View>
                       )}
                     </TouchableOpacity>
@@ -338,7 +341,7 @@ export default function HealthCheckScreen() {
             ) : (
               <Pressable style={styles.dateButton} onPress={() => setShowBirthdayPicker((prev) => !prev)}>
                 <View style={styles.dateInputLeft}>
-                  <Calendar color={colors.primaryDark} size={18} />
+                  <Calendar color={theme.colors.primaryDark} size={18} />
                   <Text style={[styles.dateButtonText, !birthday && styles.datePlaceholder]}>
                     {birthday || 'YYYY/MM/DD'}
                   </Text>
@@ -381,7 +384,7 @@ export default function HealthCheckScreen() {
                 style={styles.flexInput} 
               />
               <TouchableOpacity onPress={() => setShowHeightPicker(true)} style={styles.dropdownAddon}>
-                <ChevronDown color={colors.muted} size={20} />
+                <ChevronDown color={theme.colors.muted} size={20} />
               </TouchableOpacity>
             </View>
           </View>
@@ -399,7 +402,7 @@ export default function HealthCheckScreen() {
                 style={styles.flexInput} 
               />
               <TouchableOpacity onPress={() => setShowWeightPicker(true)} style={styles.dropdownAddon}>
-                <ChevronDown color={colors.muted} size={20} />
+                <ChevronDown color={theme.colors.muted} size={20} />
               </TouchableOpacity>
             </View>
           </View>
@@ -425,7 +428,7 @@ export default function HealthCheckScreen() {
             <View style={styles.adviceContainer}>
               {isLoading ? (
                 <View style={styles.loadingBox}>
-                  <ActivityIndicator size="small" color={colors.primaryDark} />
+                  <ActivityIndicator size="small" color={theme.colors.primaryDark} />
                   <Text style={styles.loadingText}>{getText('Analyzing WHO Growth Standard...', '正在分析 WHO 生长标准...', 'Menganalisis Standard Pertumbuhan WHO...')}</Text>
                 </View>
               ) : isError ? (
@@ -433,7 +436,7 @@ export default function HealthCheckScreen() {
               ) : adviceText ? (
                 <View>
                   <View style={styles.adviceHeader}>
-                    <HeartPulse color={colors.primaryDark} size={20} />
+                    <HeartPulse color={theme.colors.primaryDark} size={20} />
                     <Text style={styles.adviceTitle}>{getText('WHO Medical Analysis', 'WHO 医学分析', 'Analisis Perubatan WHO')}</Text>
                   </View>
                   <Text style={styles.adviceBody}>
@@ -485,16 +488,16 @@ export default function HealthCheckScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   body: { padding: 20, gap: 14, paddingBottom: 60 },
   fieldGroup: { marginBottom: 18 },
-  label: { color: colors.text, fontWeight: '800', marginBottom: 8, fontSize: 14 },
+  label: { color: themeColors.text, fontWeight: '800', marginBottom: 8, fontSize: 14 },
   
   profileSelectorSection: { paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   profileScroll: { gap: 12, paddingVertical: 4 },
   profileAvatarItem: { alignItems: 'center', width: 64, position: 'relative', opacity: 0.7 },
   profileAvatarItemSelected: { opacity: 1 },
-  profileNickname: { fontSize: 12, color: colors.text, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+  profileNickname: { fontSize: 12, color: themeColors.text, fontWeight: '600', marginTop: 4, textAlign: 'center' },
   selectedCheckmark: { position: 'absolute', top: -2, right: 4, backgroundColor: '#FFFFFF', borderRadius: 10, padding: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, elevation: 2 },
   lockedBox: { backgroundColor: '#F3F4F6', borderRadius: 16, minHeight: 52, paddingHorizontal: 14, justifyContent: 'center' },
   lockedText: { color: '#9CA3AF', fontWeight: '700', fontSize: 15 },
@@ -509,43 +512,43 @@ const styles = StyleSheet.create({
   textBoyActive: { color: '#4CAF7A' },
   textGirlActive: { color: '#FF9F6E' },
 
-  dateButton: { backgroundColor: colors.bg, borderRadius: 16, minHeight: 52, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dateButton: { backgroundColor: themeColors.bg, borderRadius: 16, minHeight: 52, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dateInputLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dateButtonText: { color: colors.text, fontWeight: '700', fontSize: 15 },
+  dateButtonText: { color: themeColors.text, fontWeight: '700', fontSize: 15 },
   datePlaceholder: { color: '#9CA3AF', fontWeight: '500' },
-  dateButtonAction: { color: colors.primaryDark, fontWeight: '800', fontSize: 13 },
-  pickerWrap: { marginTop: 8, borderRadius: 18, overflow: 'hidden', backgroundColor: colors.bg },
+  dateButtonAction: { color: themeColors.primaryDark, fontWeight: '800', fontSize: 13 },
+  pickerWrap: { marginTop: 8, borderRadius: 18, overflow: 'hidden', backgroundColor: themeColors.bg },
   hiddenInput: { position: 'absolute', opacity: 0, height: 0, width: 0 },
 
-  inputWithAddon: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.bg, borderRadius: 16, minHeight: 52, paddingLeft: 6, paddingRight: 6 },
+  inputWithAddon: { flexDirection: 'row', alignItems: 'center', backgroundColor: themeColors.bg, borderRadius: 16, minHeight: 52, paddingLeft: 6, paddingRight: 6 },
   inputIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EAF6FB', alignItems: 'center', justifyContent: 'center' },
-  flexInput: { flex: 1, paddingHorizontal: 12, color: colors.text, fontSize: 15, fontWeight: '600', height: '100%' },
+  flexInput: { flex: 1, paddingHorizontal: 12, color: themeColors.text, fontSize: 15, fontWeight: '600', height: '100%' },
   dropdownAddon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, elevation: 1 },
 
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, backgroundColor: themeColors.overlay, justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '60%', paddingBottom: Platform.OS === 'ios' ? 30 : 20 },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  sheetTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+  sheetTitle: { fontSize: 18, fontWeight: '800', color: themeColors.text },
   closeBtn: { padding: 4 },
   sheetList: { paddingHorizontal: 20, paddingTop: 10 },
   sheetItem: { paddingVertical: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E7EB' },
-  sheetItemText: { fontSize: 16, fontWeight: '600', color: colors.text, textAlign: 'center' },
-  sheetItemUnit: { fontSize: 14, color: colors.muted, fontWeight: '400' },
+  sheetItemText: { fontSize: 16, fontWeight: '600', color: themeColors.text, textAlign: 'center' },
+  sheetItemUnit: { fontSize: 14, color: themeColors.muted, fontWeight: '400' },
 
   resultCard: { alignItems: 'center', paddingTop: 24, paddingBottom: 24 },
-  resultLabel: { color: colors.muted, fontWeight: '700', fontSize: 15 },
-  bmi: { color: colors.text, fontSize: 54, fontWeight: '900', marginVertical: 8 },
+  resultLabel: { color: themeColors.muted, fontWeight: '700', fontSize: 15 },
+  bmi: { color: themeColors.text, fontSize: 54, fontWeight: '900', marginVertical: 8 },
   status: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 99, fontWeight: '900', overflow: 'hidden' },
   normal: { backgroundColor: '#DCFCE7', color: '#16A34A' },
   under: { backgroundColor: '#FEF3C7', color: '#D97706' },
   over: { backgroundColor: '#FEE2E2', color: '#DC2626' },
-  tip: { color: colors.muted, lineHeight: 21, fontSize: 13 },
+  tip: { color: themeColors.muted, lineHeight: 21, fontSize: 13 },
   
   adviceContainer: { width: '100%', marginTop: 24, backgroundColor: '#F9FAFB', borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#F3F4F6' },
   loadingBox: { padding: 32, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { color: '#6B7280', fontSize: 13, fontWeight: '600' },
   errorText: { padding: 24, color: '#EF4444', textAlign: 'center', fontSize: 14, fontWeight: '600' },
   adviceHeader: { backgroundColor: '#EAF7F0', paddingVertical: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
-  adviceTitle: { color: colors.primaryDark, fontWeight: '800', fontSize: 15 },
+  adviceTitle: { color: themeColors.primaryDark, fontWeight: '800', fontSize: 15 },
   adviceBody: { padding: 20, color: '#4B5563', fontSize: 14, lineHeight: 24, fontWeight: '500' },
 });

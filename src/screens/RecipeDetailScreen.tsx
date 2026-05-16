@@ -21,6 +21,7 @@ import { Header, Screen } from '../components/Common';
 import { colors } from '../theme/colors';
 import { useChildProfile } from '../context/ChildProfileContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 
 type Ingredient = {
   ingredientId?: number;
@@ -804,6 +805,8 @@ function getNutritionTotalsFromIngredients(ingredients: Ingredient[]) {
 }
 
 export default function RecipeDetailScreen() {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { language } = useLanguage();
@@ -1293,7 +1296,7 @@ export default function RecipeDetailScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <Pressable style={styles.backLink} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={18} color={colors.primaryDark} />
+          <Ionicons name="chevron-back" size={18} color={theme.colors.primaryDark} />
           <Text style={styles.backLinkText}>{getText('Back', '返回', 'Kembali')}</Text>
         </Pressable>
 
@@ -1322,7 +1325,7 @@ export default function RecipeDetailScreen() {
                 <Ionicons
                   name={saved ? 'bookmark' : 'bookmark-outline'}
                   size={22}
-                  color={saved ? '#FFFFFF' : colors.primaryDark}
+                  color={saved ? '#FFFFFF' : theme.colors.primaryDark}
                 />
               </Pressable>
             </View>
@@ -1635,7 +1638,7 @@ export default function RecipeDetailScreen() {
 
                       {isSearching ? (
                         <View style={styles.inlineSearchLoading}>
-                          <ActivityIndicator size="small" color={colors.primaryDark} />
+                          <ActivityIndicator size="small" color={theme.colors.primaryDark} />
                           <Text style={styles.inlineSearchLoadingText}>
                             {getText(
                               'Searching foods...',
@@ -1705,7 +1708,7 @@ export default function RecipeDetailScreen() {
                         </Text>
                       ) : (
                         <View style={styles.searchHelpCard}>
-                          <Ionicons name="bulb-outline" size={18} color={colors.primaryDark} />
+                          <Ionicons name="bulb-outline" size={18} color={theme.colors.primaryDark} />
                           <Text style={styles.searchHelpText}>
                             {getText(
                               'Tip: search by common food names, such as “chicken”, “rice”, or “tofu”.',
@@ -1734,7 +1737,7 @@ export default function RecipeDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 120,
@@ -1753,7 +1756,7 @@ const styles = StyleSheet.create({
   },
 
   backLinkText: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontSize: 13,
     fontWeight: '900',
   },
@@ -1821,7 +1824,7 @@ const styles = StyleSheet.create({
   },
 
   saveIconButtonActive: {
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
   },
 
   heroButtonRow: {
@@ -1834,7 +1837,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 48,
     borderRadius: 22,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1965,7 +1968,7 @@ const styles = StyleSheet.create({
   },
 
   ingredientGram: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontSize: 12,
     fontWeight: '900',
   },
@@ -1981,7 +1984,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
@@ -2030,7 +2033,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     height: 46,
     borderRadius: 23,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2075,7 +2078,7 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.5)',
+    backgroundColor: themeColors.overlay,
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
@@ -2221,12 +2224,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   replaceFullBtnText: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontSize: 15,
     fontWeight: '800',
   },
   detailSaveBtn: {
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     alignItems: 'center',
     paddingVertical: 16,
     borderRadius: 16,
@@ -2302,7 +2305,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   replacePickTagText: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontSize: 12,
     fontWeight: '900',
   },
@@ -2446,7 +2449,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 16,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
   },

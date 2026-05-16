@@ -13,6 +13,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { Header, Screen } from '../components/Common';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 
 const BASE_URL = 'https://jom-healthy-java.onrender.com';
 
@@ -133,6 +134,8 @@ function getStatusByScore(food: FoodNutrition | null): FoodStatus {
 }
 
 export default function FoodInfoScreen() {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { language } = useLanguage();
@@ -338,7 +341,7 @@ export default function FoodInfoScreen() {
       >
         {loading ? (
           <View style={styles.loadingCard}>
-            <ActivityIndicator size="large" color={colors.primaryDark} />
+            <ActivityIndicator size="large" color={theme.colors.primaryDark} />
             <Text style={styles.loadingText}>{getText('Loading nutrition data...', '正在加载营养数据...', 'Memuatkan data nutrisi...')}</Text>
           </View>
         ) : error ? (
@@ -483,7 +486,7 @@ export default function FoodInfoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   content: {
     padding: 20,
     paddingBottom: 120,
@@ -504,7 +507,7 @@ const styles = StyleSheet.create({
 
   loadingText: {
     marginTop: 12,
-    color: colors.muted,
+    color: themeColors.muted,
     fontWeight: '700',
   },
 

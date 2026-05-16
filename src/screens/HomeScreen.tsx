@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Polyline, Circle as SvgCircle } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
 import { useChildProfile } from '../context/ChildProfileContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import { loadHealthRecords } from '../utils/storage';
 import {
@@ -60,6 +61,12 @@ type FoodSuggestion = FoodHistoryItem & {
 const BASE_URL = 'https://jom-healthy-java.onrender.com';
 
 
+function useHomeStyles() {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
+  return { styles, theme };
+}
+
 function AnimatedHomeHeader({
   title,
   subtitle,
@@ -70,11 +77,15 @@ function AnimatedHomeHeader({
   right?: React.ReactNode;
 }) {
   const insets = useSafeAreaInsets();
+  const { themeName } = useTheme();
+  const { styles, theme } = useHomeStyles();
   const heartScale = useRef(new Animated.Value(1)).current;
   const haloScale = useRef(new Animated.Value(0.86)).current;
   const haloOpacity = useRef(new Animated.Value(0.18)).current;
 
   useEffect(() => {
+    if (themeName !== 'classic') return;
+
     const heartbeat = Animated.loop(
       Animated.sequence([
         Animated.parallel([
@@ -154,7 +165,46 @@ function AnimatedHomeHeader({
     return () => {
       heartbeat.stop();
     };
-  }, [haloOpacity, haloScale, heartScale]);
+  }, [haloOpacity, haloScale, heartScale, themeName]);
+
+  if (themeName !== 'classic') {
+    return (
+      <View
+        style={[
+          styles.editorialHeader,
+          { paddingTop: Math.max(insets.top, 24) + 12 },
+        ]}
+      >
+        <View style={styles.editorialBubbleLarge} />
+        <View style={styles.editorialBubbleSmall} />
+        <View style={styles.editorialBubbleOutline} />
+
+        <View style={styles.editorialTitleRow}>
+          <View style={styles.editorialTitleWrap}>
+            <Text style={styles.editorialTitle}>{title}</Text>
+            {!!subtitle && <Text style={styles.editorialSubtitle}>{subtitle}</Text>}
+          </View>
+
+          <View style={styles.editorialHeaderActionSlot}>{right}</View>
+        </View>
+
+        <View style={styles.editorialChipRow}>
+          <View style={styles.editorialInfoChip}>
+            <Ionicons name="sparkles-outline" size={14} color={theme.colors.primaryDark} />
+            <Text style={styles.editorialInfoChipText}>AI Meal Plan</Text>
+          </View>
+          <View style={styles.editorialInfoChip}>
+            <Ionicons name="fitness-outline" size={14} color={theme.colors.primaryDark} />
+            <Text style={styles.editorialInfoChipText}>Family Health</Text>
+          </View>
+          <View style={styles.editorialInfoChip}>
+            <Ionicons name="leaf-outline" size={14} color={theme.colors.primaryDark} />
+            <Text style={styles.editorialInfoChipText}>Daily Care</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.animatedHeader, { paddingTop: Math.max(insets.top, 24) + 12 }]}>
@@ -202,6 +252,7 @@ function AnimatedProfileAvatar({
   avatar: string;
   avatarImageUri?: string;
 }) {
+  const { styles } = useHomeStyles();
   const floatY = useRef(new Animated.Value(0)).current;
   const glowScale = useRef(new Animated.Value(0.96)).current;
   const glowOpacity = useRef(new Animated.Value(0.16)).current;
@@ -335,6 +386,8 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const { openAiMealPlanModal } = useAiMealPlanGeneration();
   const { language, t } = useLanguage();
+  const { themeName, theme } = useTheme();
+  const { styles } = useHomeStyles();
   const {
     activeChild,
     nutritionProgress,
@@ -709,10 +762,10 @@ export default function HomeScreen() {
           subtitle={t('tagline')}
           right={
             <Pressable
-              style={styles.langButton}
+              style={[styles.langButton, themeName !== 'classic' && styles.langButtonEditorial]}
               onPress={() => setShowLanguage(true)}
             >
-              <Text style={styles.langText}>{langCode}</Text>
+              <Text style={[styles.langText, themeName !== 'classic' && styles.langTextEditorial]}>{langCode}</Text>
             </Pressable>
           }
         />
@@ -724,7 +777,7 @@ export default function HomeScreen() {
               <Ionicons
                 name="search"
                 size={22}
-                color={colors.primaryDark}
+                color={theme.colors.primaryDark}
               />
 
               <TextInput
@@ -765,7 +818,7 @@ export default function HomeScreen() {
               <View style={styles.suggestionBox}>
                 {searchLoading ? (
                   <View style={styles.suggestionStatus}>
-                    <ActivityIndicator size="small" color={colors.primaryDark} />
+                    <ActivityIndicator size="small" color={theme.colors.primaryDark} />
                     <Text style={styles.suggestionStatusText}>
                       {getText('Searching...', '搜索中...', 'Mencari...')}
                     </Text>
@@ -796,7 +849,7 @@ export default function HomeScreen() {
                           <Ionicons
                             name="restaurant-outline"
                             size={18}
-                            color={colors.primaryDark}
+                            color={theme.colors.primaryDark}
                           />
                         </View>
                       )}
@@ -927,7 +980,7 @@ export default function HomeScreen() {
                     <Ionicons
                       name="pulse"
                       size={17}
-                      color={colors.primaryDark}
+                      color={theme.colors.primaryDark}
                     />
                     <Text style={styles.checkHealthButtonText}>
                       {t('checkHealth')}
@@ -981,7 +1034,7 @@ export default function HomeScreen() {
 
                   {/* Right Side: Navigation Arrow */}
                   <View style={styles.sectionArrowButton}>
-                    <Ionicons name="chevron-forward" size={18} color={colors.primaryDark} />
+                    <Ionicons name="chevron-forward" size={18} color={theme.colors.primaryDark} />
                   </View>
                 </View>
 
@@ -1035,7 +1088,7 @@ export default function HomeScreen() {
 
                 {/* Right Navigation Button */}
                 <View style={styles.sectionArrowButton}>
-                  <Ionicons name="chevron-forward" size={18} color={colors.primaryDark} />
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.primaryDark} />
                 </View>
               </View>
 
@@ -1080,7 +1133,7 @@ export default function HomeScreen() {
                 <Ionicons
                   name="chevron-forward"
                   size={18}
-                  color={colors.primaryDark}
+                  color={theme.colors.primaryDark}
                 />
               </View>
             </View>
@@ -1091,7 +1144,7 @@ export default function HomeScreen() {
                   <Polyline
                     points={bmiChartData.pointsString}
                     fill="none"
-                    stroke={colors.primaryDark}
+                    stroke={theme.colors.primaryDark}
                     strokeWidth="3"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -1103,7 +1156,7 @@ export default function HomeScreen() {
                       cy={p.y}
                       r="4"
                       fill="#FFFFFF"
-                      stroke={colors.primaryDark}
+                      stroke={theme.colors.primaryDark}
                       strokeWidth="2"
                     />
                   ))}
@@ -1138,7 +1191,7 @@ export default function HomeScreen() {
           <Text style={styles.localSectionTitle}>{t('healthInsights')}</Text>
 
           {topicsLoading ? (
-             <ActivityIndicator size="small" color={colors.primaryDark} style={{ paddingVertical: 20 }} />
+             <ActivityIndicator size="small" color={theme.colors.primaryDark} style={{ paddingVertical: 20 }} />
           ) : (
             <ScrollView
               horizontal
@@ -1197,7 +1250,7 @@ export default function HomeScreen() {
               
               <ScrollView contentContainerStyle={styles.modalBody}>
                 <View style={styles.modalTagRow}>
-                  <FileText color={colors.primaryDark} size={18} />
+                  <FileText color={theme.colors.primaryDark} size={18} />
                   <Text style={styles.modalTagText}>{t('healthInsights')}</Text>
                 </View>
                 
@@ -1207,7 +1260,7 @@ export default function HomeScreen() {
                   style={{
                     body: { color: '#475569', fontSize: 16, lineHeight: 24 },
                     strong: { fontWeight: 'bold', color: '#2F3A3A' },
-                    ordered_list_icon: { color: colors.primaryDark, fontWeight: 'bold' }
+                    ordered_list_icon: { color: theme.colors.primaryDark, fontWeight: 'bold' }
                   }}
                 >
                   {selectedTopic.content}
@@ -1241,9 +1294,125 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
+  editorialHeader: {
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: themeColors.primaryLight,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+  },
+
+  editorialBubbleLarge: {
+    position: 'absolute',
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: 'rgba(255,255,255,0.40)',
+    right: -60,
+    top: -66,
+  },
+
+  editorialBubbleSmall: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.26)',
+    left: -44,
+    bottom: -64,
+  },
+
+  editorialBubbleOutline: {
+    position: 'absolute',
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    borderWidth: 1.5,
+    borderColor: 'rgba(13,107,118,0.14)',
+    right: 26,
+    bottom: -28,
+  },
+
+  editorialTitleRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+
+  editorialHeaderActionSlot: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  editorialTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  editorialTitle: {
+    color: themeColors.text,
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+  },
+
+  editorialSubtitle: {
+    marginTop: 4,
+    color: themeColors.muted,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
+  },
+
+  editorialChipRow: {
+    marginTop: 20,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+
+  editorialInfoChip: {
+    minHeight: 34,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(13,107,118,0.10)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+
+  editorialInfoChipText: {
+    color: themeColors.primaryDark,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  langButtonEditorial: {
+    backgroundColor: themeColors.card,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    shadowColor: themeColors.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+
+  langTextEditorial: {
+    color: themeColors.primary,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+
   animatedHeader: {
-    backgroundColor: colors.primary,
+    backgroundColor: themeColors.primary,
     paddingHorizontal: 20,
     paddingBottom: 26,
     borderBottomLeftRadius: 32,
@@ -1290,7 +1459,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: themeColors.card,
   },
 
   animatedHeaderTitle: {
@@ -1329,7 +1498,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: colors.bg,
+    backgroundColor: themeColors.bg,
     borderRadius: 18,
     paddingHorizontal: 12,
     minHeight: 56,
@@ -1337,7 +1506,7 @@ const styles = StyleSheet.create({
 
   searchInput: {
     flex: 1,
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 15,
     paddingVertical: 10,
   },
@@ -1345,9 +1514,9 @@ const styles = StyleSheet.create({
   suggestionBox: {
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: themeColors.border,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: themeColors.card,
     overflow: 'hidden',
   },
 
@@ -1376,7 +1545,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1384,7 +1553,7 @@ const styles = StyleSheet.create({
   suggestionText: {
     flex: 1,
     fontSize: 15,
-    color: colors.text,
+    color: themeColors.text,
     fontWeight: '600',
   },
 
@@ -1398,7 +1567,7 @@ const styles = StyleSheet.create({
 
   suggestionStatusText: {
     fontSize: 13,
-    color: colors.muted,
+    color: themeColors.muted,
   },
 
   suggestionError: {
@@ -1416,13 +1585,13 @@ const styles = StyleSheet.create({
   },
 
   historyTitle: {
-    color: colors.text,
+    color: themeColors.text,
     fontWeight: '800',
     fontSize: 13,
   },
 
   clearHistory: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontWeight: '700',
     fontSize: 12,
   },
@@ -1461,7 +1630,7 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
   },
 
   profileAvatar: {
@@ -1482,7 +1651,7 @@ const styles = StyleSheet.create({
   profileAge: {
     fontSize: 20,
     fontWeight: '900',
-    color: colors.text,
+    color: themeColors.text,
   },
 
   onlineDot: {
@@ -1495,13 +1664,13 @@ const styles = StyleSheet.create({
   profileMeta: {
     marginTop: 4,
     fontSize: 13,
-    color: colors.text,
+    color: themeColors.text,
   },
 
   profileLastCheck: {
     marginTop: 4,
     fontSize: 12,
-    color: colors.muted,
+    color: themeColors.muted,
   },
 
   statusBadge: {
@@ -1513,7 +1682,7 @@ const styles = StyleSheet.create({
   },
 
   statusBadgeText: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1528,7 +1697,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1545,7 +1714,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1553,18 +1722,18 @@ const styles = StyleSheet.create({
   },
 
   checkHealthButtonText: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontSize: 15,
     fontWeight: '800',
   },
 
 
   growthOverviewCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: themeColors.card,
     borderRadius: 24,
     padding: 20,
     minHeight: 150,
-    shadowColor: '#000',
+    shadowColor: themeColors.shadow,
     shadowOpacity: 0.08,
     shadowRadius: 16,
     shadowOffset: {
@@ -1610,7 +1779,7 @@ const styles = StyleSheet.create({
   },
 
   growthHint: {
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 12,
     marginTop: 4,
   },
@@ -1622,12 +1791,12 @@ const styles = StyleSheet.create({
   
   topicCard: {
     width: 256, 
-    backgroundColor: '#FFFFFF',
+    backgroundColor: themeColors.card,
     borderRadius: 24, 
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F3F4F6', 
-    shadowColor: '#000',
+    borderColor: themeColors.border, 
+    shadowColor: themeColors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -1642,7 +1811,7 @@ const styles = StyleSheet.create({
     top: 12,
     left: 12,
     zIndex: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)', 
+    backgroundColor: 'rgba(15,23,42,0.55)', 
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -1678,14 +1847,14 @@ const styles = StyleSheet.create({
 
   modalOverlay: { 
     flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.6)', 
+    backgroundColor: themeColors.overlay, 
     justifyContent: 'center', 
     paddingHorizontal: 24 
   },
 
   modalContent: { 
     width: '100%', 
-    backgroundColor: '#FFFFFF', 
+    backgroundColor: themeColors.card, 
     borderRadius: 24, 
     overflow: 'hidden', 
     maxHeight: '85%' 
@@ -1708,7 +1877,7 @@ const styles = StyleSheet.create({
 
   modalTagRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
 
-  modalTagText: { color: colors.primaryDark, fontWeight: '600', fontSize: 14 },
+  modalTagText: { color: themeColors.primaryDark, fontWeight: '600', fontSize: 14 },
 
   modalTitle: { fontSize: 24, fontWeight: 'bold', color: '#2F3A3A', marginBottom: 16, lineHeight: 32 },
 
@@ -1719,11 +1888,11 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     justifyContent: 'center', 
     gap: 8, 
-    backgroundColor: 'white', 
+    backgroundColor: themeColors.card, 
     paddingVertical: 14, 
     borderRadius: 16, 
     borderWidth: 1, 
-    borderColor: '#E5E7EB' 
+    borderColor: themeColors.border 
   },
 
   modalActionText: { color: '#3B82F6', fontWeight: 'bold', fontSize: 16 },
@@ -1741,7 +1910,7 @@ const styles = StyleSheet.create({
   },
 
   insightTitle: {
-    color: colors.text,
+    color: themeColors.text,
     fontWeight: '800',
     marginTop: 12,
   },
@@ -1815,7 +1984,7 @@ const styles = StyleSheet.create({
   },
   addWaterBtn: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: themeColors.card,
     paddingVertical: 10,
     borderRadius: 12,
     alignItems: 'center',
@@ -1833,7 +2002,7 @@ const styles = StyleSheet.create({
 
   // --- 恢复的 Activity Card 样式 ---
   newActivityCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: themeColors.card,
     borderRadius: 24,
     padding: 20,
   },
@@ -1886,7 +2055,7 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 11,
-    color: '#64748B',
+    color: themeColors.muted,
     fontWeight: '500',
   },
   progressValueText: {
@@ -1896,7 +2065,7 @@ const styles = StyleSheet.create({
   },
   thinBarBg: {
     height: 8,
-    backgroundColor: '#F1F5F9', 
+    backgroundColor: themeColors.surfaceAlt, 
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -1907,10 +2076,10 @@ const styles = StyleSheet.create({
 
   // --- NEW HYDRATION CARD STYLES ---
   newHydrationCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: themeColors.card,
     borderRadius: 24,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: themeColors.shadow,
     shadowOpacity: 0.08,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 4 },
@@ -1967,7 +2136,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -5,6 +5,8 @@ import Svg, { Circle, G } from 'react-native-svg';
 import { useChildProfile } from '../context/ChildProfileContext';
 import { Screen, Header } from '../components/Common';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 
 const categoryConfig: Record<string, { emoji: string; color: string }> = {
@@ -34,6 +36,8 @@ const getDrinkCategory = (name: string) => {
 
 export default function HydrationScreen({ navigation }: any) {
   const { t , language} = useLanguage();
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
 
   const unitText = language === 'zh' ? '毫升' : 'mL';
 
@@ -229,7 +233,7 @@ export default function HydrationScreen({ navigation }: any) {
   const chartCircumference = 2 * Math.PI * chartRadius;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <Header title={t('logHydration')} onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -247,7 +251,7 @@ export default function HydrationScreen({ navigation }: any) {
         </View>
         
         {searchResults.length > 0 && !showAnalysis && (
-          <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 8, marginBottom: 24, borderWidth: 1, borderColor: '#E5E7EB' }}>
+          <View style={{ backgroundColor: theme.colors.card, borderRadius: 16, padding: 8, marginBottom: 24, borderWidth: 1, borderColor: theme.colors.border }}>
             {searchResults.map((drink, index) => (
               <Pressable 
                 key={drink.id || index}
@@ -273,7 +277,7 @@ export default function HydrationScreen({ navigation }: any) {
               >
                 <Text style={{ fontSize: 24, marginRight: 12 }}>{drink.emoji}</Text>
                 
-                <Text style={{ fontSize: 16, fontWeight: '500', color: '#1F2937' }}>{getDrinkName(drink)}</Text>
+                <Text style={{ fontSize: 16, fontWeight: '500', color: theme.colors.text }}>{getDrinkName(drink)}</Text>
                 
               </Pressable>
             ))}
@@ -634,23 +638,23 @@ export default function HydrationScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   container: { padding: 20, paddingBottom: 40 },
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 12 },
+  sectionTitle: { fontSize: 14, fontWeight: '600', color: themeColors.text, marginBottom: 12 },
   
   // Search
   // --- UPGRADED SEARCH BAR STYLES ---
   searchContainer: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    backgroundColor: '#FFFFFF', // Changed to solid white
+    backgroundColor: themeColors.card, // Changed to solid white
     borderRadius: 24, // Matches the Home Screen cards
     paddingHorizontal: 20, 
     paddingVertical: 14, 
     marginBottom: 24,
     // Added Home Screen style shadow
-    shadowColor: '#000',
+    shadowColor: themeColors.shadow,
     shadowOpacity: 0.06,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },
@@ -658,24 +662,24 @@ const styles = StyleSheet.create({
   },
   searchIcon: { 
     marginRight: 12,
-    color: '#6B7280'
+    color: themeColors.muted
   },
   searchInput: { 
     flex: 1, 
     fontSize: 16, 
-    color: '#1F2937',
+    color: themeColors.text,
     fontWeight: '400'
   },
 
   // Progress Card
-  progressCard: { backgroundColor: '#2563EB', borderRadius: 24, padding: 20, marginBottom: 24 },
+  progressCard: { backgroundColor: themeColors.primaryDark, borderRadius: 24, padding: 20, marginBottom: 24 },
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   progressCurrentText: { fontSize: 32, fontWeight: 'bold', color: 'white' },
   progressUnitText: { fontSize: 18, color: 'rgba(255,255,255,0.8)' },
   progressGoalText: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
   progressPercentText: { fontSize: 24, fontWeight: 'bold', color: 'white' },
   progressBarBg: { height: 10, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 10, overflow: 'hidden', marginBottom: 16 },
-  progressBarFill: { height: '100%', backgroundColor: 'white', borderRadius: 10 },
+  progressBarFill: { height: '100%', backgroundColor: themeColors.card, borderRadius: 10 },
   progressFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   statusBadgeGood: { backgroundColor: 'rgba(255,255,255,0.3)' },
@@ -685,40 +689,40 @@ const styles = StyleSheet.create({
 
   // Chips
   chipScroll: { paddingBottom: 8, gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 16, marginRight: 8 },
-  chipActive: { backgroundColor: '#3B82F6' },
+  chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: themeColors.surfaceAlt, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 16, marginRight: 8 },
+  chipActive: { backgroundColor: themeColors.primaryDark },
   chipEmoji: { fontSize: 16, marginRight: 8 },
-  chipText: { fontSize: 14, fontWeight: '500', color: '#374151' },
+  chipText: { fontSize: 14, fontWeight: '500', color: themeColors.text },
   chipTextActive: { color: 'white' },
-  customDrinkInput: { marginTop: 12, borderWidth: 2, borderColor: '#DBEAFE', borderRadius: 16, padding: 12, fontSize: 14, backgroundColor: 'white' },
+  customDrinkInput: { marginTop: 12, borderWidth: 2, borderColor: themeColors.border, borderRadius: 16, padding: 12, fontSize: 14, backgroundColor: themeColors.card },
 
   // Picker Box
-  pickerBox: { backgroundColor: '#EFF6FF', borderRadius: 24, padding: 24, marginBottom: 24 },
-  pickerTitle: { fontSize: 14, fontWeight: '500', color: '#374151', textAlign: 'center', marginBottom: 20 },
-  amountInputWrap: { alignSelf: 'center', flexDirection: 'column', alignItems: 'center', backgroundColor: 'white', borderRadius: 20, paddingHorizontal: 24, paddingVertical: 12, borderWidth: 2, borderColor: '#93C5FD' },
-  amountInput: { fontSize: 48, fontWeight: 'bold', color: '#3B82F6', minWidth: 100, textAlign: 'center' },
-  amountUnit: { fontSize: 14, color: '#4B5563', marginTop: 4 },
+  pickerBox: { backgroundColor: themeColors.primaryLight, borderRadius: 24, padding: 24, marginBottom: 24 },
+  pickerTitle: { fontSize: 14, fontWeight: '500', color: themeColors.text, textAlign: 'center', marginBottom: 20 },
+  amountInputWrap: { alignSelf: 'center', flexDirection: 'column', alignItems: 'center', backgroundColor: themeColors.card, borderRadius: 20, paddingHorizontal: 24, paddingVertical: 12, borderWidth: 2, borderColor: '#93C5FD' },
+  amountInput: { fontSize: 48, fontWeight: 'bold', color: themeColors.primaryDark, minWidth: 100, textAlign: 'center' },
+  amountUnit: { fontSize: 14, color: themeColors.muted, marginTop: 4 },
   quickAddRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginVertical: 20 },
-  quickAddBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: 'white', borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)' },
-  quickAddBtnActive: { backgroundColor: '#3B82F6' },
-  quickAddText: { color: '#3B82F6', fontSize: 14, fontWeight: '500' },
+  quickAddBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: themeColors.card, borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)' },
+  quickAddBtnActive: { backgroundColor: themeColors.primaryDark },
+  quickAddText: { color: themeColors.primaryDark, fontSize: 14, fontWeight: '500' },
   quickAddTextActive: { color: 'white' },
-  logBtn: { backgroundColor: '#2563EB', paddingVertical: 16, borderRadius: 20, alignItems: 'center' },
+  logBtn: { backgroundColor: themeColors.primaryDark, paddingVertical: 16, borderRadius: 20, alignItems: 'center' },
   logBtnText: { color: 'white', fontSize: 16, fontWeight: '600' },
   btnPressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
 
   // Breakdown Chart
-  breakdownCard: { backgroundColor: 'white', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#F3F4F6', marginBottom: 24 },
+  breakdownCard: { backgroundColor: themeColors.card, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: themeColors.border, marginBottom: 24 },
   breakdownRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
   chartContainer: { width: 120, height: 120, alignItems: 'center', justifyContent: 'center' },
   legendContainer: { flex: 1, gap: 8 },
   legendItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   legendLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   legendColor: { width: 12, height: 12, borderRadius: 6 },
-  legendName: { fontSize: 12, color: '#374151' },
+  legendName: { fontSize: 12, color: themeColors.text },
   legendRight: { alignItems: 'flex-end' },
-  legendPercent: { fontSize: 12, fontWeight: '600', color: '#111827' },
-  legendMl: { fontSize: 10, color: '#6B7280' },
+  legendPercent: { fontSize: 12, fontWeight: '600', color: themeColors.text },
+  legendMl: { fontSize: 10, color: themeColors.muted },
 
   // Tip Box
   tipBox: { flexDirection: 'row', backgroundColor: '#F0F9FF', borderColor: '#BFDBFE', borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 24, gap: 12 },
@@ -728,43 +732,43 @@ const styles = StyleSheet.create({
   tipDesc: { fontSize: 12, color: '#1D4ED8', lineHeight: 18 },
 
   // History Accordion
-  historyGroup: { marginBottom: 8, backgroundColor: '#EFF6FF', borderRadius: 16, overflow: 'hidden' },
+  historyGroup: { marginBottom: 8, backgroundColor: themeColors.primaryLight, borderRadius: 16, overflow: 'hidden' },
   historyHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, alignItems: 'center' },
-  historyDate: { fontSize: 14, color: '#374151' },
+  historyDate: { fontSize: 14, color: themeColors.text },
   historyRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  historyTotal: { fontSize: 14, fontWeight: '600', color: '#2563EB' },
+  historyTotal: { fontSize: 14, fontWeight: '600', color: themeColors.primaryDark },
   historyDetails: { paddingHorizontal: 16, paddingBottom: 12, gap: 6 },
-  historyDrinkRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: 'white', padding: 12, borderRadius: 12, borderColor: '#DBEAFE', borderWidth: 1 },
+  historyDrinkRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: themeColors.card, padding: 12, borderRadius: 12, borderColor: themeColors.border, borderWidth: 1 },
   historyDrinkLeft: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  historyTime: { fontSize: 12, color: '#6B7280' },
-  historyDrinkName: { fontSize: 12, fontWeight: '500', color: '#374151' },
-  historyDrinkAmount: { fontSize: 12, fontWeight: '600', color: '#2563EB' },
+  historyTime: { fontSize: 12, color: themeColors.muted },
+  historyDrinkName: { fontSize: 12, fontWeight: '500', color: themeColors.text },
+  historyDrinkAmount: { fontSize: 12, fontWeight: '600', color: themeColors.primaryDark },
 
   // Analysis & Modal
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 24 },
-  backBtnText: { fontSize: 14, color: '#4B5563' },
+  backBtnText: { fontSize: 14, color: themeColors.muted },
   analysisHeader: { alignItems: 'center', marginBottom: 24 },
-  analysisIconBox: { width: 80, height: 80, backgroundColor: '#EFF6FF', borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  analysisTitle: { fontSize: 24, fontWeight: 'bold', color: '#1F2937', marginBottom: 8 },
-  analysisDesc: { fontSize: 14, color: '#4B5563' },
-  analysisCard: { backgroundColor: '#EFF6FF', borderRadius: 20, padding: 20, marginBottom: 24 },
-  cardTitle: { fontSize: 15, fontWeight: '600', color: '#1F2937', marginBottom: 16 },
+  analysisIconBox: { width: 80, height: 80, backgroundColor: themeColors.primaryLight, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  analysisTitle: { fontSize: 24, fontWeight: 'bold', color: themeColors.text, marginBottom: 8 },
+  analysisDesc: { fontSize: 14, color: themeColors.muted },
+  analysisCard: { backgroundColor: themeColors.primaryLight, borderRadius: 20, padding: 20, marginBottom: 24 },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: themeColors.text, marginBottom: 16 },
   analysisRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  analysisLabel: { fontSize: 13, color: '#4B5563' },
-  analysisValue: { fontSize: 14, fontWeight: '600', color: '#2563EB' },
+  analysisLabel: { fontSize: 13, color: themeColors.muted },
+  analysisValue: { fontSize: 14, fontWeight: '600', color: themeColors.primaryDark },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { backgroundColor: 'white', width: '100%', borderRadius: 32, padding: 24, alignItems: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: themeColors.overlay, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: themeColors.card, width: '100%', borderRadius: 32, padding: 24, alignItems: 'center' },
   modalHeader: { alignItems: 'center', marginBottom: 24 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 4 },
-  modalDesc: { fontSize: 14, color: '#6B7280' },
-  modalInputWrap: { backgroundColor: '#EFF6FF', borderRadius: 24, paddingVertical: 20, paddingHorizontal: 40, alignItems: 'center', marginBottom: 24, width: '100%' },
-  modalInput: { fontSize: 56, fontWeight: 'bold', color: '#3B82F6', textAlign: 'center' },
-  modalUnit: { fontSize: 14, color: '#4B5563', fontWeight: '500' },
+  modalDesc: { fontSize: 14, color: themeColors.muted },
+  modalInputWrap: { backgroundColor: themeColors.primaryLight, borderRadius: 24, paddingVertical: 20, paddingHorizontal: 40, alignItems: 'center', marginBottom: 24, width: '100%' },
+  modalInput: { fontSize: 56, fontWeight: 'bold', color: themeColors.primaryDark, textAlign: 'center' },
+  modalUnit: { fontSize: 14, color: themeColors.muted, fontWeight: '500' },
   modalActions: { flexDirection: 'row', gap: 12, width: '100%' },
-  modalCancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center' },
-  modalCancelText: { color: '#4B5563', fontWeight: '600', fontSize: 16 },
-  modalConfirmBtn: { flex: 1, paddingVertical: 14, borderRadius: 16, backgroundColor: '#2563EB', alignItems: 'center' },
+  modalCancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 16, backgroundColor: themeColors.surfaceAlt, alignItems: 'center' },
+  modalCancelText: { color: themeColors.muted, fontWeight: '600', fontSize: 16 },
+  modalConfirmBtn: { flex: 1, paddingVertical: 14, borderRadius: 16, backgroundColor: themeColors.primaryDark, alignItems: 'center' },
   modalConfirmText: { color: 'white', fontWeight: '600', fontSize: 16 },
 
   // --- NEW STEPPER STYLES ---
@@ -779,20 +783,20 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: themeColors.card,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: themeColors.shadow,
     shadowOpacity: 0.08,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: themeColors.border,
   },
   stepperBtnPressed: {
     transform: [{ scale: 0.9 }],
-    backgroundColor: '#F3F4F6',
+    backgroundColor: themeColors.surfaceAlt,
   },
   stepperValueContainer: {
     flexDirection: 'row',
@@ -803,11 +807,11 @@ const styles = StyleSheet.create({
   stepperValue: {
     fontSize: 36,
     fontWeight: '700',
-    color: '#1F2937',
+    color: themeColors.text,
   },
   stepperUnit: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: themeColors.muted,
   },
 });

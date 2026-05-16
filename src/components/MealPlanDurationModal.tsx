@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, IconButton } from './Common';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 
 export default function MealPlanDurationModal({
@@ -15,6 +16,8 @@ export default function MealPlanDurationModal({
   onSelect: (days: number) => void;
 }) {
   const { language } = useLanguage();
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const getText = (en: string, zh: string, ms: string) => language === 'zh' ? zh : language === 'ms' ? ms : en;
 
   const options = [
@@ -53,7 +56,7 @@ export default function MealPlanDurationModal({
                     <Text style={styles.optionTitle}>{item.label}</Text>
                     <Text style={styles.optionSub}>{item.subtitle}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+                  <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
                 </Pressable>
               ))}
             </View>
@@ -64,14 +67,14 @@ export default function MealPlanDurationModal({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: themeColors.overlay, justifyContent: 'flex-end' },
   sheet: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, paddingBottom: 30 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
-  iconBox: { width: 48, height: 48, borderRadius: 16, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 18, fontWeight: '800', color: colors.text },
-  sub: { color: colors.muted, marginTop: 2 },
-  option: { borderRadius: 18, backgroundColor: colors.bg, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  optionTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
-  optionSub: { color: colors.muted, marginTop: 2 },
+  iconBox: { width: 48, height: 48, borderRadius: 16, backgroundColor: themeColors.primaryDark, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 18, fontWeight: '800', color: themeColors.text },
+  sub: { color: themeColors.muted, marginTop: 2 },
+  option: { borderRadius: 18, backgroundColor: themeColors.surfaceAlt, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  optionTitle: { color: themeColors.text, fontSize: 16, fontWeight: '800' },
+  optionSub: { color: themeColors.muted, marginTop: 2 },
 });

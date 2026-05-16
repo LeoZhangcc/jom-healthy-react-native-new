@@ -10,6 +10,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 
 export type BuiltInChildAvatarOption = {
@@ -63,6 +64,9 @@ export default function ChildAvatar({
   style,
   textStyle,
 }: ChildAvatarProps) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
+
   if (avatarImageUri) {
     return (
       <Image
@@ -130,14 +134,14 @@ export default function ChildAvatar({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   image: {
-    backgroundColor: colors.bg,
+    backgroundColor: themeColors.bg,
   },
   fallback: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
   },
   emoji: {
     textAlign: 'center',

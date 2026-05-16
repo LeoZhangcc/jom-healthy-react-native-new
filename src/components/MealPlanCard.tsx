@@ -1,8 +1,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 import { Card } from './Common';
 
 type Meal = { id: string; type: 'breakfast' | 'lunch' | 'dinner' | 'snack'; name: string; nameEn?: string; nameCn?: string; nameMs?: string; strMeal?: string; strMealEn?: string; strMealCn?: string; strMealMs?: string; carbs: number; protein: number; fat: number; completed: boolean };
@@ -46,6 +47,8 @@ function formatGramValue(value: number, language: string) {
 
 export default function MealPlanCard({ meals, onToggleMeal }: { meals: Meal[]; onToggleMeal: (mealId: string) => void }) {
   const { language } = useLanguage();
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const getText = (en: string, zh: string, ms: string) => language === 'zh' ? zh : language === 'ms' ? ms : en;
 
   const getMealDisplayName = (meal: Meal) => {
@@ -78,14 +81,15 @@ export default function MealPlanCard({ meals, onToggleMeal }: { meals: Meal[]; o
     </Card>
   );
 }
-const styles = StyleSheet.create({
-  title: { fontSize: 20, fontWeight: '800', color: colors.text, marginBottom: 12 },
-  mealRow: { borderRadius: 18, padding: 12, backgroundColor: colors.bg, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
-  mealCompleted: { backgroundColor: '#F0FDF4' },
-  check: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'white', borderWidth: 2, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center' },
-  checkDone: { backgroundColor: colors.primaryDark, borderColor: colors.primaryDark },
+
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
+  title: { fontSize: 20, fontWeight: '800', color: themeColors.text, marginBottom: 12 },
+  mealRow: { borderRadius: 18, padding: 12, backgroundColor: themeColors.surfaceAlt, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  mealCompleted: { backgroundColor: themeColors.primaryLight },
+  check: { width: 28, height: 28, borderRadius: 14, backgroundColor: themeColors.card, borderWidth: 2, borderColor: themeColors.border, alignItems: 'center', justifyContent: 'center' },
+  checkDone: { backgroundColor: themeColors.primaryDark, borderColor: themeColors.primaryDark },
   icon: { fontSize: 30 },
-  type: { color: colors.primaryDark, fontWeight: '800', fontSize: 12 },
-  name: { color: colors.text, fontWeight: '800', marginTop: 2 },
-  macro: { color: colors.muted, marginTop: 4, fontSize: 12 },
+  type: { color: themeColors.primaryDark, fontWeight: '800', fontSize: 12 },
+  name: { color: themeColors.text, fontWeight: '800', marginTop: 2 },
+  macro: { color: themeColors.muted, marginTop: 4, fontSize: 12 },
 });

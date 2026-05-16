@@ -1,10 +1,13 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 export default function DigitalTwin({ tip, nickname, isComplete }: { tip: string; nickname: string; isComplete: boolean }) {
   const { language } = useLanguage();
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const fallbackName = language === 'zh' ? '数字分身' : language === 'ms' ? 'Kembar Digital' : 'Digital Twin';
 
   return (
@@ -27,15 +30,15 @@ export default function DigitalTwin({ tip, nickname, isComplete }: { tip: string
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   card: {
-    backgroundColor: 'white',
+    backgroundColor: themeColors.card,
     borderRadius: 24,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    shadowColor: '#000',
+    shadowColor: themeColors.shadow,
     shadowOpacity: 0.08,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
@@ -47,14 +50,14 @@ const styles = StyleSheet.create({
     width: 62,
     height: 62,
     borderRadius: 31,
-    backgroundColor: '#BFE0FF',
+    backgroundColor: themeColors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarComplete: { borderWidth: 3, borderColor: '#FDE68A' },
+  avatarComplete: { borderWidth: 3, borderColor: themeColors.warning },
   avatarText: { fontSize: 30 },
   cheek: { position: 'absolute', top: 36, width: 8, height: 8, borderRadius: 4, backgroundColor: '#F9A8D4', opacity: 0.75 },
-  name: { fontSize: 12, fontWeight: '800', color: colors.text, marginBottom: 5 },
-  bubble: { backgroundColor: '#F5F1E6', borderRadius: 16, paddingVertical: 9, paddingHorizontal: 12 },
-  tip: { color: colors.text, fontSize: 13, lineHeight: 18 },
+  name: { fontSize: 12, fontWeight: '800', color: themeColors.text, marginBottom: 5 },
+  bubble: { backgroundColor: themeColors.surfaceAlt, borderRadius: 16, paddingVertical: 9, paddingHorizontal: 12 },
+  tip: { color: themeColors.text, fontSize: 13, lineHeight: 18 },
 });

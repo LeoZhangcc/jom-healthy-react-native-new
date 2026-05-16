@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { useChildProfile } from './ChildProfileContext';
 import { useLanguage } from './LanguageContext';
+import { useTheme } from './ThemeContext';
 import { generateMealPlanByAi } from '../services/api';
 
 type Ingredient = {
@@ -588,6 +589,8 @@ export function AiMealPlanGenerationProvider({
 }) {
   const { activeChild, getOwnerKey, nutritionNeeds } = useChildProfile();
   const { language } = useLanguage();
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
 
   const getText = (en: string, zh: string, ms: string) => {
     if (language === 'zh') return zh;
@@ -794,7 +797,7 @@ export function AiMealPlanGenerationProvider({
               </View>
 
               <View style={styles.promptBox}>
-                <Ionicons name="fast-food-outline" size={18} color={colors.primaryDark} />
+                <Ionicons name="fast-food-outline" size={18} color={theme.colors.primaryDark} />
                 <TextInput
                   value={prompt}
                   onChangeText={setPrompt}
@@ -862,7 +865,7 @@ export function useAiMealPlanGeneration() {
   return context;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   rootWrap: {
     flex: 1,
   },
@@ -874,7 +877,7 @@ const styles = StyleSheet.create({
     bottom: 92,
     minHeight: 50,
     borderRadius: 22,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -882,18 +885,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     zIndex: 999,
     elevation: 20,
-    shadowColor: '#000',
+    shadowColor: themeColors.shadow,
     shadowOpacity: 0.18,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
   },
 
   floatingButtonReady: {
-    backgroundColor: '#16A34A',
+    backgroundColor: themeColors.success,
   },
 
   floatingButtonError: {
-    backgroundColor: '#EF4444',
+    backgroundColor: themeColors.danger,
   },
 
   floatingButtonText: {
@@ -905,16 +908,16 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.45)',
+    backgroundColor: themeColors.overlay,
     justifyContent: 'center',
     padding: 20,
   },
 
   modalCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: themeColors.card,
     borderRadius: 28,
     padding: 18,
-    shadowColor: '#000',
+    shadowColor: themeColors.shadow,
     shadowOpacity: 0.18,
     shadowRadius: 28,
     shadowOffset: { width: 0, height: 14 },
@@ -931,20 +934,20 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 18,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   modalTitle: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 19,
     fontWeight: '900',
   },
 
   modalSubtitle: {
     marginTop: 3,
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -953,7 +956,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: themeColors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -962,7 +965,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     minHeight: 52,
     borderRadius: 18,
-    backgroundColor: '#F4F6F4',
+    backgroundColor: themeColors.surfaceAlt,
     paddingHorizontal: 14,
     paddingVertical: 10,
     flexDirection: 'row',
@@ -972,14 +975,14 @@ const styles = StyleSheet.create({
 
   promptInput: {
     flex: 1,
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 14,
     maxHeight: 90,
   },
 
   modalHint: {
     marginTop: 8,
-    color: '#94A3B8',
+    color: themeColors.muted,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -994,17 +997,17 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 38,
     borderRadius: 14,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: themeColors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   dayChipActive: {
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
   },
 
   dayChipText: {
-    color: '#64748B',
+    color: themeColors.muted,
     fontSize: 14,
     fontWeight: '900',
   },
@@ -1017,7 +1020,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     height: 50,
     borderRadius: 20,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

@@ -3,12 +3,15 @@ import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import { Header, PrimaryButton, Screen } from '../components/Common';
 
 export default function VoiceSearchScreen() {
   const navigation = useNavigation<any>();
   const { language } = useLanguage();
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const [transcript, setTranscript] = useState('');
   const [listening, setListening] = useState(false);
   const [voiceReady, setVoiceReady] = useState(false);
@@ -85,12 +88,12 @@ export default function VoiceSearchScreen() {
         <Text style={styles.sub}>{voiceReady ? getText('Tap the mic and say “Nasi Lemak”', '点击麦克风并说“椰浆饭”', 'Tekan mikrofon dan sebut “Nasi Lemak”') : getText('Manual fallback is enabled in Expo Go', 'Expo Go 中已启用手动备用输入', 'Input manual diaktifkan dalam Expo Go')}</Text>
 
         <View style={styles.inputWrap}>
-          <Ionicons name="restaurant" size={20} color={colors.primaryDark} />
+          <Ionicons name="restaurant" size={20} color={theme.colors.primaryDark} />
           <TextInput
             value={transcript}
             onChangeText={setTranscript}
             placeholder={getText('Food name from voice...', '语音识别的食物名称...', 'Nama makanan daripada suara...')}
-            placeholderTextColor="#A8AFBA"
+            placeholderTextColor={theme.colors.muted}
             style={styles.input}
             returnKeyType="search"
             onSubmitEditing={searchTranscript}
@@ -101,12 +104,13 @@ export default function VoiceSearchScreen() {
     </Screen>
   );
 }
-const styles = StyleSheet.create({
+
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   center: { flex: 1, minHeight: 560, alignItems: 'center', justifyContent: 'center', padding: 20 },
-  micCircle: { width: 140, height: 140, borderRadius: 70, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center', shadowColor: colors.primaryDark, shadowOpacity: 0.35, shadowRadius: 30, shadowOffset: { width: 0, height: 12 }, elevation: 6 },
-  micCircleActive: { borderWidth: 10, borderColor: '#BBF7D0' },
-  title: { color: colors.text, fontSize: 24, fontWeight: '900', marginTop: 26 },
-  sub: { color: colors.muted, textAlign: 'center', marginTop: 8, lineHeight: 20 },
-  inputWrap: { marginTop: 28, width: '100%', flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'white', borderRadius: 18, paddingHorizontal: 14, minHeight: 56, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
-  input: { flex: 1, color: colors.text, fontSize: 15 },
+  micCircle: { width: 140, height: 140, borderRadius: 70, backgroundColor: themeColors.primaryDark, alignItems: 'center', justifyContent: 'center', shadowColor: themeColors.primaryDark, shadowOpacity: 0.35, shadowRadius: 30, shadowOffset: { width: 0, height: 12 }, elevation: 6 },
+  micCircleActive: { borderWidth: 10, borderColor: themeColors.primaryLight },
+  title: { color: themeColors.text, fontSize: 24, fontWeight: '900', marginTop: 26 },
+  sub: { color: themeColors.muted, textAlign: 'center', marginTop: 8, lineHeight: 20 },
+  inputWrap: { marginTop: 28, width: '100%', flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: themeColors.card, borderRadius: 18, paddingHorizontal: 14, minHeight: 56, shadowColor: themeColors.shadow, shadowOpacity: 0.08, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  input: { flex: 1, color: themeColors.text, fontSize: 15 },
 });

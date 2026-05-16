@@ -15,6 +15,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../context/LanguageContext";
+import { useTheme } from "../context/ThemeContext";
+import { colors } from "../theme/colors";
 
 const API_URL = "https://jom-healthy-react-native-new-1.onrender.com/ai/chat";
 
@@ -25,6 +27,8 @@ type ChatMessage = {
 
 export default function FloatingAIChat() {
   const { language } = useLanguage();
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const pan = useRef(new Animated.ValueXY({ x: 300, y: 650 })).current;
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -195,7 +199,7 @@ export default function FloatingAIChat() {
               </Text>
 
               <TouchableOpacity onPress={() => setVisible(false)}>
-                <Ionicons name="close" size={28} color="#333" />
+                <Ionicons name="close" size={28} color={theme.colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -259,18 +263,18 @@ export default function FloatingAIChat() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   floatingButton: {
     position: "absolute",
     zIndex: 999,
     width: 62,
     height: 62,
     borderRadius: 31,
-    backgroundColor: "#4CAF50",
+    backgroundColor: themeColors.primaryDark,
     justifyContent: "center",
     alignItems: "center",
     elevation: 8,
-    shadowColor: "#000",
+    shadowColor: themeColors.shadow,
     shadowOpacity: 0.2,
     shadowRadius: 8,
     shadowOffset: {
@@ -281,7 +285,7 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: "#F8FAF8",
+    backgroundColor: themeColors.bg,
   },
 
   header: {
@@ -291,7 +295,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 55,
     paddingBottom: 15,
-    backgroundColor: "white",
+    backgroundColor: themeColors.card,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
@@ -299,7 +303,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#222",
+    color: themeColors.text,
   },
 
   chatArea: {
@@ -316,21 +320,21 @@ const styles = StyleSheet.create({
   },
 
   userMessage: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: themeColors.primaryDark,
     alignSelf: "flex-end",
   },
 
   aiMessage: {
-    backgroundColor: "white",
+    backgroundColor: themeColors.card,
     alignSelf: "flex-start",
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: themeColors.border,
   },
 
   messageText: {
     fontSize: 15,
     lineHeight: 22,
-    color: "#222",
+    color: themeColors.text,
   },
 
   inputRow: {
@@ -338,8 +342,8 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     padding: 12,
     borderTopWidth: 1,
-    borderColor: "#eee",
-    backgroundColor: "white",
+    borderColor: themeColors.border,
+    backgroundColor: themeColors.card,
   },
 
   input: {
@@ -347,12 +351,12 @@ const styles = StyleSheet.create({
     minHeight: 45,
     maxHeight: 120,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: themeColors.border,
     borderRadius: 20,
     paddingHorizontal: 15,
     paddingVertical: 10,
     marginRight: 10,
-    backgroundColor: "#F8F8F8",
+    backgroundColor: themeColors.surfaceAlt,
     fontSize: 15,
   },
 });

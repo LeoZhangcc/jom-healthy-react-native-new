@@ -18,6 +18,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useChildProfile } from '../context/ChildProfileContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import ChildAvatar from '../components/ChildAvatar';
 import {
@@ -257,6 +258,8 @@ function extractBackupEntries(payload: any): [string, string][] {
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const { t, language } = useLanguage();
+  const { themeName, setThemeName, theme, themes } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const childProfile = useChildProfile() as any;
 
   const {
@@ -267,6 +270,7 @@ export default function ProfileScreen() {
   } = childProfile;
 
   const [showChildren, setShowChildren] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
   const [showImportGuide, setShowImportGuide] = useState(false);
   const [exportingData, setExportingData] = useState(false);
   const [importingData, setImportingData] = useState(false);
@@ -277,6 +281,27 @@ export default function ProfileScreen() {
     if (language === 'ms') return ms;
     return en;
   };
+
+  const themeOptions = [
+    {
+      key: 'classic' as const,
+      icon: 'leaf-outline' as const,
+      title: getText('Classic Green', '经典绿色', 'Hijau Klasik'),
+      subtitle: getText('Keep the original JomHealthy look.', '保留现在的 JomHealthy 主题。', 'Kekalkan gaya asal JomHealthy.'),
+    },
+    {
+      key: 'light' as const,
+      icon: 'color-palette-outline' as const,
+      title: getText('Light Editorial', '浅色圆润', 'Editorial Cerah'),
+      subtitle: getText('Soft cards with navy and teal accents.', '浅色卡片搭配深蓝与青绿色点缀。', 'Kad lembut dengan aksen navy dan teal.'),
+    },
+    {
+      key: 'green' as const,
+      icon: 'nutrition-outline' as const,
+      title: getText('Fresh Green', '清新绿色', 'Hijau Segar'),
+      subtitle: getText('Forest-green editorial style inspired by the meal UI.', '参考膳食页的森林绿色编辑风格。', 'Gaya editorial hijau hutan berinspirasikan halaman meal.'),
+    },
+  ];
 
 
   const getChildCountText = () => {
@@ -537,7 +562,23 @@ export default function ProfileScreen() {
         <Header
           title={t('profile')}
           subtitle={t('manageAccount')}
-          icon="person"
+          right={
+            <Pressable
+              style={({ pressed }) => [
+                styles.themeAvatarTrigger,
+                pressed && styles.themeAvatarTriggerPressed,
+              ]}
+              onPress={() => setShowThemePicker(true)}
+              accessibilityRole="button"
+              accessibilityLabel={getText('Choose app theme', '选择应用主题', 'Pilih tema aplikasi')}
+            >
+              <Ionicons
+                name="color-palette-outline"
+                size={25}
+                color={theme.colors.primaryDark}
+              />
+            </Pressable>
+          }
         />
 
         <View style={styles.body}>
@@ -576,7 +617,6 @@ export default function ProfileScreen() {
               style={{ marginTop: 14 }}
             />
           </Card>
-
           {activeChild && tags.length > 0 && (
             <Card>
               <Text style={styles.sectionHeading}>
@@ -602,7 +642,7 @@ export default function ProfileScreen() {
               <View style={styles.settingIcon}>
                 <Ionicons
                   name={exportingData ? 'hourglass-outline' : 'download'}
-                  color={colors.primaryDark}
+                  color={theme.colors.primaryDark}
                   size={18}
                 />
               </View>
@@ -620,7 +660,7 @@ export default function ProfileScreen() {
 
               <Ionicons
                 name="chevron-forward"
-                color={colors.muted}
+                color={theme.colors.muted}
                 size={18}
               />
             </Pressable>
@@ -633,7 +673,7 @@ export default function ProfileScreen() {
               <View style={styles.settingIcon}>
                 <Ionicons
                   name={importingData ? 'hourglass-outline' : 'cloud-upload'}
-                  color={colors.primaryDark}
+                  color={theme.colors.primaryDark}
                   size={18}
                 />
               </View>
@@ -651,7 +691,7 @@ export default function ProfileScreen() {
 
               <Ionicons
                 name="chevron-forward"
-                color={colors.muted}
+                color={theme.colors.muted}
                 size={18}
               />
             </Pressable>
@@ -719,6 +759,89 @@ export default function ProfileScreen() {
       </Screen>
 
       <Modal
+        visible={showThemePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowThemePicker(false)}
+      >
+        <Pressable
+          style={styles.themePickerOverlay}
+          onPress={() => setShowThemePicker(false)}
+        >
+          <Pressable
+            style={styles.themePickerPopover}
+            onPress={(event) => event.stopPropagation()}
+          >
+            <View style={styles.themePickerHeader}>
+              <View style={styles.themePickerHeaderIcon}>
+                <Ionicons name="color-palette-outline" size={17} color={theme.colors.primaryDark} />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.themePickerTitle}>
+                  {getText('Choose Theme', '选择主题', 'Pilih Tema')}
+                </Text>
+                <Text style={styles.themePickerSubtitle}>
+                  {getText('Applies to every page.', '会应用到所有页面。', 'Digunakan pada semua halaman.')}
+                </Text>
+              </View>
+
+              <Pressable
+                style={({ pressed }) => [styles.themePickerClose, pressed && styles.themeAvatarTriggerPressed]}
+                onPress={() => setShowThemePicker(false)}
+              >
+                <Ionicons name="close" size={17} color={theme.colors.muted} />
+              </Pressable>
+            </View>
+
+            <View style={styles.themePickerList}>
+              {themeOptions.map((option) => {
+                const optionTheme = themes[option.key];
+                const selected = themeName === option.key;
+
+                return (
+                  <Pressable
+                    key={option.key}
+                    style={[
+                      styles.themePickerOption,
+                      {
+                        backgroundColor: selected ? optionTheme.colors.primaryLight : theme.colors.surfaceAlt,
+                        borderColor: selected ? optionTheme.colors.primaryDark : theme.colors.border,
+                      },
+                    ]}
+                    onPress={() => {
+                      setThemeName(option.key);
+                      setShowThemePicker(false);
+                    }}
+                  >
+                    <View
+                      style={[
+                        styles.themePickerOptionIcon,
+                        { backgroundColor: optionTheme.colors.primaryLight },
+                      ]}
+                    >
+                      <Ionicons name={option.icon} color={optionTheme.colors.primaryDark} size={17} />
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.themePickerOptionTitle}>{option.title}</Text>
+                      <Text style={styles.themePickerOptionSubtitle} numberOfLines={2}>{option.subtitle}</Text>
+                    </View>
+
+                    <Ionicons
+                      name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+                      color={selected ? optionTheme.colors.primaryDark : theme.colors.muted}
+                      size={21}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
         visible={showImportGuide}
         transparent
         animationType="fade"
@@ -748,7 +871,7 @@ export default function ProfileScreen() {
                 style={styles.importCloseButton}
                 onPress={() => setShowImportGuide(false)}
               >
-                <Ionicons name="close" size={18} color={colors.muted} />
+                <Ionicons name="close" size={18} color={theme.colors.muted} />
               </Pressable>
             </View>
 
@@ -785,7 +908,7 @@ export default function ProfileScreen() {
               <Ionicons
                 name={importingData ? 'hourglass-outline' : 'document-attach-outline'}
                 size={18}
-                color={colors.primaryDark}
+                color={theme.colors.primaryDark}
               />
               <Text style={styles.chooseFileButtonText}>
                 {importingData
@@ -814,7 +937,7 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   body: {
     padding: 20,
     gap: 14,
@@ -835,6 +958,127 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
+  themeAvatarTrigger: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderWidth: 1.5,
+    borderColor: themeColors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: themeColors.shadow,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
+  },
+
+  themeAvatarTriggerPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.97 }],
+  },
+
+
+
+  themePickerOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    paddingTop: 96,
+    paddingHorizontal: 16,
+    alignItems: 'flex-end',
+  },
+
+  themePickerPopover: {
+    width: '94%',
+    maxWidth: 380,
+    backgroundColor: themeColors.card,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    padding: 15,
+    shadowColor: themeColors.shadow,
+    shadowOpacity: 0.14,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 12,
+  },
+
+  themePickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+  },
+
+  themePickerHeaderIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 15,
+    backgroundColor: themeColors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  themePickerTitle: {
+    color: themeColors.text,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+
+  themePickerSubtitle: {
+    color: themeColors.muted,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+
+  themePickerClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: themeColors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  themePickerList: {
+    marginTop: 13,
+    gap: 10,
+  },
+
+  themePickerOption: {
+    minHeight: 72,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+  },
+
+  themePickerOptionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  themePickerOptionTitle: {
+    color: themeColors.text,
+    fontWeight: '900',
+    fontSize: 14,
+  },
+
+  themePickerOptionSubtitle: {
+    color: themeColors.muted,
+    marginTop: 3,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '600',
+  },
+
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -843,7 +1087,7 @@ const styles = StyleSheet.create({
 
   profileAvatar: {
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: themeColors.border,
   },
 
   profileInfo: {
@@ -852,19 +1096,19 @@ const styles = StyleSheet.create({
   },
 
   name: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 20,
     fontWeight: '900',
   },
 
   meta: {
-    color: colors.muted,
+    color: themeColors.muted,
     marginTop: 3,
     fontSize: 12,
   },
 
   sectionHeading: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 18,
     fontWeight: '800',
     marginBottom: 12,
@@ -877,8 +1121,8 @@ const styles = StyleSheet.create({
   },
 
   tag: {
-    color: colors.primaryDark,
-    backgroundColor: colors.primaryLight,
+    color: themeColors.primaryDark,
+    backgroundColor: themeColors.primaryLight,
     paddingVertical: 7,
     paddingHorizontal: 10,
     borderRadius: 99,
@@ -892,7 +1136,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: themeColors.border,
   },
 
   settingRowLast: {
@@ -903,14 +1147,65 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 14,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   settingTitle: {
-    color: colors.text,
+    color: themeColors.text,
     fontWeight: '800',
+  },
+
+  themeSelectorList: {
+    marginTop: 14,
+    gap: 12,
+  },
+
+  themeOption: {
+    minHeight: 80,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+
+  themeOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  themeOptionSubtitle: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '600',
+  },
+
+  themeOptionPreviewWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+
+  themePreview: {
+    width: 46,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  themePreviewDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
   },
 
   emptySavedCard: {
@@ -923,14 +1218,14 @@ const styles = StyleSheet.create({
   },
 
   emptySavedTitle: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 17,
     fontWeight: '900',
     marginTop: 10,
   },
 
   emptySavedText: {
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 12,
     textAlign: 'center',
     marginTop: 6,
@@ -965,14 +1260,14 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 100,
     borderRadius: 16,
-    backgroundColor: colors.bg,
+    backgroundColor: themeColors.bg,
   },
 
   recipePlaceholder: {
     width: '100%',
     height: 100,
     borderRadius: 16,
-    backgroundColor: colors.bg,
+    backgroundColor: themeColors.bg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -982,7 +1277,7 @@ const styles = StyleSheet.create({
   },
 
   recipeName: {
-    color: colors.text,
+    color: themeColors.text,
     fontWeight: '800',
     marginTop: 10,
   },
@@ -994,14 +1289,14 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(15,23,42,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   importOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.45)',
+    backgroundColor: themeColors.overlay,
     justifyContent: 'flex-end',
   },
 
@@ -1029,14 +1324,14 @@ const styles = StyleSheet.create({
   },
 
   importTitle: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 18,
     fontWeight: '900',
   },
 
   importSubTitle: {
     marginTop: 3,
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1086,7 +1381,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     height: 48,
     borderRadius: 18,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1094,14 +1389,14 @@ const styles = StyleSheet.create({
   },
 
   chooseFileButtonText: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontSize: 15,
     fontWeight: '900',
   },
 
   importNote: {
     marginTop: 12,
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 11,
     lineHeight: 16,
     textAlign: 'center',

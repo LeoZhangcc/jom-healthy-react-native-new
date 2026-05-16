@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useChildProfile } from '../context/ChildProfileContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import { Card, Chip, IconButton, PrimaryButton } from './Common';
 import ChildAvatar, { CHILD_AVATAR_OPTIONS } from './ChildAvatar';
@@ -51,6 +52,8 @@ export default function AddChildModal({
   onSuccess?: () => void;
   childToEdit?: Child | null;
 }) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const { addChild, updateChild } = useChildProfile();
   const { language } = useLanguage();
   const getText = (en: string, zh: string, ms: string) => language === 'zh' ? zh : language === 'ms' ? ms : en;
@@ -310,7 +313,7 @@ export default function AddChildModal({
             [keyName]: next,
           }))
         }
-        thumbColor={value ? colors.primaryDark : '#F3F4F6'}
+        thumbColor={value ? theme.colors.primaryDark : '#F3F4F6'}
         trackColor={{
           false: '#D1D5DB',
           true: '#A7F3D0',
@@ -386,7 +389,7 @@ export default function AddChildModal({
                     <Ionicons
                       name="shuffle"
                       size={16}
-                      color={colors.primaryDark}
+                      color={theme.colors.primaryDark}
                     />
                     <Text style={styles.avatarActionText}>{getText('Random Avatar', '随机头像', 'Avatar Rawak')}</Text>
                   </Pressable>
@@ -398,7 +401,7 @@ export default function AddChildModal({
                     <Ionicons
                       name="image"
                       size={16}
-                      color={colors.primaryDark}
+                      color={theme.colors.primaryDark}
                     />
                     <Text style={styles.avatarActionText}>{getText('Upload Photo', '上传照片', 'Muat Naik Foto')}</Text>
                   </Pressable>
@@ -412,7 +415,7 @@ export default function AddChildModal({
                     <Ionicons
                       name="happy"
                       size={15}
-                      color={colors.primaryDark}
+                      color={theme.colors.primaryDark}
                     />
                     <Text style={styles.useEmojiText}>{getText('Use Built-in Avatar', '使用内置头像', 'Guna Avatar Terbina Dalam')}</Text>
                   </Pressable>
@@ -581,7 +584,7 @@ export default function AddChildModal({
                 style={styles.avatarPickerClose}
                 onPress={() => setShowAvatarPicker(false)}
               >
-                <Ionicons name="close" size={20} color={colors.text} />
+                <Ionicons name="close" size={20} color={theme.colors.text} />
               </Pressable>
             </View>
 
@@ -626,10 +629,10 @@ export default function AddChildModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: themeColors.overlay,
     justifyContent: 'flex-end',
   },
 
@@ -649,7 +652,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: colors.text,
+    color: themeColors.text,
   },
 
   scrollContent: {
@@ -659,16 +662,16 @@ const styles = StyleSheet.create({
   label: {
     marginTop: 16,
     marginBottom: 8,
-    color: colors.text,
+    color: themeColors.text,
     fontWeight: '800',
   },
 
   input: {
-    backgroundColor: colors.bg,
+    backgroundColor: themeColors.bg,
     borderRadius: 16,
     minHeight: 48,
     paddingHorizontal: 14,
-    color: colors.text,
+    color: themeColors.text,
   },
 
   hiddenInput: {
@@ -679,7 +682,7 @@ const styles = StyleSheet.create({
   },
 
   dateButton: {
-    backgroundColor: colors.bg,
+    backgroundColor: themeColors.bg,
     borderRadius: 16,
     minHeight: 48,
     paddingHorizontal: 14,
@@ -689,17 +692,17 @@ const styles = StyleSheet.create({
   },
 
   dateButtonText: {
-    color: colors.text,
+    color: themeColors.text,
     fontWeight: '700',
   },
 
   datePlaceholder: {
-    color: colors.muted,
+    color: themeColors.muted,
     fontWeight: '600',
   },
 
   dateButtonAction: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontWeight: '800',
     fontSize: 12,
   },
@@ -715,7 +718,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 18,
     overflow: 'hidden',
-    backgroundColor: colors.bg,
+    backgroundColor: themeColors.bg,
   },
 
   avatarPreviewRow: {
@@ -741,7 +744,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -753,7 +756,7 @@ const styles = StyleSheet.create({
   },
 
   avatarHint: {
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 12,
     lineHeight: 17,
     marginBottom: 10,
@@ -768,7 +771,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 42,
     borderRadius: 16,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -777,7 +780,7 @@ const styles = StyleSheet.create({
   },
 
   avatarActionText: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontSize: 12,
     fontWeight: '900',
   },
@@ -788,7 +791,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: themeColors.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -796,7 +799,7 @@ const styles = StyleSheet.create({
   },
 
   useEmojiText: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -805,7 +808,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 60,
     elevation: 60,
-    backgroundColor: 'rgba(15,23,42,0.50)',
+    backgroundColor: themeColors.overlay,
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
@@ -828,14 +831,14 @@ const styles = StyleSheet.create({
   },
 
   avatarPickerTitle: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 20,
     fontWeight: '900',
   },
 
   avatarPickerSubtitle: {
     marginTop: 5,
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 12,
     lineHeight: 18,
     fontWeight: '600',
@@ -869,8 +872,8 @@ const styles = StyleSheet.create({
   },
 
   builtInAvatarOptionSelected: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryLight,
+    borderColor: themeColors.primaryDark,
   },
 
   avatarSelectedBadge: {
@@ -880,7 +883,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
@@ -897,7 +900,7 @@ const styles = StyleSheet.create({
   },
 
   restrictions: {
-    backgroundColor: colors.bg,
+    backgroundColor: themeColors.bg,
     borderRadius: 18,
     paddingHorizontal: 14,
   },
@@ -908,11 +911,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: themeColors.border,
   },
 
   switchLabel: {
-    color: colors.text,
+    color: themeColors.text,
     fontWeight: '700',
   },
 });

@@ -18,6 +18,7 @@ import MapView, { Callout, Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useChildProfile } from '../context/ChildProfileContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import ChildAvatar from '../components/ChildAvatar';
 import {
@@ -719,6 +720,8 @@ function getShoppingItemSource(item: ShoppingItem, language: string) {
 }
 
 export default function ShoppingScreen() {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const navigation = useNavigation<any>();
   const { language } = useLanguage();
   const childProfile = useChildProfile() as any;
@@ -1258,18 +1261,18 @@ export default function ShoppingScreen() {
           icon="cart"
           right={
             <Pressable
-              style={styles.headerOwnerButton}
+              style={[styles.headerOwnerButton, theme.key !== 'classic' && styles.headerOwnerButtonEditorial]}
               onPress={() => setShowOwnerDropdown(true)}
             >
               <Ionicons
                 name={isAllSelected ? 'people' : 'person'}
                 size={16}
-                color="#FFFFFF"
+                color={theme.key !== 'classic' ? theme.colors.primaryDark : '#FFFFFF'}
               />
-              <Text style={styles.headerOwnerText} numberOfLines={1}>
+              <Text style={[styles.headerOwnerText, theme.key !== 'classic' && styles.headerOwnerTextEditorial]} numberOfLines={1}>
                 {selectedOwnerLabel}
               </Text>
-              <Ionicons name="chevron-down" size={14} color="#FFFFFF" />
+              <Ionicons name="chevron-down" size={14} color={theme.key !== 'classic' ? theme.colors.primaryDark : '#FFFFFF'} />
             </Pressable>
           }
         />
@@ -1284,7 +1287,7 @@ export default function ShoppingScreen() {
                 <Ionicons
                   name="storefront"
                   size={22}
-                  color={colors.primaryDark}
+                  color={theme.colors.primaryDark}
                 />
               </View>
 
@@ -1368,7 +1371,7 @@ export default function ShoppingScreen() {
                     <Ionicons
                       name="refresh-outline"
                       size={16}
-                      color={colors.primaryDark}
+                      color={theme.colors.primaryDark}
                     />
                     <Text style={styles.secondaryButtonText}>{getText('Reset', '重置', 'Tetapkan Semula')}</Text>
                   </Pressable>
@@ -1408,7 +1411,7 @@ export default function ShoppingScreen() {
                           ) : (
                             <Ionicons
                               name={categoryIcons[category]}
-                              color={colors.primaryDark}
+                              color={theme.colors.primaryDark}
                               size={18}
                             />
                           )}
@@ -1513,7 +1516,7 @@ export default function ShoppingScreen() {
                       <Ionicons
                         name={option.icon || 'person'}
                         size={17}
-                        color={selected ? '#FFFFFF' : colors.primaryDark}
+                        color={selected ? '#FFFFFF' : theme.colors.primaryDark}
                       />
                     )}
                   </View>
@@ -1538,7 +1541,7 @@ export default function ShoppingScreen() {
                   </View>
 
                   {selected && (
-                    <Ionicons name="checkmark-circle" size={20} color={colors.primaryDark} />
+                    <Ionicons name="checkmark-circle" size={20} color={theme.colors.primaryDark} />
                   )}
                 </Pressable>
               );
@@ -1572,7 +1575,7 @@ export default function ShoppingScreen() {
                 style={styles.modalCloseButton}
                 onPress={() => setShowSupermarkets(false)}
               >
-                <Ionicons name="close" size={20} color={colors.text} />
+                <Ionicons name="close" size={20} color={theme.colors.text} />
               </Pressable>
             </View>
 
@@ -1636,9 +1639,9 @@ export default function ShoppingScreen() {
                 ) : (
                   <View style={styles.nearbyMapPlaceholder}>
                     {nearbyLoading ? (
-                      <ActivityIndicator size="small" color={colors.primaryDark} />
+                      <ActivityIndicator size="small" color={theme.colors.primaryDark} />
                     ) : (
-                      <Ionicons name="map-outline" size={26} color={colors.primaryDark} />
+                      <Ionicons name="map-outline" size={26} color={theme.colors.primaryDark} />
                     )}
                     <Text style={styles.nearbyMapPlaceholderTitle}>
                       {nearbyLoading
@@ -1651,7 +1654,7 @@ export default function ShoppingScreen() {
 
               {nearbyLoading ? (
                 <View style={styles.nearbyLoadingWrap}>
-                  <ActivityIndicator size="large" color={colors.primaryDark} />
+                  <ActivityIndicator size="large" color={theme.colors.primaryDark} />
                   <Text style={styles.nearbyLoadingText}>
                     {getText(
                       'Finding supermarkets near you...',
@@ -1674,7 +1677,7 @@ export default function ShoppingScreen() {
                       <Ionicons
                         name="storefront-outline"
                         size={20}
-                        color={colors.primaryDark}
+                        color={theme.colors.primaryDark}
                       />
                     </View>
 
@@ -1690,7 +1693,7 @@ export default function ShoppingScreen() {
                       <View style={styles.marketMetaRow}>
                         {market.distanceKm !== null && market.distanceKm !== undefined && Number.isFinite(market.distanceKm) && (
                           <View style={styles.marketMetaPill}>
-                            <Ionicons name="navigate-outline" size={12} color={colors.primaryDark} />
+                            <Ionicons name="navigate-outline" size={12} color={theme.colors.primaryDark} />
                             <Text style={styles.marketMetaText}>
                               {`${market.distanceKm.toFixed(2)} km`}
                             </Text>
@@ -1733,7 +1736,7 @@ export default function ShoppingScreen() {
                 ))
               ) : (
                 <View style={styles.nearbyEmptyWrap}>
-                  <Ionicons name="location-outline" size={28} color={colors.primaryDark} />
+                  <Ionicons name="location-outline" size={28} color={theme.colors.primaryDark} />
                   <Text style={styles.nearbyEmptyTitle}>
                     {getText('No supermarkets to show', '暂无附近超市', 'Tiada pasar raya untuk dipaparkan')}
                   </Text>
@@ -1768,7 +1771,7 @@ export default function ShoppingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   body: {
     padding: 20,
     gap: 14,
@@ -1809,9 +1812,24 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
+  headerOwnerButtonEditorial: {
+    backgroundColor: themeColors.card,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    shadowColor: themeColors.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+
+  headerOwnerTextEditorial: {
+    color: themeColors.primaryDark,
+  },
+
   ownerDropdownBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.20)',
+    backgroundColor: themeColors.overlay,
     alignItems: 'flex-end',
     paddingTop: 86,
     paddingRight: 16,
@@ -1831,7 +1849,7 @@ const styles = StyleSheet.create({
   },
 
   ownerDropdownTitle: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 15,
     fontWeight: '900',
     paddingHorizontal: 8,
@@ -1849,20 +1867,20 @@ const styles = StyleSheet.create({
   },
 
   ownerDropdownItemActive: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
   },
 
   ownerDropdownIcon: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   ownerDropdownIconActive: {
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
   },
 
   ownerDropdownAvatar: {
@@ -1875,24 +1893,24 @@ const styles = StyleSheet.create({
   },
 
   ownerDropdownLabel: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 14,
     fontWeight: '900',
   },
 
   ownerDropdownLabelActive: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
   },
 
   ownerDropdownCount: {
     marginTop: 2,
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 11,
     fontWeight: '700',
   },
 
   ownerDropdownCountActive: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
   },
 
   ownerSelectorCard: {
@@ -1906,14 +1924,14 @@ const styles = StyleSheet.create({
   },
 
   ownerSelectorTitle: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 17,
     fontWeight: '900',
   },
 
   ownerSelectorSubtitle: {
     marginTop: 3,
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: '600',
@@ -1944,15 +1962,15 @@ const styles = StyleSheet.create({
   },
 
   ownerChipActive: {
-    backgroundColor: colors.primaryDark,
-    borderColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
+    borderColor: themeColors.primaryDark,
   },
 
   ownerChipIcon: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1971,7 +1989,7 @@ const styles = StyleSheet.create({
   },
 
   ownerChipLabel: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 13,
     fontWeight: '900',
   },
@@ -1982,7 +2000,7 @@ const styles = StyleSheet.create({
 
   ownerChipCount: {
     marginTop: 2,
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 11,
     fontWeight: '700',
   },
@@ -2001,7 +2019,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 18,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2011,13 +2029,13 @@ const styles = StyleSheet.create({
   },
 
   supermarketTitle: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 17,
     fontWeight: '900',
   },
 
   supermarketSubtitle: {
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 12,
     fontWeight: '600',
     lineHeight: 18,
@@ -2034,7 +2052,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     borderRadius: 18,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2075,20 +2093,20 @@ const styles = StyleSheet.create({
   },
 
   cardTitle: {
-    color: colors.text,
+    color: themeColors.text,
     fontWeight: '900',
     fontSize: 20,
   },
 
   cardSub: {
-    color: colors.muted,
+    color: themeColors.muted,
     marginTop: 4,
     fontSize: 12,
     fontWeight: '600',
   },
 
   percent: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontWeight: '900',
     fontSize: 22,
   },
@@ -2102,13 +2120,13 @@ const styles = StyleSheet.create({
 
   progressFill: {
     height: '100%',
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     borderRadius: 999,
   },
 
   progressText: {
     marginTop: 10,
-    color: colors.muted,
+    color: themeColors.muted,
     fontWeight: '700',
     fontSize: 13,
   },
@@ -2123,7 +2141,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 42,
     borderRadius: 16,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2131,7 +2149,7 @@ const styles = StyleSheet.create({
   },
 
   secondaryButtonText: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontWeight: '900',
     fontSize: 13,
   },
@@ -2177,7 +2195,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 16,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -2201,14 +2219,14 @@ const styles = StyleSheet.create({
 
   itemName: {
     flex: 1,
-    color: colors.text,
+    color: themeColors.text,
     fontWeight: '900',
     fontSize: 15,
   },
 
   itemNameDone: {
     textDecorationLine: 'line-through',
-    color: colors.muted,
+    color: themeColors.muted,
   },
 
   ownerBadge: {
@@ -2216,25 +2234,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
   },
 
   ownerBadgeText: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontSize: 10,
     fontWeight: '900',
   },
 
   itemQuantity: {
     marginTop: 4,
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontWeight: '800',
     fontSize: 13,
   },
 
   itemSource: {
     marginTop: 4,
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 12,
     lineHeight: 17,
   },
@@ -2250,13 +2268,13 @@ const styles = StyleSheet.create({
   },
 
   checkDone: {
-    borderColor: colors.primaryDark,
-    backgroundColor: colors.primaryDark,
+    borderColor: themeColors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
   },
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.45)',
+    backgroundColor: themeColors.overlay,
     justifyContent: 'flex-end',
   },
 
@@ -2292,13 +2310,13 @@ const styles = StyleSheet.create({
   },
 
   modalTitle: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 22,
     fontWeight: '900',
   },
 
   modalSubtitle: {
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 13,
     marginTop: 4,
     fontWeight: '600',
@@ -2338,7 +2356,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 16,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2348,13 +2366,13 @@ const styles = StyleSheet.create({
   },
 
   marketName: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 15,
     fontWeight: '900',
   },
 
   marketSubtitle: {
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 12,
     fontWeight: '600',
     lineHeight: 17,
@@ -2411,7 +2429,7 @@ const styles = StyleSheet.create({
   },
 
   nearbyMapPlaceholderTitle: {
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 13,
     lineHeight: 19,
     fontWeight: '700',
@@ -2420,7 +2438,7 @@ const styles = StyleSheet.create({
 
   marketRowSelected: {
     borderWidth: 1.5,
-    borderColor: colors.primaryDark,
+    borderColor: themeColors.primaryDark,
     backgroundColor: '#F0FDF4',
   },
 
@@ -2435,7 +2453,7 @@ const styles = StyleSheet.create({
   },
 
   nearbyLoadingText: {
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
@@ -2454,14 +2472,14 @@ const styles = StyleSheet.create({
 
   nearbyEmptyTitle: {
     marginTop: 10,
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 16,
     fontWeight: '900',
   },
 
   nearbyEmptySubtitle: {
     marginTop: 6,
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 19,
@@ -2473,7 +2491,7 @@ const styles = StyleSheet.create({
     minHeight: 42,
     borderRadius: 16,
     paddingHorizontal: 14,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2498,14 +2516,14 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: themeColors.primaryLight,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
 
   marketMetaText: {
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontSize: 11,
     fontWeight: '800',
   },
@@ -2536,7 +2554,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     borderRadius: 15,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2575,14 +2593,14 @@ const styles = StyleSheet.create({
   },
 
   marketCalloutTitle: {
-    color: colors.text,
+    color: themeColors.text,
     fontSize: 14,
     fontWeight: '900',
   },
 
   marketCalloutAddress: {
     marginTop: 4,
-    color: colors.muted,
+    color: themeColors.muted,
     fontSize: 11,
     lineHeight: 15,
     fontWeight: '600',
@@ -2593,7 +2611,7 @@ const styles = StyleSheet.create({
     minHeight: 34,
     borderRadius: 12,
     paddingHorizontal: 10,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

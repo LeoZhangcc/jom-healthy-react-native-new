@@ -20,6 +20,7 @@ import * as Sharing from 'expo-sharing';
 
 import { useLanguage } from '../context/LanguageContext';
 import { useChildProfile } from '../context/ChildProfileContext'; 
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import { Card, Chip, Header, Screen, SectionTitle } from '../components/Common';
 import { HealthRecord, deleteHealthRecords, loadHealthRecords, saveHealthRecord } from '../utils/storage';
@@ -38,8 +39,15 @@ type Point = {
   neg1?: number; 
 };
 
+function useGrowthStyles() {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
+  return { styles, theme };
+}
+
 function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: string, showWhoLines: boolean }) {
   const { t } = useLanguage();
+  const { styles, theme } = useGrowthStyles();
   const containerHeight = 200;
   const topPadding = 24;
   const bottomPadding = 30;
@@ -48,7 +56,7 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
   if (data.length === 0) {
     return (
       <View style={[styles.chartWrap, { height: containerHeight, justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ color: colors.muted }}>{t('chartNoData')}</Text>
+        <Text style={{ color: theme.colors.muted }}>{t('chartNoData')}</Text>
       </View>
     );
   }
@@ -142,8 +150,8 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
             {sd0Points && <Polyline points={sd0Points} fill="none" stroke="#3B82F6" strokeWidth="2" strokeDasharray="4 4" />}
             {neg1Points && <Polyline points={neg1Points} fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeDasharray="4 4" />}
 
-            <Polyline points={points} fill="none" stroke={colors.primaryDark} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-            {data.map((d, i) => <Circle key={`pt-${i}`} cx={x(i)} cy={y(d.value)} r="4.5" fill={colors.primaryDark} stroke="#FFFFFF" strokeWidth="1.5" />)}
+            <Polyline points={points} fill="none" stroke={theme.colors.primaryDark} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+            {data.map((d, i) => <Circle key={`pt-${i}`} cx={x(i)} cy={y(d.value)} r="4.5" fill={theme.colors.primaryDark} stroke="#FFFFFF" strokeWidth="1.5" />)}
             
             {data.map((d, i) => (
               <SvgText key={`lbl-${i}`} x={x(i)} y={containerHeight - 10} fontSize="10" textAnchor="middle" fill="#9CA3AF" fontWeight="600">
@@ -159,7 +167,7 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
         <View style={styles.legendContainer}>
           <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} /><Text style={styles.legendText}>{t('optimal')}</Text></View>
           <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} /><Text style={styles.legendText}>{t('riskrange')}</Text></View>
-          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.primaryDark }]} /><Text style={styles.legendText}>{t('yourchildbmi')}</Text></View>
+          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: theme.colors.primaryDark }]} /><Text style={styles.legendText}>{t('yourchildbmi')}</Text></View>
         </View>
       )}
     </View>
@@ -174,6 +182,7 @@ type SegmentType = "HEIGHT" | "WEIGHT" | "BMI";
 export default function GrowthScreen() {
   const navigation = useNavigation<any>();
   const { t, language } = useLanguage();
+  const { styles, theme } = useGrowthStyles();
   
   const { activeChild } = useChildProfile();
   
@@ -369,7 +378,7 @@ export default function GrowthScreen() {
           </Text>
           
           {loading ? (
-            <ActivityIndicator size="large" color={colors.primaryDark} style={{ height: 200 }} />
+            <ActivityIndicator size="large" color={theme.colors.primaryDark} style={{ height: 200 }} />
           ) : !activeChild ? (
             <View style={[styles.emptyState, { height: 200, borderWidth: 0 }]}>
                <Text style={styles.emptyStateText}>
@@ -414,8 +423,8 @@ export default function GrowthScreen() {
               }}
               style={styles.selectAllBtn}
             >
-              {selectedIds.length === displayRecords.length ? <CheckSquare color={colors.primaryDark} size={20} /> : <Square color="#CBD5E1" size={20} />}
-              <Text style={[styles.selectAllText, selectedIds.length === displayRecords.length && { color: colors.primaryDark }]}>
+              {selectedIds.length === displayRecords.length ? <CheckSquare color={theme.colors.primaryDark} size={20} /> : <Square color="#CBD5E1" size={20} />}
+              <Text style={[styles.selectAllText, selectedIds.length === displayRecords.length && { color: theme.colors.primaryDark }]}>
                 {getText('Select All', '全选', 'Pilih Semua')}
               </Text>
             </Pressable>
@@ -444,7 +453,7 @@ export default function GrowthScreen() {
               >
                 {isEditMode && (
                   <View style={{ marginRight: 16 }}>
-                    {isSelected ? <CheckSquare color={colors.primaryDark} size={22} /> : <Square color="#CBD5E1" size={22} />}
+                    {isSelected ? <CheckSquare color={theme.colors.primaryDark} size={22} /> : <Square color="#CBD5E1" size={22} />}
                   </View>
                 )}
                 
@@ -473,46 +482,46 @@ export default function GrowthScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   body: { padding: 20, gap: 12, paddingBottom: 60 },
   tabs: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
-  chartTitle: { color: colors.text, fontWeight: '900', fontSize: 18, marginBottom: 10 },
+  chartTitle: { color: themeColors.text, fontWeight: '900', fontSize: 18, marginBottom: 10 },
   
-  chartWrap: { backgroundColor: colors.bg, borderRadius: 18, paddingTop: 16, paddingBottom: 8, overflow: 'hidden' },
+  chartWrap: { backgroundColor: themeColors.bg, borderRadius: 18, paddingTop: 16, paddingBottom: 8, overflow: 'hidden' },
   
-  yAxisContainer: { width: 45, height: '100%', zIndex: 10, backgroundColor: colors.bg },
+  yAxisContainer: { width: 45, height: '100%', zIndex: 10, backgroundColor: themeColors.bg },
   yAxisUnit: { position: 'absolute', top: 0, right: 6, fontSize: 11, fontWeight: 'bold', color: '#9CA3AF' },
   yAxisLabel: { position: 'absolute', right: 6, fontSize: 10, color: '#9CA3AF', fontWeight: '600' },
-  yAxisLine: { position: 'absolute', right: 0, top: 24, bottom: 30, width: 1, backgroundColor: '#E5E7EB' },
-  yAxisTick: { position: 'absolute', right: 0, bottom: 30, width: 4, height: 1, backgroundColor: '#E5E7EB' },
+  yAxisLine: { position: 'absolute', right: 0, top: 24, bottom: 30, width: 1, backgroundColor: themeColors.border },
+  yAxisTick: { position: 'absolute', right: 0, bottom: 30, width: 4, height: 1, backgroundColor: themeColors.border },
 
   legendContainer: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 4, paddingBottom: 8 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 10, color: colors.muted, fontWeight: '600' },
+  legendText: { fontSize: 10, color: themeColors.muted, fontWeight: '600' },
 
   listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 4 },
-  manageBtn: { backgroundColor: colors.bg, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 99 },
-  manageBtnText: { color: colors.primaryDark, fontWeight: '700', fontSize: 12 },
+  manageBtn: { backgroundColor: themeColors.bg, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 99 },
+  manageBtnText: { color: themeColors.primaryDark, fontWeight: '700', fontSize: 12 },
 
-  batchActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#F3F4F6' },
+  batchActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: themeColors.card, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: themeColors.border },
   selectAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 4 },
-  selectAllText: { color: colors.muted, fontWeight: '700', fontSize: 14 },
+  selectAllText: { color: themeColors.muted, fontWeight: '700', fontSize: 14 },
   deleteBatchBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
   deleteBatchActive: { backgroundColor: '#EF4444' },
-  deleteBatchDisabled: { backgroundColor: '#E5E7EB' },
+  deleteBatchDisabled: { backgroundColor: themeColors.border },
   deleteBatchText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
 
   recordRow: { padding: 0, overflow: 'hidden', flexDirection: 'row', alignItems: 'center' },
-  recordRowSelected: { borderWidth: 2, borderColor: colors.primaryDark, backgroundColor: '#F0FDF4' },
+  recordRowSelected: { borderWidth: 2, borderColor: themeColors.primaryDark, backgroundColor: themeColors.primaryLight },
   recordContent: { flex: 1, flexDirection: 'row', alignItems: 'center', padding: 16 },
-  recordDate: { color: colors.text, fontWeight: '800', fontSize: 15 },
-  recordStatus: { color: colors.primaryDark, marginTop: 4, fontWeight: '700', fontSize: 12 },
-  recordValue: { color: colors.text, fontWeight: '900', fontSize: 20 },
+  recordDate: { color: themeColors.text, fontWeight: '800', fontSize: 15 },
+  recordStatus: { color: themeColors.primaryDark, marginTop: 4, fontWeight: '700', fontSize: 12 },
+  recordValue: { color: themeColors.text, fontWeight: '900', fontSize: 20 },
   singleDeleteBtn: { padding: 16, backgroundColor: '#FEF2F2', justifyContent: 'center' },
 
-  emptyState: { alignItems: 'center', padding: 32, backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: '#F3F4F6', borderStyle: 'dashed' },
-  emptyStateText: { color: colors.muted, fontWeight: '600' },
+  emptyState: { alignItems: 'center', padding: 32, backgroundColor: themeColors.card, borderRadius: 20, borderWidth: 1, borderColor: themeColors.border, borderStyle: 'dashed' },
+  emptyStateText: { color: themeColors.muted, fontWeight: '600' },
 
   importExportRow: { 
     flexDirection: 'row', 
@@ -524,20 +533,20 @@ const styles = StyleSheet.create({
   actionPill: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    backgroundColor: '#FFFFFF', 
+    backgroundColor: themeColors.card, 
     paddingHorizontal: 16, 
     paddingVertical: 8, 
     borderRadius: 99, 
     borderWidth: 1, 
-    borderColor: '#F3F4F6', 
-    shadowColor: '#000', 
+    borderColor: themeColors.border, 
+    shadowColor: themeColors.shadow, 
     shadowOffset: { width: 0, height: 1 }, 
     shadowOpacity: 0.05, 
     elevation: 1, 
     gap: 6 
   },
   actionPillText: { 
-    color: '#64748B', 
+    color: themeColors.muted, 
     fontSize: 12, 
     fontWeight: '700' 
   },

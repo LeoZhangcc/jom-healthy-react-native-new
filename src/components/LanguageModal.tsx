@@ -2,10 +2,13 @@ import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 
 export default function LanguageModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { language, setLanguage } = useLanguage();
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const languages = [
     { code: 'en' as const, label: 'English', short: 'EN' },
     { code: 'zh' as const, label: '中文', short: 'ZH' },
@@ -39,20 +42,20 @@ export default function LanguageModal({ visible, onClose }: { visible: boolean; 
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    backgroundColor: themeColors.overlay,
     alignItems: 'flex-end',
     paddingTop: 72,
     paddingRight: 18,
   },
   menu: {
     width: 210,
-    backgroundColor: 'white',
+    backgroundColor: themeColors.card,
     borderRadius: 22,
     padding: 8,
-    shadowColor: '#000',
+    shadowColor: themeColors.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 18,
@@ -67,16 +70,16 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   optionActive: {
-    backgroundColor: colors.primaryDark,
+    backgroundColor: themeColors.primaryDark,
   },
   short: {
     width: 30,
-    color: colors.primaryDark,
+    color: themeColors.primaryDark,
     fontWeight: '900',
   },
   label: {
     flex: 1,
-    color: colors.text,
+    color: themeColors.text,
     fontWeight: '800',
   },
   activeText: {

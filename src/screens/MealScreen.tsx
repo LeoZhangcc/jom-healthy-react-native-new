@@ -17,12 +17,14 @@ import {
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header, Screen } from '../components/Common';
 import { colors } from '../theme/colors';
 import { searchMeals } from '../services/api';
 import { useChildProfile } from '../context/ChildProfileContext';
 import { useAiMealPlanGeneration } from '../context/AiMealPlanGenerationContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 
 type Ingredient = {
   ingredientId?: number;
@@ -866,7 +868,14 @@ async function generateShoppingListByOwner(
   }
 }
 
+function useMealStyles() {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
+  return { styles, theme };
+}
+
 function NutritionRing({ value, target, color, label, language }: { value: number; target: number; color: string; label: string; language: string }) {
+  const { styles } = useMealStyles();
   const size = 86;
   const strokeWidth = 8;
   const radius = (size - strokeWidth) / 2;
@@ -933,6 +942,7 @@ function CalendarDateCell({
   setCellRef?: (node: any) => void;
   onLayout?: () => void;
 }) {
+  const { styles } = useMealStyles();
   const hasStatus = status !== 'none';
   const statusColor = STATUS_COLORS[status];
   const size = 38;
@@ -996,9 +1006,46 @@ function CalendarDateCell({
   );
 }
 
+function MealEditorialHeader({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  const insets = useSafeAreaInsets();
+  const { styles, theme } = useMealStyles();
+
+  return (
+    <View
+      style={[
+        styles.mealEditorialHeader,
+        { paddingTop: Math.max(insets.top, 24) + 12 },
+      ]}
+    >
+      <View style={styles.mealHeaderBubbleLarge} />
+      <View style={styles.mealHeaderBubbleSmall} />
+      <View style={styles.mealHeaderBubbleOutline} />
+
+      <View style={styles.mealHeaderTitleRow}>
+        <View style={styles.mealHeaderTitleWrap}>
+          <Text style={styles.mealHeaderTitle}>{title}</Text>
+          {!!subtitle && <Text style={styles.mealHeaderSubtitle}>{subtitle}</Text>}
+        </View>
+
+        <View style={styles.mealHeaderIconCircle}>
+          <Ionicons name="restaurant-outline" size={22} color={theme.colors.primaryDark} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function MealScreen() {
   const navigation = useNavigation<any>();
   const { language } = useLanguage();
+  const { themeName, theme } = useTheme();
+  const { styles } = useMealStyles();
   const { openAiMealPlanModal, isGeneratingMealPlan, lastGeneratedAt } = useAiMealPlanGeneration();
   const { activeChild, getOwnerKey, nutritionNeeds, savedRecipes = [] } = useChildProfile();
   const ownerKey = getOwnerKey();
@@ -1620,7 +1667,7 @@ export default function MealScreen() {
                 else Alert.alert(getText('No Alternative', '没有替代食谱', 'Tiada Alternatif'), getText('Search another recipe to replace this one.', '请搜索另一个食谱来替换。', 'Cari resipi lain untuk menggantikannya.'));
               }}
             >
-              <Ionicons name="swap-horizontal" size={16} color={colors.primaryDark} />
+              <Ionicons name="swap-horizontal" size={16} color={theme.colors.primaryDark} />
               <Text style={styles.replaceLinkText}>{getText('Replace meal', '替换餐食', 'Ganti Hidangan')}</Text>
             </Pressable>
           )}
@@ -1650,7 +1697,18 @@ export default function MealScreen() {
 
   return (
     <Screen padded={false}>
-      <Header title={getText('Meal Plan', '膳食计划', 'Pelan Makanan')} subtitle={activeChild ? `${activeChild.nickname}${getText("'s meal plan", '的膳食计划', ' punya pelan makanan')}` : getText('Guest meal plan', '访客膳食计划', 'Pelan makanan tetamu')} icon="restaurant" />
+      {themeName === 'green' ? (
+        <MealEditorialHeader
+          title={getText('Meal Plan', '膳食计划', 'Pelan Makanan')}
+          subtitle={activeChild ? `${activeChild.nickname}${getText("'s meal plan", '的膳食计划', ' punya pelan makanan')}` : getText('Guest meal plan', '访客膳食计划', 'Pelan makanan tetamu')}
+        />
+      ) : (
+        <Header
+          title={getText('Meal Plan', '膳食计划', 'Pelan Makanan')}
+          subtitle={activeChild ? `${activeChild.nickname}${getText("'s meal plan", '的膳食计划', ' punya pelan makanan')}` : getText('Guest meal plan', '访客膳食计划', 'Pelan makanan tetamu')}
+          icon="restaurant"
+        />
+      )}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -1679,7 +1737,7 @@ export default function MealScreen() {
             <View style={styles.suggestionBox}>
               {searchLoading ? (
                 <View style={styles.suggestionStatus}>
-                  <ActivityIndicator size="small" color={colors.primaryDark} />
+                  <ActivityIndicator size="small" color={theme.colors.primaryDark} />
                   <Text style={styles.suggestionStatusText}>{getText('Searching recipes...', '正在搜索食谱...', 'Mencari resipi...')}</Text>
                 </View>
               ) : searchError ? (
@@ -1704,7 +1762,7 @@ export default function MealScreen() {
             </View>
             <View style={styles.dateActionRow}>
               <Pressable style={styles.calendarButton} onPress={() => setShowCalendar(true)}>
-                <Ionicons name="calendar-outline" size={17} color={colors.primaryDark} />
+                <Ionicons name="calendar-outline" size={17} color={theme.colors.primaryDark} />
                 <Text style={styles.calendarButtonText}>{getText('Calendar', '日历', 'Kalendar')}</Text>
               </Pressable>
             </View>
@@ -1766,7 +1824,7 @@ export default function MealScreen() {
 
           {copySourceKey && (
             <View style={styles.copyModeBanner}>
-              <Ionicons name="copy-outline" size={16} color={colors.primaryDark} />
+              <Ionicons name="copy-outline" size={16} color={theme.colors.primaryDark} />
               <Text style={styles.copyModeText}>
                 {getText(
                   `Copying ${formatCopyDateLabel(copySourceKey)}. Tap multiple target dates, then confirm. Selected: ${copyTargetKeys.length}`,
@@ -1808,7 +1866,7 @@ export default function MealScreen() {
 
             <View style={styles.planHeaderActions}>
               <Pressable style={styles.savedRecipeButton} onPress={() => setShowSavedRecipePicker(true)}>
-                <Ionicons name="bookmark-outline" size={15} color={colors.primaryDark} />
+                <Ionicons name="bookmark-outline" size={15} color={theme.colors.primaryDark} />
                 <Text style={styles.savedRecipeButtonText}>{getText('Saved Recipes', '收藏食谱', 'Resipi Tersimpan')}</Text>
               </Pressable>
 
@@ -1824,7 +1882,7 @@ export default function MealScreen() {
 
           {isGeneratingMealPlan ? (
             <View style={styles.generatingCard}>
-              <ActivityIndicator size="large" color={colors.primaryDark} />
+              <ActivityIndicator size="large" color={theme.colors.primaryDark} />
               <Text style={styles.generatingTitle}>{getText('Generating your meal plan...', '正在生成你的膳食计划...', 'Sedang menjana pelan makanan anda...')}</Text>
               <Text style={styles.generatingText}>{getText('AI is choosing suitable recipes based on the child profile, nutrition targets and your food preference.', 'AI 正在根据儿童档案、营养目标和食物偏好选择合适的食谱。', 'AI sedang memilih resipi yang sesuai berdasarkan profil kanak-kanak, sasaran nutrisi dan pilihan makanan anda.')}</Text>
             </View>
@@ -1997,7 +2055,7 @@ export default function MealScreen() {
                   <Pressable key={slot} style={styles.mealSlotPickerOption} onPress={() => addMealToSelectedSlot(slot)}>
                     <View style={styles.mealSlotPickerOptionLeft}>
                       <View style={styles.mealSlotPickerOptionIconWrap}>
-                        <Ionicons name="add-circle-outline" size={20} color={colors.primaryDark} />
+                        <Ionicons name="add-circle-outline" size={20} color={theme.colors.primaryDark} />
                       </View>
                       <View>
                         <Text style={styles.mealSlotPickerOptionTitle}>{getSlotLabel(slot)}</Text>
@@ -2035,20 +2093,20 @@ export default function MealScreen() {
 
             <View style={styles.calendarMonthRow}>
               <Pressable style={styles.calendarNavButton} onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}>
-                <Ionicons name="chevron-back" size={22} color={colors.primaryDark} />
+                <Ionicons name="chevron-back" size={22} color={theme.colors.primaryDark} />
               </Pressable>
               <Pressable style={styles.calendarTodayButton} onPress={goToday}>
-                <Ionicons name="sunny-outline" size={16} color={colors.primaryDark} />
+                <Ionicons name="sunny-outline" size={16} color={theme.colors.primaryDark} />
                 <Text style={styles.calendarTodayText}>{getText('Today', '今天', 'Hari Ini')}</Text>
               </Pressable>
               <Pressable style={styles.calendarNavButton} onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}>
-                <Ionicons name="chevron-forward" size={22} color={colors.primaryDark} />
+                <Ionicons name="chevron-forward" size={22} color={theme.colors.primaryDark} />
               </Pressable>
             </View>
 
             {copySourceKey && (
               <View style={styles.calendarCopyBanner}>
-                <Ionicons name="copy-outline" size={15} color={colors.primaryDark} />
+                <Ionicons name="copy-outline" size={15} color={theme.colors.primaryDark} />
                 <Text style={styles.calendarCopyText}>
                   {getText(
                     `Copying ${formatCopyDateLabel(copySourceKey)}. Tap multiple dates. Selected: ${copyTargetKeys.length}`,
@@ -2117,56 +2175,133 @@ export default function MealScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
+  mealEditorialHeader: {
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: themeColors.primaryLight,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+  },
+  mealHeaderBubbleLarge: {
+    position: 'absolute',
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: 'rgba(255,255,255,0.40)',
+    right: -60,
+    top: -66,
+  },
+  mealHeaderBubbleSmall: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.26)',
+    left: -44,
+    bottom: -64,
+  },
+  mealHeaderBubbleOutline: {
+    position: 'absolute',
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    borderWidth: 1.5,
+    borderColor: 'rgba(38,122,77,0.16)',
+    right: 26,
+    bottom: -28,
+  },
+  mealHeaderTitleRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  mealHeaderTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  mealHeaderTitle: {
+    color: themeColors.text,
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+  },
+  mealHeaderSubtitle: {
+    marginTop: 4,
+    color: themeColors.muted,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
+  },
+  mealHeaderIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: themeColors.card,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: themeColors.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+
   content: { padding: 16, paddingBottom: 120, gap: 16 },
-  searchOuterCard: { backgroundColor: '#FFFFFF', borderRadius: 28, padding: 14, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  searchInnerCard: { minHeight: 48, borderRadius: 18, backgroundColor: '#F4F6F4', paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  searchInput: { flex: 1, color: colors.text, fontSize: 15 },
+  searchOuterCard: { backgroundColor: themeColors.card, borderRadius: 28, padding: 14, shadowColor: themeColors.shadow, shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  searchInnerCard: { minHeight: 48, borderRadius: 18, backgroundColor: themeColors.surfaceAlt, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  searchInput: { flex: 1, color: themeColors.text, fontSize: 15 },
   searchClear: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  suggestionBox: { marginTop: 12, borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB', overflow: 'hidden', backgroundColor: '#FFFFFF' },
+  suggestionBox: { marginTop: 12, borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB', overflow: 'hidden', backgroundColor: themeColors.card },
   suggestionStatus: { minHeight: 52, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  suggestionStatusText: { color: colors.muted, fontWeight: '700' },
+  suggestionStatusText: { color: themeColors.muted, fontWeight: '700' },
   suggestionErrorText: { flex: 1, color: '#B91C1C', fontWeight: '700' },
   suggestionItem: { padding: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E7EB' },
   suggestionMain: { flexDirection: 'row', gap: 12 },
-  suggestionImage: { width: 66, height: 66, borderRadius: 16, backgroundColor: '#E5E7EB' },
-  suggestionImageFallback: { width: 66, height: 66, borderRadius: 16, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+  suggestionImage: { width: 66, height: 66, borderRadius: 16, backgroundColor: themeColors.border },
+  suggestionImageFallback: { width: 66, height: 66, borderRadius: 16, backgroundColor: themeColors.border, alignItems: 'center', justifyContent: 'center' },
   suggestionContent: { flex: 1 },
-  suggestionTitle: { fontSize: 14, fontWeight: '900', color: '#0F172A', lineHeight: 20 },
-  suggestionMeta: { marginTop: 3, color: '#64748B', fontSize: 12 },
-  suggestionNutrition: { marginTop: 6, color: colors.primaryDark, fontWeight: '700', fontSize: 12, lineHeight: 17 },
+  suggestionTitle: { fontSize: 14, fontWeight: '900', color: themeColors.text, lineHeight: 20 },
+  suggestionMeta: { marginTop: 3, color: themeColors.muted, fontSize: 12 },
+  suggestionNutrition: { marginTop: 6, color: themeColors.primaryDark, fontWeight: '700', fontSize: 12, lineHeight: 17 },
   suggestionActions: { marginTop: 10, flexDirection: 'row', gap: 8 },
-  suggestionButton: { flex: 1, height: 38, borderRadius: 999, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#FFFFFF' },
+  suggestionButton: { flex: 1, height: 38, borderRadius: 999, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: themeColors.card },
   suggestionViewButton: { borderColor: '#3BA76D' },
   suggestionWatchButton: { borderColor: '#FF3B30' },
   suggestionButtonText: { fontSize: 12, fontWeight: '800' },
-  suggestionAddButton: { flex: 1, height: 38, borderRadius: 999, backgroundColor: colors.primaryDark, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  suggestionAddButton: { flex: 1, height: 38, borderRadius: 999, backgroundColor: themeColors.primaryDark, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   suggestionAddText: { color: '#FFFFFF', fontWeight: '900', fontSize: 12 },
-  dateContainer: { backgroundColor: '#FFFFFF', borderRadius: 28, padding: 14, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  dateContainer: { backgroundColor: themeColors.card, borderRadius: 28, padding: 14, shadowColor: themeColors.shadow, shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   dateTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   dateTitle: { fontSize: 16, fontWeight: '900', color: '#1F2937' },
-  dateSubtitle: { marginTop: 2, fontSize: 12, color: '#94A3B8', fontWeight: '600' },
+  dateSubtitle: { marginTop: 2, fontSize: 12, color: themeColors.muted, fontWeight: '600' },
   dateActionRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  calendarButton: { height: 36, borderRadius: 18, backgroundColor: '#EAF7F0', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 5 },
-  calendarButtonText: { color: colors.primaryDark, fontWeight: '900', fontSize: 12 },
+  calendarButton: { height: 36, borderRadius: 18, backgroundColor: themeColors.primaryLight, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  calendarButtonText: { color: themeColors.primaryDark, fontWeight: '900', fontSize: 12 },
   fixedDateRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 6 },
   scrollableDateRow: { gap: 6, paddingRight: 6 },
   dateCard: { minHeight: 78, borderRadius: 15, backgroundColor: '#F7F7F5', alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
   dateCardActive: { backgroundColor: '#57B56E' },
   dateCardSelectedWithPlan: { borderWidth: 2, borderColor: '#0F172A' },
   dateDay: { fontSize: 11, fontWeight: '800', color: '#1F3B5A' },
-  dateNumber: { marginTop: 4, fontSize: 21, lineHeight: 24, fontWeight: '900', color: '#334155' },
+  dateNumber: { marginTop: 4, fontSize: 21, lineHeight: 24, fontWeight: '900', color: themeColors.text },
   dateTextActive: { color: '#FFFFFF' },
   dateToday: { marginTop: 3, fontSize: 9, fontWeight: '800', color: '#57B56E' },
   dateTodayActive: { color: '#FFFFFF' },
   dateLegendRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 12 },
   dateLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dateLegendDot: { width: 8, height: 8, borderRadius: 4 },
-  dateLegendText: { fontSize: 11, color: '#64748B', fontWeight: '700' },
-  nutritionCard: { backgroundColor: '#FFFFFF', borderRadius: 28, padding: 18, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  dateLegendText: { fontSize: 11, color: themeColors.muted, fontWeight: '700' },
+  nutritionCard: { backgroundColor: themeColors.card, borderRadius: 28, padding: 18, shadowColor: themeColors.shadow, shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   nutritionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   nutritionTitle: { fontSize: 18, fontWeight: '900', color: '#1F2937' },
-  nutritionSubtitle: { marginTop: 3, color: '#94A3B8', fontSize: 12, fontWeight: '600' },
+  nutritionSubtitle: { marginTop: 3, color: themeColors.muted, fontSize: 12, fontWeight: '600' },
   nutritionProgressText: { fontSize: 15, color: '#6B7280', fontWeight: '600' },
   ringRow: { marginTop: 16, flexDirection: 'row', justifyContent: 'space-around' },
   ringBlock: { alignItems: 'center', flex: 1 },
@@ -2174,30 +2309,30 @@ const styles = StyleSheet.create({
   ringCenter: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   ringValueText: { fontSize: 16, fontWeight: '900', color: '#1F2937' },
   ringLabel: { marginTop: 6, fontSize: 13, color: '#6B7280', fontWeight: '600' },
-  ringTarget: { marginTop: 2, fontSize: 12, color: '#94A3B8', fontWeight: '600' },
-  planWrapper: { backgroundColor: '#FFFFFF', borderRadius: 28, padding: 18, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  ringTarget: { marginTop: 2, fontSize: 12, color: themeColors.muted, fontWeight: '600' },
+  planWrapper: { backgroundColor: themeColors.card, borderRadius: 28, padding: 18, shadowColor: themeColors.shadow, shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   planHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   planHeaderActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexShrink: 1, minWidth: 0 },
-  savedRecipeButton: { height: 34, maxWidth: 124, borderRadius: 17, backgroundColor: '#EAF7F0', borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, flexShrink: 1, overflow: 'hidden' },
-  savedRecipeButtonText: { color: colors.primaryDark, fontSize: 11, lineHeight: 13, fontWeight: '900', flexShrink: 1, minWidth: 0 },
+  savedRecipeButton: { height: 34, maxWidth: 124, borderRadius: 17, backgroundColor: themeColors.primaryLight, borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, flexShrink: 1, overflow: 'hidden' },
+  savedRecipeButtonText: { color: themeColors.primaryDark, fontSize: 11, lineHeight: 13, fontWeight: '900', flexShrink: 1, minWidth: 0 },
   planTitle: { flex: 1, minWidth: 0, fontSize: 18, fontWeight: '900', color: '#111827' },
   clearPlanButton: { height: 34, maxWidth: 118, borderRadius: 17, backgroundColor: '#FEF2F2', paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, flexShrink: 1, overflow: 'hidden' },
   clearPlanButtonText: { color: '#EF4444', fontSize: 11, lineHeight: 13, fontWeight: '900', flexShrink: 1, minWidth: 0 },
-  aiHint: { marginTop: 3, fontSize: 12, color: '#94A3B8', fontWeight: '700' },
-  refreshButton: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
-  refreshButtonGenerating: { backgroundColor: '#EAF7F0', borderColor: '#BBF7D0' },
-  preferenceBox: { marginTop: 14, minHeight: 48, borderRadius: 18, backgroundColor: '#F4F6F4', paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  preferenceInput: { flex: 1, color: colors.text, fontSize: 14 },
+  aiHint: { marginTop: 3, fontSize: 12, color: themeColors.muted, fontWeight: '700' },
+  refreshButton: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center', backgroundColor: themeColors.card },
+  refreshButtonGenerating: { backgroundColor: themeColors.primaryLight, borderColor: '#BBF7D0' },
+  preferenceBox: { marginTop: 14, minHeight: 48, borderRadius: 18, backgroundColor: themeColors.surfaceAlt, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  preferenceInput: { flex: 1, color: themeColors.text, fontSize: 14 },
   planShoppingText: { marginTop: 10, color: '#4EA96B', fontSize: 14, fontWeight: '600' },
   preferenceBanner: { marginTop: 14, backgroundColor: '#E7F4EA', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 14 },
   preferenceBannerText: { color: '#2E8B57', fontWeight: '700', fontSize: 14 },
-  generatingCard: { marginTop: 18, borderRadius: 22, backgroundColor: '#F8FAFC', padding: 26, alignItems: 'center' },
+  generatingCard: { marginTop: 18, borderRadius: 22, backgroundColor: themeColors.surfaceAlt, padding: 26, alignItems: 'center' },
   generatingTitle: { marginTop: 14, fontSize: 17, fontWeight: '900', color: '#1F2937' },
-  generatingText: { marginTop: 8, color: '#64748B', fontSize: 13, lineHeight: 20, textAlign: 'center', fontWeight: '600' },
-  generatePlanButton: { marginTop: 18, height: 44, borderRadius: 18, backgroundColor: colors.primaryDark, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  generatingText: { marginTop: 8, color: themeColors.muted, fontSize: 13, lineHeight: 20, textAlign: 'center', fontWeight: '600' },
+  generatePlanButton: { marginTop: 18, height: 44, borderRadius: 18, backgroundColor: themeColors.primaryDark, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   generatePlanButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
   generateErrorText: { marginTop: 12, color: '#B91C1C', fontSize: 12, fontWeight: '700', textAlign: 'center' },
-  emptyMealPlanCard: { marginTop: 18, borderRadius: 22, backgroundColor: '#F8FAFC', padding: 24, alignItems: 'center' },
+  emptyMealPlanCard: { marginTop: 18, borderRadius: 22, backgroundColor: themeColors.surfaceAlt, padding: 24, alignItems: 'center' },
   emptyMealPlanEmoji: { fontSize: 40 },
   emptyMealPlanTitle: { marginTop: 10, fontSize: 16, fontWeight: '900', color: '#1F2937' },
   emptyMealPlanText: { marginTop: 6, fontSize: 13, color: '#6B7280', textAlign: 'center', lineHeight: 20 },
@@ -2205,17 +2340,17 @@ const styles = StyleSheet.create({
   mealSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   mealCardBlock: { marginTop: 12 },
   mealItemHeaderRow: { marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  mealItemBadge: { minHeight: 28, borderRadius: 14, backgroundColor: '#EAF7F0', paddingHorizontal: 11, alignItems: 'center', justifyContent: 'center' },
-  mealItemBadgeText: { color: colors.primaryDark, fontSize: 12, fontWeight: '900' },
-  mealSectionTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
-  mealSectionSub: { marginTop: 2, fontSize: 13, color: '#64748B' },
+  mealItemBadge: { minHeight: 28, borderRadius: 14, backgroundColor: themeColors.primaryLight, paddingHorizontal: 11, alignItems: 'center', justifyContent: 'center' },
+  mealItemBadgeText: { color: themeColors.primaryDark, fontSize: 12, fontWeight: '900' },
+  mealSectionTitle: { fontSize: 16, fontWeight: '900', color: themeColors.text },
+  mealSectionSub: { marginTop: 2, fontSize: 13, color: themeColors.muted },
   smallIconButton: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEF2F2' },
-  mealCard: { marginTop: 12, borderRadius: 18, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#FFFFFF', padding: 14, flexDirection: 'row', gap: 12 },
-  mealImage: { width: 80, height: 80, borderRadius: 16, backgroundColor: '#E5E7EB' },
-  mealImageFallback: { width: 80, height: 80, borderRadius: 16, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+  mealCard: { marginTop: 12, borderRadius: 18, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: themeColors.card, padding: 14, flexDirection: 'row', gap: 12 },
+  mealImage: { width: 80, height: 80, borderRadius: 16, backgroundColor: themeColors.border },
+  mealImageFallback: { width: 80, height: 80, borderRadius: 16, backgroundColor: themeColors.border, alignItems: 'center', justifyContent: 'center' },
   fallbackEmoji: { fontSize: 30 },
   mealContent: { flex: 1 },
-  mealTitle: { fontSize: 15, fontWeight: '900', color: '#0F172A', lineHeight: 22 },
+  mealTitle: { fontSize: 15, fontWeight: '900', color: themeColors.text, lineHeight: 22 },
   macroTagRow: { marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   macroTag: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
   macroCarb: { backgroundColor: '#FFF1E8' },
@@ -2223,93 +2358,93 @@ const styles = StyleSheet.create({
   macroFat: { backgroundColor: '#EAF8EE' },
   macroTagText: { fontSize: 12, fontWeight: '700' },
   mealButtonRow: { marginTop: 12, flexDirection: 'row', gap: 10 },
-  actionButton: { flex: 1, minHeight: 42, borderRadius: 999, borderWidth: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFFFFF', paddingHorizontal: 8 },
+  actionButton: { flex: 1, minHeight: 42, borderRadius: 999, borderWidth: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: themeColors.card, paddingHorizontal: 8 },
   viewButton: { borderColor: '#3BA76D' },
   watchButton: { borderColor: '#FF3B30' },
   actionButtonText: { fontSize: 12, fontWeight: '700', flexShrink: 1 },
   replaceLink: { marginTop: 10, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6 },
-  replaceLinkText: { color: colors.primaryDark, fontSize: 13, fontWeight: '700' },
-  aiModalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  aiModalCard: { width: '100%', maxWidth: 420, backgroundColor: '#FFFFFF', borderRadius: 28, padding: 18 },
+  replaceLinkText: { color: themeColors.primaryDark, fontSize: 13, fontWeight: '700' },
+  aiModalOverlay: { flex: 1, backgroundColor: themeColors.overlay, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  aiModalCard: { width: '100%', maxWidth: 420, backgroundColor: themeColors.card, borderRadius: 28, padding: 18 },
   aiModalHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  aiModalIcon: { width: 48, height: 48, borderRadius: 18, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
-  aiModalTitle: { color: colors.text, fontSize: 18, fontWeight: '900' },
-  aiModalSubtitle: { marginTop: 3, color: colors.muted, fontSize: 12, fontWeight: '600' },
-  aiModalClose: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  aiModalLabel: { marginTop: 16, marginBottom: 8, color: colors.text, fontSize: 13, fontWeight: '900' },
-  aiPromptBox: { minHeight: 52, borderRadius: 18, backgroundColor: '#F4F6F4', paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  aiPromptInput: { flex: 1, color: colors.text, fontSize: 14, maxHeight: 90 },
-  aiMealPlanHint: { marginTop: 8, color: '#94A3B8', fontSize: 12, fontWeight: '700' },
+  aiModalIcon: { width: 48, height: 48, borderRadius: 18, backgroundColor: themeColors.primaryDark, alignItems: 'center', justifyContent: 'center' },
+  aiModalTitle: { color: themeColors.text, fontSize: 18, fontWeight: '900' },
+  aiModalSubtitle: { marginTop: 3, color: themeColors.muted, fontSize: 12, fontWeight: '600' },
+  aiModalClose: { width: 38, height: 38, borderRadius: 19, backgroundColor: themeColors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  aiModalLabel: { marginTop: 16, marginBottom: 8, color: themeColors.text, fontSize: 13, fontWeight: '900' },
+  aiPromptBox: { minHeight: 52, borderRadius: 18, backgroundColor: themeColors.surfaceAlt, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  aiPromptInput: { flex: 1, color: themeColors.text, fontSize: 14, maxHeight: 90 },
+  aiMealPlanHint: { marginTop: 8, color: themeColors.muted, fontSize: 12, fontWeight: '700' },
   daySelectorRow: { flexDirection: 'row', gap: 8 },
-  dayChip: { flex: 1, height: 38, borderRadius: 14, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  dayChipActive: { backgroundColor: colors.primaryDark },
-  dayChipText: { color: '#64748B', fontSize: 14, fontWeight: '900' },
+  dayChip: { flex: 1, height: 38, borderRadius: 14, backgroundColor: themeColors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  dayChipActive: { backgroundColor: themeColors.primaryDark },
+  dayChipText: { color: themeColors.muted, fontSize: 14, fontWeight: '900' },
   dayChipTextActive: { color: '#FFFFFF' },
-  generateHomeButton: { marginTop: 16, height: 48, borderRadius: 18, backgroundColor: colors.primaryDark, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  generateHomeButton: { marginTop: 16, height: 48, borderRadius: 18, backgroundColor: themeColors.primaryDark, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   generateHomeButtonLoading: { opacity: 0.85 },
   generateHomeButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   aiMealPlanError: { marginTop: 10, color: '#B91C1C', fontSize: 12, fontWeight: '700', textAlign: 'center' },
 
-  savedRecipeBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  savedRecipeModalCard: { width: '100%', maxWidth: 440, maxHeight: '84%', backgroundColor: '#FFFFFF', borderRadius: 28, padding: 18, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 28, shadowOffset: { width: 0, height: 14 }, elevation: 8 },
+  savedRecipeBackdrop: { flex: 1, backgroundColor: themeColors.overlay, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  savedRecipeModalCard: { width: '100%', maxWidth: 440, maxHeight: '84%', backgroundColor: themeColors.card, borderRadius: 28, padding: 18, shadowColor: themeColors.shadow, shadowOpacity: 0.18, shadowRadius: 28, shadowOffset: { width: 0, height: 14 }, elevation: 8 },
   savedRecipeModalHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
-  savedRecipeModalIcon: { width: 46, height: 46, borderRadius: 17, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
-  savedRecipeModalTitle: { color: '#0F172A', fontSize: 18, fontWeight: '900', lineHeight: 24 },
-  savedRecipeModalSubtitle: { marginTop: 4, color: '#64748B', fontSize: 12, lineHeight: 18, fontWeight: '700' },
-  savedRecipeModalClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  savedRecipeModalIcon: { width: 46, height: 46, borderRadius: 17, backgroundColor: themeColors.primaryDark, alignItems: 'center', justifyContent: 'center' },
+  savedRecipeModalTitle: { color: themeColors.text, fontSize: 18, fontWeight: '900', lineHeight: 24 },
+  savedRecipeModalSubtitle: { marginTop: 4, color: themeColors.muted, fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  savedRecipeModalClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: themeColors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   savedRecipeListScroll: { flexGrow: 0 },
   savedRecipeListContent: { gap: 12, paddingBottom: 4 },
-  savedRecipeItemCard: { borderRadius: 20, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', padding: 12 },
+  savedRecipeItemCard: { borderRadius: 20, backgroundColor: themeColors.surfaceAlt, borderWidth: 1, borderColor: themeColors.border, padding: 12 },
   savedRecipeMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  savedRecipeImage: { width: 62, height: 62, borderRadius: 17, backgroundColor: '#E5E7EB' },
-  savedRecipeImageFallback: { width: 62, height: 62, borderRadius: 17, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+  savedRecipeImage: { width: 62, height: 62, borderRadius: 17, backgroundColor: themeColors.border },
+  savedRecipeImageFallback: { width: 62, height: 62, borderRadius: 17, backgroundColor: themeColors.border, alignItems: 'center', justifyContent: 'center' },
   savedRecipeEmoji: { fontSize: 28 },
   savedRecipeInfo: { flex: 1 },
-  savedRecipeName: { color: '#0F172A', fontSize: 15, fontWeight: '900', lineHeight: 21 },
-  savedRecipeMeta: { marginTop: 3, color: '#64748B', fontSize: 12, fontWeight: '700' },
-  savedRecipeNutrition: { marginTop: 4, color: colors.primaryDark, fontSize: 12, fontWeight: '800' },
+  savedRecipeName: { color: themeColors.text, fontSize: 15, fontWeight: '900', lineHeight: 21 },
+  savedRecipeMeta: { marginTop: 3, color: themeColors.muted, fontSize: 12, fontWeight: '700' },
+  savedRecipeNutrition: { marginTop: 4, color: themeColors.primaryDark, fontSize: 12, fontWeight: '800' },
   savedRecipeActions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
-  savedRecipeViewButton: { minHeight: 38, borderRadius: 16, borderWidth: 1, borderColor: '#3BA76D', backgroundColor: '#FFFFFF', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  savedRecipeViewButton: { minHeight: 38, borderRadius: 16, borderWidth: 1, borderColor: '#3BA76D', backgroundColor: themeColors.card, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   savedRecipeViewButtonText: { color: '#3BA76D', fontSize: 12, fontWeight: '900' },
-  savedRecipeAddButton: { flex: 1, minHeight: 38, borderRadius: 16, backgroundColor: colors.primaryDark, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  savedRecipeAddButton: { flex: 1, minHeight: 38, borderRadius: 16, backgroundColor: themeColors.primaryDark, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   savedRecipeAddButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900', flexShrink: 1 },
-  savedRecipeEmptyState: { minHeight: 220, borderRadius: 22, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', padding: 22, alignItems: 'center', justifyContent: 'center' },
+  savedRecipeEmptyState: { minHeight: 220, borderRadius: 22, backgroundColor: themeColors.surfaceAlt, borderWidth: 1, borderColor: themeColors.border, padding: 22, alignItems: 'center', justifyContent: 'center' },
   savedRecipeEmptyEmoji: { fontSize: 42 },
-  savedRecipeEmptyTitle: { marginTop: 12, color: '#0F172A', fontSize: 16, fontWeight: '900', textAlign: 'center' },
-  savedRecipeEmptyText: { marginTop: 8, color: '#64748B', fontSize: 13, lineHeight: 19, fontWeight: '700', textAlign: 'center' },
+  savedRecipeEmptyTitle: { marginTop: 12, color: themeColors.text, fontSize: 16, fontWeight: '900', textAlign: 'center' },
+  savedRecipeEmptyText: { marginTop: 8, color: themeColors.muted, fontSize: 13, lineHeight: 19, fontWeight: '700', textAlign: 'center' },
 
-  mealSlotPickerBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  mealSlotPickerCard: { width: '100%', maxWidth: 430, backgroundColor: '#FFFFFF', borderRadius: 28, padding: 18, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 28, shadowOffset: { width: 0, height: 14 }, elevation: 8 },
+  mealSlotPickerBackdrop: { flex: 1, backgroundColor: themeColors.overlay, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  mealSlotPickerCard: { width: '100%', maxWidth: 430, backgroundColor: themeColors.card, borderRadius: 28, padding: 18, shadowColor: themeColors.shadow, shadowOpacity: 0.18, shadowRadius: 28, shadowOffset: { width: 0, height: 14 }, elevation: 8 },
   mealSlotPickerHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  mealSlotPickerIcon: { width: 46, height: 46, borderRadius: 17, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
-  mealSlotPickerTitle: { color: '#0F172A', fontSize: 18, fontWeight: '900', lineHeight: 24 },
-  mealSlotPickerSubtitle: { marginTop: 4, color: '#64748B', fontSize: 12, lineHeight: 18, fontWeight: '700' },
-  mealSlotPickerClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  mealSlotPickerPreview: { marginTop: 16, borderRadius: 18, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  mealSlotPickerPreviewImage: { width: 58, height: 58, borderRadius: 16, backgroundColor: '#E5E7EB' },
-  mealSlotPickerPreviewFallback: { width: 58, height: 58, borderRadius: 16, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+  mealSlotPickerIcon: { width: 46, height: 46, borderRadius: 17, backgroundColor: themeColors.primaryDark, alignItems: 'center', justifyContent: 'center' },
+  mealSlotPickerTitle: { color: themeColors.text, fontSize: 18, fontWeight: '900', lineHeight: 24 },
+  mealSlotPickerSubtitle: { marginTop: 4, color: themeColors.muted, fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  mealSlotPickerClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: themeColors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  mealSlotPickerPreview: { marginTop: 16, borderRadius: 18, backgroundColor: themeColors.surfaceAlt, borderWidth: 1, borderColor: themeColors.border, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  mealSlotPickerPreviewImage: { width: 58, height: 58, borderRadius: 16, backgroundColor: themeColors.border },
+  mealSlotPickerPreviewFallback: { width: 58, height: 58, borderRadius: 16, backgroundColor: themeColors.border, alignItems: 'center', justifyContent: 'center' },
   mealSlotPickerPreviewEmoji: { fontSize: 28 },
-  mealSlotPickerPreviewTitle: { color: '#0F172A', fontSize: 15, fontWeight: '900', lineHeight: 21 },
-  mealSlotPickerPreviewMeta: { marginTop: 4, color: '#64748B', fontSize: 12, fontWeight: '700', lineHeight: 17 },
+  mealSlotPickerPreviewTitle: { color: themeColors.text, fontSize: 15, fontWeight: '900', lineHeight: 21 },
+  mealSlotPickerPreviewMeta: { marginTop: 4, color: themeColors.muted, fontSize: 12, fontWeight: '700', lineHeight: 17 },
   mealSlotPickerOptions: { marginTop: 16, gap: 10 },
-  mealSlotPickerOption: { minHeight: 62, borderRadius: 18, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  mealSlotPickerOption: { minHeight: 62, borderRadius: 18, borderWidth: 1, borderColor: themeColors.border, backgroundColor: themeColors.card, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   mealSlotPickerOptionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  mealSlotPickerOptionIconWrap: { width: 38, height: 38, borderRadius: 14, backgroundColor: '#EAF7F0', alignItems: 'center', justifyContent: 'center' },
-  mealSlotPickerOptionTitle: { color: '#0F172A', fontSize: 15, fontWeight: '900' },
-  mealSlotPickerOptionSub: { marginTop: 3, color: '#64748B', fontSize: 12, fontWeight: '700' },
+  mealSlotPickerOptionIconWrap: { width: 38, height: 38, borderRadius: 14, backgroundColor: themeColors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  mealSlotPickerOptionTitle: { color: themeColors.text, fontSize: 15, fontWeight: '900' },
+  mealSlotPickerOptionSub: { marginTop: 3, color: themeColors.muted, fontSize: 12, fontWeight: '700' },
 
-  calendarBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  calendarModal: { width: '100%', maxWidth: 392, backgroundColor: '#FFFFFF', borderRadius: 30, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 28, shadowOffset: { width: 0, height: 14 }, elevation: 8 },
-  calendarHero: { backgroundColor: colors.primaryDark, paddingHorizontal: 20, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  calendarBackdrop: { flex: 1, backgroundColor: themeColors.overlay, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  calendarModal: { width: '100%', maxWidth: 392, backgroundColor: themeColors.card, borderRadius: 30, overflow: 'hidden', shadowColor: themeColors.shadow, shadowOpacity: 0.18, shadowRadius: 28, shadowOffset: { width: 0, height: 14 }, elevation: 8 },
+  calendarHero: { backgroundColor: themeColors.primaryDark, paddingHorizontal: 20, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   calendarHeroLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 12, fontWeight: '800', marginBottom: 4 },
   calendarHeroTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900' },
   calendarCloseButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   calendarMonthRow: { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  calendarNavButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#EAF7F0', alignItems: 'center', justifyContent: 'center' },
-  calendarTodayButton: { height: 40, borderRadius: 20, backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  calendarTodayText: { color: colors.primaryDark, fontSize: 13, fontWeight: '900' },
+  calendarNavButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: themeColors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  calendarTodayButton: { height: 40, borderRadius: 20, backgroundColor: themeColors.primaryLight, borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  calendarTodayText: { color: themeColors.primaryDark, fontSize: 13, fontWeight: '900' },
   weekRow: { flexDirection: 'row', paddingHorizontal: 14, paddingTop: 4, paddingBottom: 8 },
-  weekText: { flex: 1, color: '#94A3B8', textAlign: 'center', fontSize: 11, fontWeight: '900' },
+  weekText: { flex: 1, color: themeColors.muted, textAlign: 'center', fontSize: 11, fontWeight: '900' },
   calendarGrid: { paddingHorizontal: 14, paddingBottom: 10 },
   calendarWeekRow: { flexDirection: 'row', width: '100%', height: 48 },
   calendarCell: { flex: 1, height: 48, alignItems: 'center', justifyContent: 'center' },
@@ -2317,31 +2452,31 @@ const styles = StyleSheet.create({
   calendarRingSvg: { position: 'absolute' },
   calendarRingNumber: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   calendarDateCircle: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  calendarDateToday: { borderWidth: 1.8, borderColor: colors.primaryDark, backgroundColor: '#FFFFFF' },
-  calendarDateSelected: { backgroundColor: colors.primaryDark, borderWidth: 0 },
-  calendarDateText: { color: '#334155', fontSize: 14, fontWeight: '800' },
+  calendarDateToday: { borderWidth: 1.8, borderColor: themeColors.primaryDark, backgroundColor: themeColors.card },
+  calendarDateSelected: { backgroundColor: themeColors.primaryDark, borderWidth: 0 },
+  calendarDateText: { color: themeColors.text, fontSize: 14, fontWeight: '800' },
   calendarDateMuted: { color: '#CBD5E1' },
-  calendarDateTodayText: { color: colors.primaryDark, fontWeight: '900' },
+  calendarDateTodayText: { color: themeColors.primaryDark, fontWeight: '900' },
   calendarDateTextSelected: { color: '#FFFFFF', fontWeight: '900' },
   calendarNutritionDot: { width: 5, height: 5, borderRadius: 3, marginTop: 1 },
-  calendarFooter: { borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingHorizontal: 14, paddingVertical: 14, flexDirection: 'row', justifyContent: 'center', gap: 14 },
+  calendarFooter: { borderTopWidth: 1, borderTopColor: themeColors.border, paddingHorizontal: 14, paddingVertical: 14, flexDirection: 'row', justifyContent: 'center', gap: 14 },
   calendarLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   calendarLegendStatusDot: { width: 10, height: 10, borderRadius: 5 },
-  calendarLegendText: { color: '#64748B', fontSize: 12, fontWeight: '700' },
+  calendarLegendText: { color: themeColors.muted, fontSize: 12, fontWeight: '700' },
   dateCardCopySource: { borderWidth: 2, borderColor: '#0F172A', transform: [{ scale: 1.03 }] },
-  dateCardCopyTarget: { borderWidth: 2, borderColor: colors.primaryDark, backgroundColor: '#22C55E' },
-  copyModeBanner: { marginTop: 12, borderRadius: 18, backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  copyModeText: { flex: 1, color: colors.primaryDark, fontSize: 12, fontWeight: '800', lineHeight: 17 },
-  copyConfirmButton: { minHeight: 28, borderRadius: 14, backgroundColor: colors.primaryDark, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
+  dateCardCopyTarget: { borderWidth: 2, borderColor: themeColors.primaryDark, backgroundColor: '#22C55E' },
+  copyModeBanner: { marginTop: 12, borderRadius: 18, backgroundColor: themeColors.primaryLight, borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  copyModeText: { flex: 1, color: themeColors.primaryDark, fontSize: 12, fontWeight: '800', lineHeight: 17 },
+  copyConfirmButton: { minHeight: 28, borderRadius: 14, backgroundColor: themeColors.primaryDark, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
   copyConfirmButtonDisabled: { opacity: 0.45 },
   copyConfirmText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
-  copyCancelButton: { minHeight: 28, borderRadius: 14, backgroundColor: '#FFFFFF', paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
+  copyCancelButton: { minHeight: 28, borderRadius: 14, backgroundColor: themeColors.card, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
   copyCancelText: { color: '#EF4444', fontSize: 12, fontWeight: '900' },
-  calendarDateWrapCopySource: { borderRadius: 21, backgroundColor: '#F0FDF4', borderWidth: 2, borderColor: colors.primaryDark },
+  calendarDateWrapCopySource: { borderRadius: 21, backgroundColor: themeColors.primaryLight, borderWidth: 2, borderColor: themeColors.primaryDark },
   calendarDateWrapCopyTarget: { borderRadius: 21, backgroundColor: '#DCFCE7', borderWidth: 2, borderColor: '#22C55E' },
-  calendarCopyBanner: { marginHorizontal: 18, marginBottom: 8, borderRadius: 16, backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 10, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  calendarCopyText: { flex: 1, color: colors.primaryDark, fontSize: 11, fontWeight: '800', lineHeight: 16 },
-  calendarCopyConfirmButton: { minHeight: 26, borderRadius: 13, backgroundColor: colors.primaryDark, paddingHorizontal: 9, alignItems: 'center', justifyContent: 'center' },
+  calendarCopyBanner: { marginHorizontal: 18, marginBottom: 8, borderRadius: 16, backgroundColor: themeColors.primaryLight, borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 10, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  calendarCopyText: { flex: 1, color: themeColors.primaryDark, fontSize: 11, fontWeight: '800', lineHeight: 16 },
+  calendarCopyConfirmButton: { minHeight: 26, borderRadius: 13, backgroundColor: themeColors.primaryDark, paddingHorizontal: 9, alignItems: 'center', justifyContent: 'center' },
   calendarCopyConfirmText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
   calendarCopyCancelText: { color: '#EF4444', fontSize: 11, fontWeight: '900' },
 

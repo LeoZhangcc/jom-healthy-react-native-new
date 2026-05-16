@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
 import { Chip } from './Common';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 export type TagSuggestion = string | {
   value: string;
@@ -20,6 +21,8 @@ export default function TagInput({
   suggestions: TagSuggestion[];
   placeholder?: string;
 }) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const [value, setValue] = useState('');
   const getSuggestionValue = (suggestion: TagSuggestion) =>
     typeof suggestion === 'string' ? suggestion : suggestion.value;
@@ -57,6 +60,7 @@ export default function TagInput({
           value={value}
           onChangeText={setValue}
           placeholder={placeholder}
+          placeholderTextColor={theme.colors.muted}
           style={styles.input}
           returnKeyType="done"
           onSubmitEditing={() => addTag(value)}
@@ -84,12 +88,12 @@ export default function TagInput({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   tags: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 },
-  tag: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.primaryDark, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 99, marginRight: 8, marginBottom: 8 },
+  tag: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: themeColors.primaryDark, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 99, marginRight: 8, marginBottom: 8 },
   tagText: { color: 'white', fontWeight: '700', fontSize: 12 },
   inputRow: { flexDirection: 'row', gap: 8 },
-  input: { flex: 1, backgroundColor: colors.bg, borderRadius: 16, paddingHorizontal: 14, minHeight: 46, color: colors.text },
-  addButton: { width: 46, height: 46, borderRadius: 16, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
+  input: { flex: 1, backgroundColor: themeColors.surfaceAlt, borderRadius: 16, paddingHorizontal: 14, minHeight: 46, color: themeColors.text },
+  addButton: { width: 46, height: 46, borderRadius: 16, backgroundColor: themeColors.primaryDark, alignItems: 'center', justifyContent: 'center' },
   suggestions: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 },
 });

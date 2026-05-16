@@ -5,11 +5,14 @@ import { useNavigation } from '@react-navigation/native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import { Header, PrimaryButton, Screen, SecondaryButton } from '../components/Common';
 
 
 export default function CameraSearchScreen() {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const navigation = useNavigation<any>();
   const { language } = useLanguage();
   const cameraRef = useRef<CameraView | null>(null);
@@ -126,7 +129,7 @@ export default function CameraSearchScreen() {
       <Screen padded={false}>
         <Header title={getText('Camera Search', '相机搜索', 'Carian Kamera')} subtitle={getText('Camera permission is required', '需要相机权限', 'Kebenaran kamera diperlukan')} icon="camera" onBack={() => navigation.goBack()} />
         <View style={styles.permissionBox}>
-          <Ionicons name="camera" size={54} color={colors.primaryDark} />
+          <Ionicons name="camera" size={54} color={theme.colors.primaryDark} />
           <Text style={styles.permissionTitle}>{getText('Allow camera access', '允许相机访问', 'Benarkan akses kamera')}</Text>
           <PrimaryButton title={getText('Allow Camera', '允许相机', 'Benarkan Kamera')} icon="camera" onPress={requestPermission} />
           <SecondaryButton title={getText('Upload from Album', '从相册上传', 'Muat naik dari Galeri')} icon="image" onPress={pickFromAlbum} />
@@ -167,18 +170,18 @@ export default function CameraSearchScreen() {
     </Screen>
   );
 }
-const styles = StyleSheet.create({
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   viewer: { backgroundColor: '#111827', minHeight: 500, margin: 20, borderRadius: 28, overflow: 'hidden' },
   camera: { flex: 1, minHeight: 500, alignItems: 'center', justifyContent: 'center' },
-  scanBox: { width: 250, height: 250, borderRadius: 28, borderWidth: 3, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.15)' },
+  scanBox: { width: 250, height: 250, borderRadius: 28, borderWidth: 3, borderColor: themeColors.primary, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.15)' },
   detecting: { color: 'white', fontWeight: '900', marginTop: 12, textAlign: 'center' },
   detected: { color: '#BBF7D0', fontWeight: '900', marginTop: 12, fontSize: 18 },
   permissionBox: { margin: 20, backgroundColor: 'white', borderRadius: 24, padding: 24, gap: 14, alignItems: 'center' },
-  permissionTitle: { fontSize: 20, color: colors.text, fontWeight: '900' },
+  permissionTitle: { fontSize: 20, color: themeColors.text, fontWeight: '900' },
   bottomBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingBottom: 16 },
   smallCircle: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(0,0,0,0.65)', alignItems: 'center', justifyContent: 'center' },
   previewRow: { marginHorizontal: 20, marginBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'white', borderRadius: 18, padding: 10 },
   preview: { width: 54, height: 54, borderRadius: 12 },
-  previewText: { color: colors.text, fontWeight: '800' },
-  note: { color: colors.muted, textAlign: 'center', marginHorizontal: 24, marginBottom: 28, fontSize: 12, lineHeight: 18 },
+  previewText: { color: themeColors.text, fontWeight: '800' },
+  note: { color: themeColors.muted, textAlign: 'center', marginHorizontal: 24, marginBottom: 28, fontSize: 12, lineHeight: 18 },
 });

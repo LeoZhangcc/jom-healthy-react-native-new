@@ -3,8 +3,8 @@ import { NavigationContainer, createNavigationContainerRef } from '@react-naviga
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { RootStackParamList, MainTabParamList } from './types';
 import HomeScreen from '../screens/HomeScreen';
 import MealScreen from '../screens/MealScreen';
@@ -26,14 +26,17 @@ const navigationRef = createNavigationContainerRef<any>();
 
 function MainTabs() {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const themeColors = theme.colors;
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: colors.primaryDark,
+        tabBarActiveTintColor: themeColors.primaryDark,
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarStyle: {
+          backgroundColor: themeColors.card,
           height: 78,
           paddingTop: 8,
           paddingBottom: 12,

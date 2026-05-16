@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useActivity } from '../context/PhysicalActivityContext'; 
 import { useChildProfile } from '../context/ChildProfileContext';
 import { useLanguage } from '../context/LanguageContext'; 
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 import { Header } from '../components/Common'; // 💡 引入你们封装好的通用 Header
 
 // 运动类别元数据配置
@@ -18,7 +20,14 @@ const CATEGORY_META: Record<string, { label: string; icon: string }> = {
 };
 
 // 跑马灯滚动文本组件
+function usePhysicalStyles() {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
+  return { styles, theme };
+}
+
 const ScrollingText = ({ text, style }: { text: string; style: any }) => {
+  const { styles } = usePhysicalStyles();
   const scrollX = React.useRef(new Animated.Value(0)).current;
   const [textWidth, setTextWidth] = React.useState(0);
   const [containerWidth, setContainerWidth] = React.useState(0);
@@ -69,6 +78,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
   const { todayTotal, dailyGoal, updateGoal, todayCalories, logActivity, clearActivity } = useActivity() as any; 
   const { activeChild } = useChildProfile();
   const { t, language } = useLanguage(); 
+  const { styles, theme } = usePhysicalStyles();
 
   const getText = (en: string, zh: string, ms: string) => language === 'zh' ? zh : language === 'ms' ? ms : en;
 
@@ -224,7 +234,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
                     setTempGoal(dailyGoal);
                     setGoalModalVisible(true);
                   }}>
-                    <Ionicons name="pencil" size={12} color="#69B679" />
+                    <Ionicons name="pencil" size={12} color={theme.colors.primaryDark} />
                 </Pressable>
               </View>
               <Text style={styles.summaryValue}>
@@ -270,7 +280,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
               <View style={styles.logActionWrapper}>
                 <View style={styles.counterRow}>
                   <TouchableOpacity onPress={() => setMinutesToLog(Math.max(0, minutesToLog - 1))} style={styles.roundBtn}>
-                    <Ionicons name="remove" size={24} color="#69B679" />
+                    <Ionicons name="remove" size={24} color={theme.colors.primaryDark} />
                   </TouchableOpacity>
                   
                   <View style={styles.numberInputContainer}>
@@ -289,7 +299,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
                   </View>
 
                   <TouchableOpacity onPress={() => setMinutesToLog(minutesToLog + 1)} style={styles.roundBtn}>
-                    <Ionicons name="add" size={24} color="#69B679" />
+                    <Ionicons name="add" size={24} color={theme.colors.primaryDark} />
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.minsLabel}>{t('minutes')}</Text>
@@ -329,7 +339,7 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
         </View>
 
         {isLoading ? (
-          <ActivityIndicator size="large" color="#69B679" style={{ marginVertical: 30 }} />
+          <ActivityIndicator size="large" color={theme.colors.primaryDark} style={{ marginVertical: 30 }} />
         ) : (
           <>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScrollContent} style={styles.categoryScroll}>
@@ -386,14 +396,14 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
 
             <View style={styles.popupCounterRow}>
               <TouchableOpacity style={styles.popupSmallBtn} onPress={() => setPopupMins(Math.max(1, popupMins - 1))}>
-                <Ionicons name="remove" size={24} color="#69B679" />
+                <Ionicons name="remove" size={24} color={theme.colors.primaryDark} />
               </TouchableOpacity>
               <View style={{ alignItems: 'center', marginHorizontal: 20 }}>
                 <Text style={styles.popupBigNumber}>{popupMins}</Text>
                 <Text style={styles.popupMinsLabel}>{t('minutes')}</Text>
               </View>
               <TouchableOpacity style={styles.popupSmallBtn} onPress={() => setPopupMins(popupMins + 1)}>
-                <Ionicons name="add" size={24} color="#69B679" />
+                <Ionicons name="add" size={24} color={theme.colors.primaryDark} />
               </TouchableOpacity>
             </View>
             <Text style={styles.popupInstruction}>{getText('Tap +/- to adjust duration', '点击 +/- 调整时长', 'Ketik +/- untuk melaras tempoh')}</Text>
@@ -426,14 +436,14 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
 
             <View style={styles.goalSetterRow}>
               <TouchableOpacity style={styles.goalAdjBtn} onPress={() => setTempGoal(Math.max(5, tempGoal - 5))}>
-                <Ionicons name="remove" size={32} color="#69B679" />
+                <Ionicons name="remove" size={32} color={theme.colors.primaryDark} />
               </TouchableOpacity>
               <View style={styles.goalDisplayBox}>
                 <Text style={styles.goalBigNum}>{tempGoal}</Text>
                 <Text style={styles.goalUnitText}>{t('minutes')} {t('perDay')}</Text>
               </View>
               <TouchableOpacity style={styles.goalAdjBtn} onPress={() => setTempGoal(tempGoal + 5)}>
-                <Ionicons name="add" size={32} color="#69B679" />
+                <Ionicons name="add" size={32} color={theme.colors.primaryDark} />
               </TouchableOpacity>
             </View>
             <Text style={styles.popupInstruction}>{getText('Tap +/- to adjust in 5-min intervals', '点击 +/- 进行 5 分钟微调', 'Ketik +/- untuk melaras setiap 5 minit')}</Text>
@@ -460,7 +470,10 @@ const PhysicalActivityScreen = ({ navigation }: any) => {
 };
 
 // 推荐列表的单体卡片组件
-const ActivityRecommendationCard = ({ title, desc, tag, subtext, onLog, videoUrl, imageUrl, t, isLogged }: any) => (
+const ActivityRecommendationCard = ({ title, desc, tag, subtext, onLog, videoUrl, imageUrl, t, isLogged }: any) => {
+  const { styles, theme } = usePhysicalStyles();
+
+  return (
   <View style={styles.recCard}>
     <View style={styles.recHeader}>
       <View style={styles.recImageContainer}>
@@ -488,7 +501,7 @@ const ActivityRecommendationCard = ({ title, desc, tag, subtext, onLog, videoUrl
 
     <View style={styles.recButtonRow}>
       <TouchableOpacity style={styles.watchBtn} onPress={() => videoUrl && Linking.openURL(videoUrl)}>
-        <Ionicons name="play" size={16} color="#475569" style={{ marginRight: 6 }} />
+        <Ionicons name="play" size={16} color={theme.colors.muted} style={{ marginRight: 6 }} />
         <Text style={styles.watchBtnText}>{t('watchVideo')}</Text>
       </TouchableOpacity>
       
@@ -497,47 +510,48 @@ const ActivityRecommendationCard = ({ title, desc, tag, subtext, onLog, videoUrl
       </TouchableOpacity>
     </View>
   </View>
-);
+  );
+};
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+const createStyles = (themeColors: typeof colors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: themeColors.bg },
   inlineLogContainer: { paddingHorizontal: 20, paddingBottom: 10 },
   
   // 顶部总结看板样式
-  summaryCard: { marginHorizontal: 20, marginTop: 10, marginBottom: 12, paddingVertical: 18, paddingHorizontal: 20, borderRadius: 22, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  summaryCard: { marginHorizontal: 20, marginTop: 10, marginBottom: 12, paddingVertical: 18, paddingHorizontal: 20, borderRadius: 22, backgroundColor: themeColors.card, borderWidth: 1, borderColor: themeColors.border, shadowColor: themeColors.shadow, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }, 
   summaryLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }, 
   trashBtn: { padding: 4, backgroundColor: '#FEE2E2', borderRadius: 6 }, 
-  summaryLabel: { color: '#64748B', fontSize: 12 }, 
-  summaryValue: { fontSize: 24, fontWeight: '800', color: '#1E293B' }, 
-  unitText: { fontSize: 12, color: '#94A3B8', fontWeight: '500' }, 
+  summaryLabel: { color: themeColors.muted, fontSize: 12 }, 
+  summaryValue: { fontSize: 24, fontWeight: '800', color: themeColors.text }, 
+  unitText: { fontSize: 12, color: themeColors.muted, fontWeight: '500' }, 
   goalHeader: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }, 
-  editIcon: { backgroundColor: '#F0FDF4', padding: 4, borderRadius: 8 }, 
-  progressBarBg: { height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden' }, 
-  progressBarFill: { height: '100%', backgroundColor: '#69B679' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }, 
+  editIcon: { backgroundColor: themeColors.primaryLight, padding: 4, borderRadius: 8 }, 
+  progressBarBg: { height: 6, backgroundColor: themeColors.surfaceAlt, borderRadius: 3, overflow: 'hidden' }, 
+  progressBarFill: { height: '100%', backgroundColor: themeColors.primaryDark },
+  divider: { height: 1, backgroundColor: themeColors.surfaceAlt, marginVertical: 12 }, 
   calIconBox: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center' }, 
 
   // 中部通用打卡区样式
-  logBox: { backgroundColor: '#ECF9F1', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#DCFCE7' },
-  logQuestion: { textAlign: 'center', fontSize: 15, color: '#334155', fontWeight: '700', marginBottom: 12 },
-  logDisclaimer: { textAlign: 'center', fontSize: 11, color: '#94A3B8', marginBottom: 16, paddingHorizontal: 10, lineHeight: 16 },
+  logBox: { backgroundColor: themeColors.primaryLight, padding: 20, borderRadius: 24, borderWidth: 1, borderColor: themeColors.border },
+  logQuestion: { textAlign: 'center', fontSize: 15, color: themeColors.text, fontWeight: '700', marginBottom: 12 },
+  logDisclaimer: { textAlign: 'center', fontSize: 11, color: themeColors.muted, marginBottom: 16, paddingHorizontal: 10, lineHeight: 16 },
   logActionWrapper: { alignItems: 'center', marginBottom: 20 },
   counterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 8 },
-  roundBtn: { width: 44, height: 44, backgroundColor: '#FFF', borderRadius: 22, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 2 } },
-  numberInputContainer: { backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#93D0A2', borderRadius: 16, width: 80, height: 60, justifyContent: 'center', alignItems: 'center', shadowColor: '#69B679', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
-  bigNumberInput: { fontSize: 36, fontWeight: '800', color: '#69B679', textAlign: 'center', width: '100%', height: '100%', padding: 0 },
-  minsLabel: { color: '#64748B', fontWeight: '500', fontSize: 12 },
+  roundBtn: { width: 44, height: 44, backgroundColor: themeColors.card, borderRadius: 22, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: themeColors.shadow, shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 2 } },
+  numberInputContainer: { backgroundColor: themeColors.card, borderWidth: 2, borderColor: '#93D0A2', borderRadius: 16, width: 80, height: 60, justifyContent: 'center', alignItems: 'center', shadowColor: '#69B679', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  bigNumberInput: { fontSize: 36, fontWeight: '800', color: themeColors.primaryDark, textAlign: 'center', width: '100%', height: '100%', padding: 0 },
+  minsLabel: { color: themeColors.muted, fontWeight: '500', fontSize: 12 },
   quickSelectRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 20 },
-  quickBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#69B67930' },
-  quickBtnActive: { backgroundColor: '#69B679', borderColor: '#69B679' },
-  quickText: { color: '#69B679', fontWeight: '600', fontSize: 13 },
+  quickBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, backgroundColor: themeColors.card, borderWidth: 1, borderColor: '#69B67930' },
+  quickBtnActive: { backgroundColor: themeColors.primaryDark, borderColor: '#69B679' },
+  quickText: { color: themeColors.primaryDark, fontWeight: '600', fontSize: 13 },
   quickTextActive: { color: '#FFF' },
-  mainLogBtn: { backgroundColor: '#69B679', paddingVertical: 14, borderRadius: 20, alignItems: 'center' },
+  mainLogBtn: { backgroundColor: themeColors.primaryDark, paddingVertical: 14, borderRadius: 20, alignItems: 'center' },
   mainLogBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 
   // 底部推荐列表样式
-  sectionTitle: { fontSize: 15, fontWeight: '700', marginLeft: 20, marginBottom: 12, color: '#334155' },
+  sectionTitle: { fontSize: 15, fontWeight: '700', marginLeft: 20, marginBottom: 12, color: themeColors.text },
   adviceBanner: { backgroundColor: '#F0F9FF', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 16, marginHorizontal: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E0F2FE', height: 46, flexDirection: 'row', alignItems: 'center' },
   adviceHeader: { flexDirection: 'row', alignItems: 'center', marginRight: 8, borderRightWidth: 1, borderRightColor: '#BAE6FD', paddingRight: 8, zIndex: 10, backgroundColor: '#F0F9FF' },
   adviceTag: { fontSize: 12, fontWeight: 'bold', color: '#0369A1', marginLeft: 4 },
@@ -545,55 +559,55 @@ const styles = StyleSheet.create({
   adviceText: { fontSize: 12, color: '#0369A1', fontWeight: '500', textAlignVertical: 'center' },
   categoryScroll: { marginBottom: 16 },
   categoryScrollContent: { paddingHorizontal: 20, gap: 10 },
-  categoryBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: '#F1F5F9' },
-  categoryBtnActive: { backgroundColor: '#69B679' },
+  categoryBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: themeColors.surfaceAlt },
+  categoryBtnActive: { backgroundColor: themeColors.primaryDark },
   categoryIcon: { marginRight: 8, fontSize: 14 },
-  categoryLabel: { fontWeight: '600', color: '#475569', fontSize: 13 },
+  categoryLabel: { fontWeight: '600', color: themeColors.muted, fontSize: 13 },
   categoryLabelActive: { color: '#FFF' },
   
   // 推荐活动单卡样式
-  recCard: { marginHorizontal: 20, marginBottom: 12, padding: 16, backgroundColor: '#FFF', borderRadius: 24, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  recCard: { marginHorizontal: 20, marginBottom: 12, padding: 16, backgroundColor: themeColors.card, borderRadius: 24, shadowColor: themeColors.shadow, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
   recHeader: { flexDirection: 'row', marginBottom: 14 },
-  recImageContainer: { width: 56, height: 56, borderRadius: 16, overflow: 'hidden', backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  recImageContainer: { width: 56, height: 56, borderRadius: 16, overflow: 'hidden', backgroundColor: themeColors.primaryLight, justifyContent: 'center', alignItems: 'center', position: 'relative' },
   recImage: { width: '100%', height: '100%' },
-  recIconCircle: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F0FDF4' },
+  recIconCircle: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: themeColors.primaryLight },
   loggedBadge: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(16, 185, 129, 0.9)', paddingVertical: 2, alignItems: 'center' },
   loggedBadgeText: { color: '#FFF', fontSize: 9, fontWeight: '900' },
   recTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  recTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', flex: 1, marginRight: 8 },
-  timeTag: { backgroundColor: '#ECF9F1', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  timeTagText: { color: '#69B679', fontSize: 11, fontWeight: '700' },
-  recDesc: { color: '#64748B', fontSize: 12, marginTop: 4, lineHeight: 18 },
-  recGreenSub: { color: '#69B679', fontSize: 11, fontWeight: '600', marginTop: 8 },
+  recTitle: { fontSize: 16, fontWeight: '700', color: themeColors.text, flex: 1, marginRight: 8 },
+  timeTag: { backgroundColor: themeColors.primaryLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  timeTagText: { color: themeColors.primaryDark, fontSize: 11, fontWeight: '700' },
+  recDesc: { color: themeColors.muted, fontSize: 12, marginTop: 4, lineHeight: 18 },
+  recGreenSub: { color: themeColors.primaryDark, fontSize: 11, fontWeight: '600', marginTop: 8 },
   recButtonRow: { flexDirection: 'row', gap: 10 },
-  watchBtn: { flex: 1, flexDirection: 'row', backgroundColor: '#F1F5F9', paddingVertical: 12, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  watchBtnText: { color: '#475569', fontWeight: '700', fontSize: 14 },
-  tapLogBtnLarge: { flex: 1, backgroundColor: '#73BC7D', paddingVertical: 12, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  watchBtn: { flex: 1, flexDirection: 'row', backgroundColor: themeColors.surfaceAlt, paddingVertical: 12, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  watchBtnText: { color: themeColors.muted, fontWeight: '700', fontSize: 14 },
+  tapLogBtnLarge: { flex: 1, backgroundColor: themeColors.primaryDark, paddingVertical: 12, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   tapLogTextLarge: { color: '#FFF', fontWeight: '700', fontSize: 14 },
 
   // 弹窗通用样式
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: themeColors.overlay, justifyContent: 'center', alignItems: 'center' },
   modalBackgroundClick: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  modalContent: { width: '85%', backgroundColor: '#FFF', borderRadius: 40, padding: 30, alignItems: 'center' },
-  popupIconCircle: { width: 80, height: 80, backgroundColor: '#F0FDF4', borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  modalContent: { width: '85%', backgroundColor: themeColors.card, borderRadius: 40, padding: 30, alignItems: 'center' },
+  popupIconCircle: { width: 80, height: 80, backgroundColor: themeColors.primaryLight, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
   popupTitle: { fontSize: 24, fontWeight: '800', color: '#000', marginBottom: 5, textAlign: 'center' },
-  popupSubtitle: { fontSize: 16, color: '#64748B', marginBottom: 30 },
+  popupSubtitle: { fontSize: 16, color: themeColors.muted, marginBottom: 30 },
   popupCounterRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  popupSmallBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center' },
-  popupBigNumber: { fontSize: 64, fontWeight: '800', color: '#69B679' },
-  popupMinsLabel: { fontSize: 16, fontWeight: '600', color: '#334155', marginTop: -10 },
-  popupInstruction: { color: '#94A3B8', fontSize: 14, marginBottom: 30 },
+  popupSmallBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: themeColors.primaryLight, justifyContent: 'center', alignItems: 'center' },
+  popupBigNumber: { fontSize: 64, fontWeight: '800', color: themeColors.primaryDark },
+  popupMinsLabel: { fontSize: 16, fontWeight: '600', color: themeColors.text, marginTop: -10 },
+  popupInstruction: { color: themeColors.muted, fontSize: 14, marginBottom: 30 },
   popupActionRow: { flexDirection: 'row', gap: 15, width: '100%' },
-  cancelBtn: { flex: 1, paddingVertical: 18, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center' },
-  cancelBtnText: { color: '#475569', fontWeight: '700', fontSize: 16 },
-  confirmLogBtn: { flex: 1, paddingVertical: 18, borderRadius: 20, backgroundColor: '#73BC7D', alignItems: 'center' },
+  cancelBtn: { flex: 1, paddingVertical: 18, borderRadius: 20, backgroundColor: themeColors.surfaceAlt, alignItems: 'center' },
+  cancelBtnText: { color: themeColors.muted, fontWeight: '700', fontSize: 16 },
+  confirmLogBtn: { flex: 1, paddingVertical: 18, borderRadius: 20, backgroundColor: themeColors.primaryDark, alignItems: 'center' },
   confirmLogText: { color: '#FFF', fontWeight: '700', fontSize: 16 },
-  goalModalContent: { width: '90%', backgroundColor: '#FFF', borderRadius: 45, padding: 35, alignItems: 'center' },
+  goalModalContent: { width: '90%', backgroundColor: themeColors.card, borderRadius: 45, padding: 35, alignItems: 'center' },
   goalSetterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 20, gap: 15 },
-  goalAdjBtn: { width: 65, height: 65, borderRadius: 33, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center' },
-  goalDisplayBox: { width: 140, height: 140, backgroundColor: '#F0FDF4', borderRadius: 30, justifyContent: 'center', alignItems: 'center' },
-  goalBigNum: { fontSize: 72, fontWeight: '800', color: '#69B679' },
-  goalUnitText: { fontSize: 16, color: '#475569', fontWeight: '600', marginTop: -10 },
+  goalAdjBtn: { width: 65, height: 65, borderRadius: 33, backgroundColor: themeColors.primaryLight, justifyContent: 'center', alignItems: 'center' },
+  goalDisplayBox: { width: 140, height: 140, backgroundColor: themeColors.primaryLight, borderRadius: 30, justifyContent: 'center', alignItems: 'center' },
+  goalBigNum: { fontSize: 72, fontWeight: '800', color: themeColors.primaryDark },
+  goalUnitText: { fontSize: 16, color: themeColors.muted, fontWeight: '600', marginTop: -10 },
   recommendationTag: { backgroundColor: '#FFFBEB', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, marginBottom: 30 },
   recommendationText: { color: '#D97706', fontWeight: '700', fontSize: 14 },
 });
