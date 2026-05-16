@@ -18,7 +18,7 @@ import { useChildProfile } from '../context/ChildProfileContext';
 import { useLanguage } from '../context/LanguageContext';
 import { colors } from '../theme/colors';
 import { Card, Chip, IconButton, PrimaryButton } from './Common';
-import ChildAvatar from './ChildAvatar';
+import ChildAvatar, { CHILD_AVATAR_OPTIONS } from './ChildAvatar';
 import TagInput from './TagInput';
 
 type Child = {
@@ -55,25 +55,11 @@ export default function AddChildModal({
   const { language } = useLanguage();
   const getText = (en: string, zh: string, ms: string) => language === 'zh' ? zh : language === 'ms' ? ms : en;
 
-  const avatars = [
-    '😊',
-    '😺',
-    '🐶',
-    '🐯',
-    '🐻',
-    '🧒',
-    '🧚',
-    '🦄',
-    '🐰',
-    '🐼',
-    '🦁',
-    '🐘',
-    '🐸',
-    '🦊',
-  ];
+  const avatarOptions = CHILD_AVATAR_OPTIONS;
+  const defaultBuiltInAvatar = avatarOptions[0]?.id || 'kid-avatar-01';
 
   const [selectedAvatar, setSelectedAvatar] = useState(
-    childToEdit?.avatar || '😊'
+    childToEdit?.avatar || defaultBuiltInAvatar
   );
   const [avatarImageUri, setAvatarImageUri] = useState(
     childToEdit?.avatarImageUri || ''
@@ -90,6 +76,7 @@ export default function AddChildModal({
     childToEdit?.weight?.toString() || ''
   );
   const [showBirthdayPicker, setShowBirthdayPicker] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [allergies, setAllergies] = useState<string[]>(
     childToEdit?.allergies || []
   );
@@ -104,7 +91,7 @@ export default function AddChildModal({
   useEffect(() => {
     if (!visible) return;
 
-    setSelectedAvatar(childToEdit?.avatar || '😊');
+    setSelectedAvatar(childToEdit?.avatar || defaultBuiltInAvatar);
     setAvatarImageUri(childToEdit?.avatarImageUri || '');
     setGender(childToEdit?.gender || 'boy');
     setNickname(childToEdit?.nickname || '');
@@ -112,6 +99,7 @@ export default function AddChildModal({
     setHeight(childToEdit?.height?.toString() || '');
     setWeight(childToEdit?.weight?.toString() || '');
     setShowBirthdayPicker(false);
+    setShowAvatarPicker(false);
     setAllergies(childToEdit?.allergies || []);
     setRestrictions({
       vegetarian: childToEdit?.restrictions?.vegetarian || false,
@@ -219,9 +207,9 @@ export default function AddChildModal({
   };
 
   const randomAvatar = () => {
-    const random = avatars[Math.floor(Math.random() * avatars.length)];
+    const random = avatarOptions[Math.floor(Math.random() * avatarOptions.length)];
     setAvatarImageUri('');
-    setSelectedAvatar(random);
+    setSelectedAvatar(random?.id || defaultBuiltInAvatar);
   };
 
   const handleBirthdayChangeText = (value: string) => {
@@ -297,7 +285,7 @@ export default function AddChildModal({
       restrictions,
     };
 
-    childToEdit ? updateChild(child) : addChild(child);
+    childToEdit ? updateChild(child as any) : addChild(child as any);
 
     onSuccess?.();
     onClose();
@@ -332,7 +320,8 @@ export default function AddChildModal({
   );
 
   return (
-    <Modal
+    <>
+      <Modal
       visible={visible}
       animationType="slide"
       transparent
@@ -355,19 +344,27 @@ export default function AddChildModal({
             <Text style={styles.label}>{getText('Avatar', '头像', 'Avatar')}</Text>
 
             <View style={styles.avatarPreviewRow}>
-              <ChildAvatar
-                avatar={selectedAvatar}
-                avatarImageUri={avatarImageUri}
-                size={72}
-                style={styles.avatarPreview}
-              />
+              <Pressable
+                style={styles.avatarPreviewButton}
+                onPress={() => setShowAvatarPicker(true)}
+              >
+                <ChildAvatar
+                  avatar={selectedAvatar}
+                  avatarImageUri={avatarImageUri}
+                  size={72}
+                  style={styles.avatarPreview}
+                />
+                <View style={styles.avatarEditBadge}>
+                  <Ionicons name="pencil" size={12} color="#FFFFFF" />
+                </View>
+              </Pressable>
 
               <View style={styles.avatarInfo}>
                 <Text style={styles.avatarHint}>
                   {getText(
-                    'Choose a random emoji avatar or upload a photo from your album.',
-                    '选择一个随机表情头像，或者从相册上传照片。',
-                    'Pilih avatar emoji rawak atau muat naik foto daripada album anda.'
+                    'Tap the avatar to choose from all built-in child avatars, or upload a photo from your album.',
+                    '点击头像可以查看并选择全部内置儿童头像，也可以从相册上传照片。',
+                    'Ketik avatar untuk memilih daripada semua avatar kanak-kanak terbina dalam, atau muat naik foto daripada album anda.'
                   )}
                 </Text>
 
@@ -407,24 +404,10 @@ export default function AddChildModal({
                       size={15}
                       color={colors.primaryDark}
                     />
-                    <Text style={styles.useEmojiText}>{getText('Use Emoji Avatar', '使用表情头像', 'Guna Avatar Emoji')}</Text>
+                    <Text style={styles.useEmojiText}>{getText('Use Built-in Avatar', '使用内置头像', 'Guna Avatar Terbina Dalam')}</Text>
                   </Pressable>
                 )}
               </View>
-            </View>
-
-            <View style={styles.avatarGrid}>
-              {avatars.map((avatar) => (
-                <Chip
-                  key={avatar}
-                  label={avatar}
-                  selected={selectedAvatar === avatar && !avatarImageUri}
-                  onPress={() => {
-                    setAvatarImageUri('');
-                    setSelectedAvatar(avatar);
-                  }}
-                />
-              ))}
             </View>
 
             <Text style={styles.label}>{getText('Nickname', '昵称', 'Nama Panggilan')}</Text>
@@ -568,8 +551,76 @@ export default function AddChildModal({
             />
           </ScrollView>
         </Card>
+
+      {showAvatarPicker && (
+        <Pressable
+          style={styles.avatarPickerOverlay}
+          onPress={() => setShowAvatarPicker(false)}
+        >
+          <Pressable
+            style={styles.avatarPickerCard}
+            onPress={() => {}}
+          >
+            <View style={styles.avatarPickerHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.avatarPickerTitle}>
+                  {getText('Choose Avatar', '选择头像', 'Pilih Avatar')}
+                </Text>
+                <Text style={styles.avatarPickerSubtitle}>
+                  {getText(
+                    'Tap one avatar to use it for this child profile.',
+                    '点击任意头像即可用于当前小孩档案。',
+                    'Ketik mana-mana avatar untuk digunakan pada profil kanak-kanak ini.'
+                  )}
+                </Text>
+              </View>
+
+              <Pressable
+                style={styles.avatarPickerClose}
+                onPress={() => setShowAvatarPicker(false)}
+              >
+                <Ionicons name="close" size={20} color={colors.text} />
+              </Pressable>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.avatarPickerGrid}
+            >
+              {avatarOptions.map((option) => {
+                const selected = selectedAvatar === option.id && !avatarImageUri;
+
+                return (
+                  <Pressable
+                    key={option.id}
+                    style={[
+                      styles.builtInAvatarOption,
+                      selected && styles.builtInAvatarOptionSelected,
+                    ]}
+                    onPress={() => {
+                      setAvatarImageUri('');
+                      setSelectedAvatar(option.id);
+                      setShowAvatarPicker(false);
+                    }}
+                  >
+                    <ChildAvatar avatar={option.id} size={68} />
+                    {selected && (
+                      <View style={styles.avatarSelectedBadge}>
+                        <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      )}
       </View>
-    </Modal>
+      </Modal>
+
+
+    </>
   );
 }
 
@@ -671,9 +722,28 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 
+  avatarPreviewButton: {
+    position: 'relative',
+    alignSelf: 'flex-start',
+  },
+
   avatarPreview: {
     borderWidth: 2,
     borderColor: '#E5E7EB',
+  },
+
+  avatarEditBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
 
   avatarInfo: {
@@ -729,10 +799,90 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
-  avatarGrid: {
+  avatarPickerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 60,
+    elevation: 60,
+    backgroundColor: 'rgba(15,23,42,0.50)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+
+  avatarPickerCard: {
+    maxHeight: '78%',
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    paddingTop: 18,
+    paddingHorizontal: 18,
+    paddingBottom: 12,
+  },
+
+  avatarPickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 14,
+  },
+
+  avatarPickerTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '900',
+  },
+
+  avatarPickerSubtitle: {
+    marginTop: 5,
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+
+  avatarPickerClose: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  avatarPickerGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 12,
+    gap: 12,
+    paddingBottom: 10,
+  },
+
+  builtInAvatarOption: {
+    width: 78,
+    height: 78,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+
+  builtInAvatarOptionSelected: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryDark,
+  },
+
+  avatarSelectedBadge: {
+    position: 'absolute',
+    right: 3,
+    bottom: 3,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
 
   twoCols: {

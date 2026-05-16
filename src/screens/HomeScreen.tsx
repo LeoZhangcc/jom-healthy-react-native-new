@@ -174,7 +174,14 @@ export default function HomeScreen() {
   };
 
   const getChildChipLabel = (child: any) => {
-    return child.avatarImageUri ? child.nickname : `${child.avatar} ${child.nickname}`;
+    const avatarValue = String(child?.avatar || '').trim();
+    const isBuiltInImageAvatar = avatarValue.startsWith('kid-avatar-');
+
+    if (child?.avatarImageUri || isBuiltInImageAvatar || !avatarValue) {
+      return child?.nickname || getText('Child', '小孩', 'Anak');
+    }
+
+    return `${avatarValue} ${child?.nickname || getText('Child', '小孩', 'Anak')}`.trim();
   };
 
   const getStatusLabel = (status?: string | null) => {
