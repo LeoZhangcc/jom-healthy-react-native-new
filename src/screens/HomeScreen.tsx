@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -60,7 +60,6 @@ type FoodSuggestion = FoodHistoryItem & {
 };
 
 const BASE_URL = 'https://jom-healthy-java.onrender.com';
-
 
 function useHomeStyles() {
   const { theme } = useTheme();
@@ -245,7 +244,6 @@ function AnimatedHomeHeader({
   );
 }
 
-
 function AnimatedProfileAvatar({
   avatar,
   avatarImageUri,
@@ -389,6 +387,7 @@ export default function HomeScreen() {
   const { language, t } = useLanguage();
   const { themeName, theme } = useTheme();
   const { styles } = useHomeStyles();
+  
   const searchGuideRef = useRef<View>(null);
   const createProfileGuideRef = useRef<View>(null);
   const aiMealGuideRef = useRef<View>(null);
@@ -397,6 +396,7 @@ export default function HomeScreen() {
   const activityGuideRef = useRef<View>(null);
   const growthGuideRef = useRef<View>(null);
   const insightsGuideRef = useRef<View>(null);
+  
   const {
     activeChild,
     nutritionProgress,
@@ -424,6 +424,7 @@ export default function HomeScreen() {
   const [topicsLoading, setTopicsLoading] = useState(true);
   const [selectedTopic, setSelectedTopic] = useState<any>(null);
   const [showTopicModal, setShowTopicModal] = useState(false);
+  
   const [latestRecord, setLatestRecord] = useState<any>(null);
   const [chartRecords, setChartRecords] = useState<any[]>([]);
 
@@ -435,6 +436,7 @@ export default function HomeScreen() {
     nutritionProgress.protein.current >= nutritionProgress.protein.target &&
     nutritionProgress.fat.current >= nutritionProgress.fat.target;
 
+  // 获取最新的健康记录 (用于成长概览与 BMI 展示)
   useFocusEffect(
     React.useCallback(() => {
       const fetchLatestRecord = async () => {
@@ -444,7 +446,7 @@ export default function HomeScreen() {
           if (childRecords.length > 0) {
             const sorted = [...childRecords].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
             setLatestRecord(sorted[sorted.length - 1]);
-            setChartRecords(sorted.slice(-6));
+            setChartRecords(sorted.slice(-6)); // 截取最近 6 次记录渲染图表
           } else {
             setLatestRecord(null);
             setChartRecords([]);
@@ -579,34 +581,71 @@ export default function HomeScreen() {
     );
   };
 
-  useEffect(() => {
-    const fetchRecommendedTopics = async () => {
-      setTopicsLoading(true);
+  // 带超时中断与自动重试的 Fetch 工具函数 (解决免费服务器冷启动缓慢问题)
+  const fetchWithRetry = async (url: string, retries = 3, timeoutMs = 15000) => {
+    for (let i = 0; i < retries; i++) {
       try {
-        let currentStatus = 'NORMAL';
-        if (activeChild && activeChild.status) {
-          currentStatus = activeChild.status.toUpperCase(); 
-        }
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-        const lang = currentLanguage || 'en'; 
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
 
-        const response = await fetch(
-          `${BASE_URL}/api/topics/recommend?status=${currentStatus}&lang=${lang}`
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          setAllTopics(data);
-        }
-      } catch (error) {
-        console.error("Topics Fetch Error:", error);
-      } finally {
-        setTopicsLoading(false);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return await response.json();
+      } catch (error: any) {
+        console.log(`第 ${i + 1} 次拉取健康建议失败或超时，准备重试...`, error.message);
+        if (i === retries - 1) throw error; 
+        
+        // 等待 2 秒后再发起下一次重试，给服务器喘息时间
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
-    };
+    }
+  };
 
-    fetchRecommendedTopics();
+  // 获取并缓存系统推荐的健康洞察 (Health Insights) 数据
+  const fetchRecommendedTopics = useCallback(async () => {
+    // 1. 优先尝试读取本地缓存数据，实现“无缝秒开”体验
+    try {
+      const cachedTopics = await AsyncStorage.getItem(`@cached_topics_${currentLanguage}`);
+      if (cachedTopics) {
+        setAllTopics(JSON.parse(cachedTopics));
+        setTopicsLoading(false); // 有缓存直接取消加载圈，后台保持静默刷新
+      } else {
+        setTopicsLoading(true); 
+      }
+    } catch (e) {
+      setTopicsLoading(true);
+    }
+
+    // 2. 发起自动重试的网络请求，拉取最新推荐并同时唤醒后端服务器
+    try {
+      let currentStatus = 'NORMAL';
+      if (activeChild && activeChild.status) {
+        currentStatus = activeChild.status.toUpperCase(); 
+      }
+      const lang = currentLanguage || 'en'; 
+      const url = `${BASE_URL}/api/topics/recommend?status=${currentStatus}&lang=${lang}`;
+
+      // 调用上面的重试工具：最大重试 3 次，单次超时 15 秒（总容忍时长约 45 秒）
+      const data = await fetchWithRetry(url, 3, 15000);
+
+      if (Array.isArray(data) && data.length > 0) {
+        setAllTopics(data);
+        // 3. 将成功获取的新数据覆盖至本地缓存中
+        await AsyncStorage.setItem(`@cached_topics_${currentLanguage}`, JSON.stringify(data));
+      }
+    } catch (error) {
+      console.error("服务器唤醒失败 (达到最大重试次数):", error);
+      // 若彻底失败且本地无缓存，则 allTopics 保持空数组，进而触发底部兜底 UI
+    } finally {
+      setTopicsLoading(false);
+    }
   }, [activeChild?.status, currentLanguage]);
+
+  useEffect(() => {
+    fetchRecommendedTopics();
+  }, [fetchRecommendedTopics]);
 
   useEffect(() => {
     const query = searchText.trim();
@@ -687,12 +726,6 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, [searchText, language]);
 
-  const reportTopics = allTopics.filter(t => t.category === 'REPORT');
-  const dietTopics = allTopics.filter(t => t.category === 'DIET');
-  const sportTopics = allTopics.filter(t => t.category === 'SPORT');
-  const habitTopics = allTopics.filter(t => t.category === 'HABIT');
-  const displayTopics = [...reportTopics, ...habitTopics, ...sportTopics, ...dietTopics];
-
   const handleFoodSearch = (value?: string | FoodHistoryItem) => {
     const selectedItem = typeof value === 'string' || value === undefined ? null : value;
     const fallbackInput = typeof value === 'string' ? value : searchText;
@@ -739,6 +772,7 @@ export default function HomeScreen() {
     });
   };
 
+  // 计算并生成首页面板中 BMI 微型折线图所需的坐标数据
   const bmiChartData = useMemo(() => {
     if (chartRecords.length < 2) return null;
     const values = chartRecords.map(r => r.bmiValue);
@@ -988,6 +1022,7 @@ export default function HomeScreen() {
                     </Pressable>
                   </View>
 
+                  {/* 进入健康检查 (BMI 测试) 页面按钮 */}
                   <View ref={healthCheckGuideRef} collapsable={false} style={{ flex: 1 }}>
                     <Pressable
                       style={styles.checkHealthButton}
@@ -1006,261 +1041,263 @@ export default function HomeScreen() {
                 </View>
               </Card>
 
-            </>
-          )}
+              {/* Hydration Card */}
+              {(() => {
+                const isWellHydrated = todayWaterIntake >= dailyWaterGoal;
+                const progressPercent = Math.min((todayWaterIntake / dailyWaterGoal) * 100, 100) || 0;
 
-          {/* --- NEW BEAUTIFIED HYDRATION CARD --- */}
-          {activeChild && (() => {
-            const isWellHydrated = todayWaterIntake >= dailyWaterGoal;
-            const progressPercent = Math.min((todayWaterIntake / dailyWaterGoal) * 100, 100) || 0;
+                return (
+                  <View ref={hydrationGuideRef} collapsable={false}>
+                    <Pressable 
+                      onPress={() => navigation.navigate('Hydration')}
+                      style={({ pressed }) => [
+                        styles.newHydrationCard,
+                        pressed && { transform: [{ scale: 0.98 }] } 
+                      ]}
+                    >
+                    <View style={styles.newHydrationTopRow}>
+                      <View style={styles.newHydrationLeft}>
+                        <View style={styles.newHydrationIconContainer}>
+                          <Ionicons name="water" size={22} color="#3B82F6" />
+                        </View>
+                        
+                        <View>
+                          <Text style={styles.newHydrationTitle}>
+                            {getText('Hydration', '饮水', 'Penghidratan')}
+                          </Text>
+                          <View style={[
+                            styles.newHydrationBadge, 
+                            isWellHydrated ? styles.newHydrationBadgeGood : styles.newHydrationBadgeNeeds
+                          ]}>
+                            <Text style={[
+                              styles.newHydrationBadgeText,
+                              isWellHydrated ? styles.newHydrationBadgeTextGood : styles.newHydrationBadgeTextNeeds
+                            ]}>
+                              {isWellHydrated 
+                                ? getText('Well Hydrated', '水分充足', 'Penghidratan Baik') 
+                                : getText('Needs More Water', '需要多喝水', 'Perlu Lebih Air')}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
 
-            return (
-              <View ref={hydrationGuideRef} collapsable={false}>
-                <Pressable 
-                  onPress={() => navigation.navigate('Hydration')}
-                  style={({ pressed }) => [
-                    styles.newHydrationCard,
-                    pressed && { transform: [{ scale: 0.98 }] } // Shrink effect on press
-                  ]}
-                >
-                <View style={styles.newHydrationTopRow}>
-                  {/* Left Side: Icon & Titles */}
-                  <View style={styles.newHydrationLeft}>
-                    <View style={styles.newHydrationIconContainer}>
-                      <Ionicons name="water" size={22} color="#3B82F6" />
+                      <View style={styles.sectionArrowButton}>
+                        <Ionicons name="chevron-forward" size={18} color={theme.colors.primaryDark} />
+                      </View>
                     </View>
-                    
-                    <View>
-                      <Text style={styles.newHydrationTitle}>
-                        {getText('Hydration', '饮水', 'Penghidratan')}
-                      </Text>
-                      <View style={[
-                        styles.newHydrationBadge, 
-                        isWellHydrated ? styles.newHydrationBadgeGood : styles.newHydrationBadgeNeeds
-                      ]}>
-                        <Text style={[
-                          styles.newHydrationBadgeText,
-                          isWellHydrated ? styles.newHydrationBadgeTextGood : styles.newHydrationBadgeTextNeeds
-                        ]}>
-                          {isWellHydrated 
-                            ? getText('Well Hydrated', '水分充足', 'Penghidratan Baik') 
-                            : getText('Needs More Water', '需要多喝水', 'Perlu Lebih Air')}
+
+                    <View style={styles.newHydrationProgressContainer}>
+                      <View style={styles.newHydrationProgressLabelRow}>
+                        <Text style={styles.newHydrationProgressLabel}>
+                          {getText('Progress', '进度', 'Kemajuan')}
+                        </Text>
+                        <Text style={styles.newHydrationProgressValue}>
+                          {todayWaterIntake} / {dailyWaterGoal} {t('ml')}
                         </Text>
                       </View>
+                      
+                      <View style={styles.newHydrationBarBg}>
+                        <View 
+                          style={[
+                            styles.newHydrationBarFill, 
+                            { 
+                              width: `${progressPercent}%`,
+                              backgroundColor: isWellHydrated ? '#3B82F6' : '#60A5FA'
+                            }
+                          ]} 
+                        /> 
+                      </View>
+                    </View>
+                    </Pressable>
+                  </View>
+                );
+              })()}
+
+              {/* 运动记录入口卡片 (Physical Activity) */}
+              <View ref={activityGuideRef} collapsable={false}>
+                <Pressable onPress={() => navigation.navigate('PhysicalActivity')}>
+                  <Card style={styles.newActivityCard}>
+                <View style={styles.cardTopRow}>
+                  <View style={styles.iconContainer}>
+                    <Image source={require('../assets/images/physical-activity-icon.jpeg')} style={styles.activityImage} resizeMode="cover" />
+                  </View>
+
+                  <View style={styles.headerInfo}>
+                    <Text style={styles.activityTitleText}>{getText('Activity', '运动', 'Aktiviti')}</Text>
+                    <View style={styles.statusBadgeActivity}>
+                      <Text style={styles.statusText}>
+                        {todayTotal < dailyGoal / 2 ? (t('lowactive') || 'Low Activity') : (t('active') || 'Active')}
+                      </Text>
                     </View>
                   </View>
 
-                  {/* Right Side: Navigation Arrow */}
                   <View style={styles.sectionArrowButton}>
                     <Ionicons name="chevron-forward" size={18} color={theme.colors.primaryDark} />
                   </View>
                 </View>
 
-                {/* Bottom Side: Progress Bar */}
-                <View style={styles.newHydrationProgressContainer}>
-                  <View style={styles.newHydrationProgressLabelRow}>
-                    <Text style={styles.newHydrationProgressLabel}>
-                      {getText('Progress', '进度', 'Kemajuan')}
-                    </Text>
-                    <Text style={styles.newHydrationProgressValue}>
-                      {todayWaterIntake} / {dailyWaterGoal} {t('ml')}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.newHydrationBarBg}>
-                    <View 
-                      style={[
-                        styles.newHydrationBarFill, 
-                        { 
-                          width: `${progressPercent}%`,
-                          backgroundColor: isWellHydrated ? '#3B82F6' : '#60A5FA'
-                        }
-                      ]} 
-                    /> 
-                  </View>
+                <View style={styles.progressLabelRow}>
+                  <Text style={styles.progressLabel}>{getText('Progress', '进度', 'Kemajuan')}</Text>
+                  <Text style={styles.progressValueText}>
+                    {todayTotal} / {dailyGoal} {t('minutes') || 'mins'}
+                  </Text>
                 </View>
+
+                <View style={styles.thinBarBg}>
+                  <View 
+                    style={[
+                      styles.thinBarFill, 
+                      { width: `${Math.min((todayTotal / dailyGoal) * 100, 100)}%` }
+                    ]} 
+                  /> 
+                </View>
+                  </Card>
                 </Pressable>
               </View>
-            );
-          })()}
+              
+              {/* 成长概览入口卡片及微型折线图 (Growth Overview) */}
+              <View ref={growthGuideRef} collapsable={false}>
+                <Pressable
+                  style={styles.growthOverviewCard}
+                  onPress={() => navigation.navigate('Growth')}
+                >
+                <View style={styles.growthHeaderRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={styles.growthTitle}>{t('growthOverview')}</Text>
+                    
+                    {activeChild?.bmi && (
+                      <View style={{ backgroundColor: '#D1FAE5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 8 }}>
+                         <Text style={{ color: '#059669', fontSize: 12, fontWeight: '700' }}>BMI {activeChild.bmi}</Text>
+                      </View>
+                    )}
+                  </View>
 
-          {/* --- RESTORED PHYSICAL ACTIVITY CARD --- */}
-          {activeChild && (
-            <View ref={activityGuideRef} collapsable={false}>
-              <Pressable onPress={() => navigation.navigate('PhysicalActivity')}>
-                <Card style={styles.newActivityCard}>
-              <View style={styles.cardTopRow}>
-                {/* Left Icon Section */}
-                <View style={styles.iconContainer}>
-                  <Image source={require('../assets/images/physical-activity-icon.jpeg')} style={styles.activityImage} resizeMode="cover" />
-                </View>
-
-                {/* Middle Info Section */}
-                <View style={styles.headerInfo}>
-                  <Text style={styles.activityTitleText}>{getText('Activity', '运动', 'Aktiviti')}</Text>
-                  <View style={styles.statusBadgeActivity}>
-                    <Text style={styles.statusText}>
-                      {/* 💡 使用三语变量判定 */}
-                      {todayTotal < dailyGoal / 2 ? (t('lowactive') || 'Low Activity') : (t('active') || 'Active')}
-                    </Text>
+                  <View style={styles.sectionArrowButton}>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color={theme.colors.primaryDark}
+                    />
                   </View>
                 </View>
 
-                {/* Right Navigation Button */}
-                <View style={styles.sectionArrowButton}>
-                  <Ionicons name="chevron-forward" size={18} color={theme.colors.primaryDark} />
+                <View style={styles.growthLineWrap}>
+                  {bmiChartData ? (
+                    <Svg width="100%" height={bmiChartData.height}>
+                      <Polyline
+                        points={bmiChartData.pointsString}
+                        fill="none"
+                        stroke={theme.colors.primaryDark}
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      {bmiChartData.points.map((p, i) => (
+                        <SvgCircle
+                          key={i}
+                          cx={p.x}
+                          cy={p.y}
+                          r="4"
+                          fill="#FFFFFF"
+                          stroke={theme.colors.primaryDark}
+                          strokeWidth="2"
+                        />
+                      ))}
+                    </Svg>
+                  ) : (
+                    <>
+                      <View style={styles.growthDottedLine} />
+                      <View style={[styles.growthDot, { left: '0%' }]} />
+                      <View style={[styles.growthDot, { left: '32%' }]} />
+                      <View style={[styles.growthDot, { left: '64%' }]} />
+                      <View style={[styles.growthDot, { right: 0 }]} />
+                    </>
+                  )}
                 </View>
-              </View>
 
-              {/* Progress Label and Values Row */}
-              <View style={styles.progressLabelRow}>
-                <Text style={styles.progressLabel}>{getText('Progress', '进度', 'Kemajuan')}</Text>
-                <Text style={styles.progressValueText}>
-                  {todayTotal} / {dailyGoal} {t('minutes') || 'mins'}
+                <Text style={styles.growthHint}>
+                  {activeChild
+                    ? getText(
+                        'Tap to view detailed growth chart',
+                        '点击查看详细成长图表',
+                        'Ketik untuk lihat carta pertumbuhan'
+                      )
+                    : getText(
+                        'Create profile to track growth',
+                        '创建档案以追踪成长',
+                        'Cipta profil untuk jejak pertumbuhan'
+                      )}
                 </Text>
+                </Pressable>
               </View>
 
-              {/* Thin Progress Bar */}
-              <View style={styles.thinBarBg}>
-                <View 
-                  style={[
-                    styles.thinBarFill, 
-                    { width: `${Math.min((todayTotal / dailyGoal) * 100, 100)}%` }
-                  ]} 
-                /> 
-              </View>
-                </Card>
-              </Pressable>
-            </View>
-          )}
-          
-          {/* Growth Overview */}
-          <View ref={growthGuideRef} collapsable={false}>
-            <Pressable
-              style={styles.growthOverviewCard}
-              onPress={() => navigation.navigate('Growth')}
-            >
-            <View style={styles.growthHeaderRow}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.growthTitle}>{t('growthOverview')}</Text>
-                
-                {activeChild?.bmi && (
-                  <View style={{ backgroundColor: '#D1FAE5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 8 }}>
-                     <Text style={{ color: '#059669', fontSize: 12, fontWeight: '700' }}>BMI {activeChild.bmi}</Text>
+              {/* 健康建议与洞察列表 (Health Insights) */} 
+              <View ref={insightsGuideRef} collapsable={false}>
+                <Text style={styles.localSectionTitle}>{t('healthInsights')}</Text>
+
+                {topicsLoading ? (
+                   <ActivityIndicator size="small" color={theme.colors.primaryDark} style={{ paddingVertical: 20 }} />
+                ) : allTopics.length > 0 ? (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.displayTopicsScroll}
+                  >
+                    {allTopics.map((topic) => (
+                      <Pressable 
+                        key={topic.id || topic.title} 
+                        style={styles.topicCard}
+                        onPress={() => {
+                          setSelectedTopic(topic);
+                          setShowTopicModal(true);
+                        }}
+                      >
+                        <View style={styles.topicCategoryBadge}>
+                          <Text style={styles.topicCategoryText}>
+                            {topic?.category 
+                              ? t(topic.category.trim().toLowerCase())
+                              : t('healthInsights')}
+                          </Text>
+                        </View>
+
+                        <Image 
+                          source={{ uri: topic.imageUrl }} 
+                          style={styles.topicImage} 
+                          resizeMode="cover" 
+                        />
+
+                        <View style={styles.topicTextContainer}>
+                          <Text style={styles.topicTitle} numberOfLines={2}>
+                            {topic.title}
+                          </Text>
+                          <Text style={styles.topicSummary} numberOfLines={2}>
+                            {topic.summary}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                ) : (
+                  // 请求失败或数据为空时的重试防呆处理UI
+                  <View style={styles.emptyInsightBox}>
+                    <Ionicons name="bulb-outline" size={28} color={theme.colors.muted} style={{ marginBottom: 8 }} />
+                    <Text style={styles.emptyInsightText}>
+                      {getText('No insights available at the moment.', '暂无健康建议内容，请稍后重试。', 'Tiada panduan kesihatan buat masa ini.')}
+                    </Text>
+                    <TouchableOpacity style={styles.retryBtn} onPress={fetchRecommendedTopics}>
+                      <Text style={styles.retryBtnText}>
+                        {getText('Tap to Retry', '点击重试', 'Ketik untuk Cuba Lagi')}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
-
-              <View style={styles.sectionArrowButton}>
-                <Ionicons
-                  name="chevron-forward"
-                  size={18}
-                  color={theme.colors.primaryDark}
-                />
-              </View>
-            </View>
-
-            <View style={styles.growthLineWrap}>
-              {bmiChartData ? (
-                <Svg width="100%" height={bmiChartData.height}>
-                  <Polyline
-                    points={bmiChartData.pointsString}
-                    fill="none"
-                    stroke={theme.colors.primaryDark}
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  {bmiChartData.points.map((p, i) => (
-                    <SvgCircle
-                      key={i}
-                      cx={p.x}
-                      cy={p.y}
-                      r="4"
-                      fill="#FFFFFF"
-                      stroke={theme.colors.primaryDark}
-                      strokeWidth="2"
-                    />
-                  ))}
-                </Svg>
-              ) : (
-                <>
-                  <View style={styles.growthDottedLine} />
-                  <View style={[styles.growthDot, { left: '0%' }]} />
-                  <View style={[styles.growthDot, { left: '32%' }]} />
-                  <View style={[styles.growthDot, { left: '64%' }]} />
-                  <View style={[styles.growthDot, { right: 0 }]} />
-                </>
-              )}
-            </View>
-
-            <Text style={styles.growthHint}>
-              {activeChild
-                ? getText(
-                    'Tap to view detailed growth chart',
-                    '点击查看详细成长图表',
-                    'Ketik untuk lihat carta pertumbuhan'
-                  )
-                : getText(
-                    'Create profile to track growth',
-                    '创建档案以追踪成长',
-                    'Cipta profil untuk jejak pertumbuhan'
-                  )}
-            </Text>
-            </Pressable>
-          </View>
-
-          {/* Health Insights */} 
-          <View ref={insightsGuideRef} collapsable={false}>
-            <Text style={styles.localSectionTitle}>{t('healthInsights')}</Text>
-
-            {topicsLoading ? (
-               <ActivityIndicator size="small" color={theme.colors.primaryDark} style={{ paddingVertical: 20 }} />
-            ) : (
-              <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.displayTopicsScroll}
-            >
-              {allTopics.map((topic) => (
-                <Pressable 
-                  key={topic.id || topic.title} 
-                  style={styles.topicCard}
-                  onPress={() => {
-                    setSelectedTopic(topic);
-                    setShowTopicModal(true);
-                  }}
-                >
-                  <View style={styles.topicCategoryBadge}>
-                    <Text style={styles.topicCategoryText}>
-                      {topic?.category 
-                        ? t(topic.category.trim().toLowerCase())
-                        : t('healthInsights')}
-                    </Text>
-                  </View>
-
-                  <Image 
-                    source={{ uri: topic.imageUrl }} 
-                    style={styles.topicImage} 
-                    resizeMode="cover" 
-                  />
-
-                  <View style={styles.topicTextContainer}>
-                    <Text style={styles.topicTitle} numberOfLines={2}>
-                      {topic.title}
-                    </Text>
-                    <Text style={styles.topicSummary} numberOfLines={2}>
-                      {topic.summary}
-                    </Text>
-                  </View>
-                </Pressable>
-              ))}
-              </ScrollView>
-            )}
-          </View>
+            </>
+          )}
         </View>
       </Screen>
 
+      {/* 健康建议详情阅读弹窗 (Health Insight Modal) */}
       <Modal visible={showTopicModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           {selectedTopic && (
@@ -1424,8 +1461,7 @@ export default function HomeScreen() {
           },
         ]}
       />
-
-</>
+    </>
   );
 }
 
@@ -1862,7 +1898,81 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
     fontWeight: '800',
   },
 
+  // 运动记录卡片 (Physical Activity) 相关样式
+  newActivityCard: {
+    backgroundColor: themeColors.card,
+    borderRadius: 24,
+    padding: 20,
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#DCFCE7',
+    borderRadius: 14,
+    overflow: 'hidden', 
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  activityImage: {
+    width: '100%',
+    height: '100%',
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  activityTitleText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  statusBadgeActivity: {
+    backgroundColor: '#FEF3C6', 
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  statusText: {
+    color: '#BB4D00', 
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  progressLabel: {
+    fontSize: 11,
+    color: themeColors.muted,
+    fontWeight: '500',
+  },
+  progressValueText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  thinBarBg: {
+    height: 8,
+    backgroundColor: themeColors.surfaceAlt, 
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  thinBarFill: {
+    height: '100%',
+    backgroundColor: '#10B981', 
+  },
 
+  // 成长概览卡片 (Growth Overview) 相关样式
   growthOverviewCard: {
     backgroundColor: themeColors.card,
     borderRadius: 24,
@@ -1919,7 +2029,8 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
     marginTop: 4,
   },
 
- displayTopicsScroll: {
+  // 健康建议与洞察 (Health Insights) 相关样式
+  displayTopicsScroll: {
     paddingBottom: 8,
     gap: 16, 
   },
@@ -2135,81 +2246,6 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
     fontSize: 14,
   },
 
-  // --- 恢复的 Activity Card 样式 ---
-  newActivityCard: {
-    backgroundColor: themeColors.card,
-    borderRadius: 24,
-    padding: 20,
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#DCFCE7',
-    borderRadius: 14,
-    overflow: 'hidden', 
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  activityImage: {
-    width: '100%',
-    height: '100%',
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  activityTitleText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
-  },
-  statusBadgeActivity: {
-    backgroundColor: '#FEF3C6', 
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  statusText: {
-    color: '#BB4D00', 
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  progressLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  progressLabel: {
-    fontSize: 11,
-    color: themeColors.muted,
-    fontWeight: '500',
-  },
-  progressValueText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  thinBarBg: {
-    height: 8,
-    backgroundColor: themeColors.surfaceAlt, 
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  thinBarFill: {
-    height: '100%',
-    backgroundColor: '#10B981', 
-  },
-
-  // --- NEW HYDRATION CARD STYLES ---
   newHydrationCard: {
     backgroundColor: themeColors.card,
     borderRadius: 24,
@@ -2218,7 +2254,7 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 3, // For Android shadow
+    elevation: 3,
   },
   newHydrationTopRow: {
     flexDirection: 'row',
@@ -2306,14 +2342,42 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
     borderRadius: 4,
   },
 
-
-
   localSectionTitle: {
-    // Health Insights Section
     fontSize: 16,
     fontWeight: '700',
     color: '#0F172A',
     marginBottom: 4,
     marginTop: 12,
+  },
+
+  // 健康建议读取空状态兜底 UI 样式
+  emptyInsightBox: {
+    backgroundColor: themeColors.card,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  emptyInsightText: {
+    color: themeColors.muted,
+    fontSize: 13,
+    marginBottom: 16,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  retryBtn: {
+    backgroundColor: themeColors.primaryLight,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 16,
+  },
+  retryBtnText: {
+    color: themeColors.primaryDark,
+    fontWeight: '700',
+    fontSize: 13,
   },
 });
