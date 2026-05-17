@@ -12,18 +12,14 @@ import {
 } from 'react-native';
 import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { CheckSquare, Square, Trash2, Upload, Download } from 'lucide-react-native';
-
-import * as DocumentPicker from 'expo-document-picker';
-import { documentDirectory, readAsStringAsync, writeAsStringAsync } from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+import { CheckSquare, Square, Trash2 } from 'lucide-react-native';
 
 import { useLanguage } from '../context/LanguageContext';
 import { useChildProfile } from '../context/ChildProfileContext'; 
 import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import { Card, Chip, Header, Screen, SectionTitle } from '../components/Common';
-import { HealthRecord, deleteHealthRecords, loadHealthRecords, saveHealthRecord } from '../utils/storage';
+import { HealthRecord, deleteHealthRecords, loadHealthRecords } from '../utils/storage';
 
 const BASE_URL = "https://jom-healthy-java.onrender.com";
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -175,7 +171,7 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
 }
 
 // ==========================================
-// Main page logic: data fetching, import/export, record management
+// Main page logic: data fetching and record management
 // ==========================================
 type SegmentType = "HEIGHT" | "WEIGHT" | "BMI";
 
@@ -231,43 +227,6 @@ export default function GrowthScreen() {
       console.error("Fetch Error:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      if (records.length === 0) return Alert.alert(getText('No Data', '没有数据', 'Tiada Data'), getText('No records to export.', '没有可导出的记录。', 'Tiada rekod untuk dieksport.'));
-      const fileUri = documentDirectory + "bmi_health_backup.json";
-      await writeAsStringAsync(fileUri, JSON.stringify(records));
-      await Sharing.shareAsync(fileUri);
-    } catch (e) { 
-      Alert.alert(getText('Export Failed', '导出失败', 'Eksport Gagal'), getText('Error creating backup.', '创建备份时出错。', 'Ralat semasa mencipta sandaran.')); 
-    }
-  };
-
-  const handleImport = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({ type: 'application/json' });
-      if (!result.canceled && result.assets) {
-        const content = await readAsStringAsync(result.assets[0].uri);
-        const importedData = JSON.parse(content);
-        if (Array.isArray(importedData)) {
-          Alert.alert(getText('Import', '导入', 'Import'), getText('Restore {{count}} records?', '恢复 {{count}} 条记录？', 'Pulihkan {{count}} rekod?').replace('{{count}}', String(importedData.length)), [
-            { text: getText('Cancel', '取消', 'Batal'), style: "cancel" },
-            { 
-              text: getText('Import', '导入', 'Import'), 
-              onPress: async () => {
-                for (const item of importedData) {
-                  await saveHealthRecord(item);
-                }
-                fetchData(); 
-              }
-            }
-          ]);
-        }
-      }
-    } catch (e) { 
-      Alert.alert(getText('Import Failed', '导入失败', 'Import Gagal'), getText('Invalid file.', '文件无效。', 'Fail tidak sah.')); 
     }
   };
 
@@ -352,21 +311,9 @@ export default function GrowthScreen() {
 
   return (
     <Screen padded={false}>
-      <Header title={t('growth')} icon="trending-up" onBack={() => navigation.goBack()} />
+      <Header title={t('growth')} onBack={() => navigation.goBack()} />
       
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        
-        <View style={styles.importExportRow}>
-          <TouchableOpacity onPress={handleImport} style={styles.actionPill}>
-            <Upload size={14} color="#64748B" />
-            <Text style={styles.actionPillText}>{getText('Import', '导入', 'Import')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleExport} style={styles.actionPill}>
-            <Download size={14} color="#64748B" />
-            <Text style={styles.actionPillText}>{getText('Export', '导出', 'Eksport')}</Text>
-          </TouchableOpacity>
-        </View>
-
         <Card>
           <View style={styles.tabs}>
             <Chip label={t('yourheight')} selected={selectedTab === 'HEIGHT'} onPress={() => setSelectedTab('HEIGHT')} />
@@ -523,31 +470,4 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   emptyState: { alignItems: 'center', padding: 32, backgroundColor: themeColors.card, borderRadius: 20, borderWidth: 1, borderColor: themeColors.border, borderStyle: 'dashed' },
   emptyStateText: { color: themeColors.muted, fontWeight: '600' },
 
-  importExportRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'flex-end', 
-    gap: 12, 
-    marginBottom: 4, 
-    paddingHorizontal: 4 
-  },
-  actionPill: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: themeColors.card, 
-    paddingHorizontal: 16, 
-    paddingVertical: 8, 
-    borderRadius: 99, 
-    borderWidth: 1, 
-    borderColor: themeColors.border, 
-    shadowColor: themeColors.shadow, 
-    shadowOffset: { width: 0, height: 1 }, 
-    shadowOpacity: 0.05, 
-    elevation: 1, 
-    gap: 6 
-  },
-  actionPillText: { 
-    color: themeColors.muted, 
-    fontSize: 12, 
-    fontWeight: '700' 
-  },
 });
