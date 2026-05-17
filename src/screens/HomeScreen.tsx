@@ -17,7 +17,7 @@ import {
   LayoutChangeEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Polyline, Circle as SvgCircle } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
@@ -384,6 +384,7 @@ function AnimatedProfileAvatar({
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { openAiMealPlanModal } = useAiMealPlanGeneration();
   const { language, t } = useLanguage();
   const { themeName, theme } = useTheme();
@@ -423,6 +424,7 @@ export default function HomeScreen() {
   const [searchError, setSearchError] = useState('');
   const [suggestions, setSuggestions] = useState<FoodSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [homeGuideRestartKey, setHomeGuideRestartKey] = useState(0);
 
   const [allTopics, setAllTopics] = useState<any[]>([]);
   const [topicsLoading, setTopicsLoading] = useState(true);
@@ -443,6 +445,12 @@ export default function HomeScreen() {
   // 获取最新的健康记录 (用于成长概览与 BMI 展示)
   useFocusEffect(
     React.useCallback(() => {
+      const replayGuideToken = route.params?.replayGuideToken;
+
+      if (replayGuideToken) {
+        setHomeGuideRestartKey(Number(replayGuideToken) || Date.now());
+      }
+
       const fetchLatestRecord = async () => {
         const records = await loadHealthRecords();
         if (records && records.length > 0 && activeChild) {
@@ -461,7 +469,7 @@ export default function HomeScreen() {
         }
       };
       fetchLatestRecord();
-    }, [activeChild])
+    }, [activeChild, route.params?.replayGuideToken])
   );
 
   const lastCheckDate = useMemo(
@@ -1412,6 +1420,7 @@ export default function HomeScreen() {
       <FeatureGuideCoachmark
         guideKey="home_guest_core"
         enabled={!activeChild && !showLanguage && !showAddChild && !showTopicModal}
+        restartKey={homeGuideRestartKey}
         steps={[
           {
             key: 'food-search',
@@ -1444,6 +1453,7 @@ export default function HomeScreen() {
         guideKey="home_profile_core"
         enabled={!!activeChild && !showLanguage && !showAddChild && !showTopicModal}
         onStepChange={handleHomeGuideStepChange}
+        restartKey={homeGuideRestartKey}
         steps={[
           {
             key: 'ai-meal-plan',

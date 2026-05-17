@@ -41,6 +41,7 @@ type BackupPayload = {
 
 const BACKUP_TYPE = 'JOMHEALTHY_BACKUP';
 const BACKUP_VERSION = 1;
+const FEATURE_GUIDE_STORAGE_PREFIX = 'JOMHEALTHY_FEATURE_GUIDE_DONE_V1:';
 
 function createBackupFileName() {
   const now = new Date();
@@ -560,6 +561,26 @@ export default function ProfileScreen() {
     }
   };
 
+  const replayHomeGuide = async () => {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const guideKeys = keys.filter((key) =>
+        key.startsWith(FEATURE_GUIDE_STORAGE_PREFIX)
+      );
+
+      if (guideKeys.length > 0) {
+        await AsyncStorage.multiRemove(guideKeys);
+      }
+    } catch (error) {
+      console.log('Reset feature guide state failed:', error);
+    } finally {
+      navigation.navigate('MainTabs', {
+        screen: 'Home',
+        params: { replayGuideToken: Date.now() },
+      });
+    }
+  };
+
   return (
     <>
       <Screen padded={false}>
@@ -678,7 +699,7 @@ export default function ProfileScreen() {
             </Pressable>
 
             <Pressable
-              style={[styles.settingRow, styles.settingRowLast]}
+              style={styles.settingRow}
               onPress={() => setShowImportGuide(true)}
               disabled={importingData}
             >
@@ -697,6 +718,38 @@ export default function ProfileScreen() {
                     'Choose a backup file from phone storage',
                     '从手机本地选择备份文件',
                     'Pilih fail sandaran daripada storan telefon'
+                  )}
+                </Text>
+              </View>
+
+              <Ionicons
+                name="chevron-forward"
+                color={theme.colors.muted}
+                size={18}
+              />
+            </Pressable>
+
+            <Pressable
+              style={[styles.settingRow, styles.settingRowLast]}
+              onPress={replayHomeGuide}
+            >
+              <View style={styles.settingIcon}>
+                <Ionicons
+                  name="refresh-circle"
+                  color={theme.colors.primaryDark}
+                  size={20}
+                />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.settingTitle}>
+                  {getText('Replay beginner guide', '重新查看新手教程', 'Lihat semula panduan pemula')}
+                </Text>
+                <Text style={styles.meta}>
+                  {getText(
+                    'Jump to Home and start the walkthrough again',
+                    '跳到首页并重新开始引导',
+                    'Pergi ke Home dan mula panduan semula'
                   )}
                 </Text>
               </View>

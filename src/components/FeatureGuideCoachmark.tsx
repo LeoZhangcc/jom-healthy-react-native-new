@@ -32,6 +32,7 @@ type FeatureGuideCoachmarkProps = {
   steps: FeatureGuideStep[];
   startDelayMs?: number;
   onStepChange?: (step: FeatureGuideStep, index: number) => number | void;
+  restartKey?: string | number;
   onFinished?: () => void;
 };
 
@@ -66,6 +67,7 @@ export default function FeatureGuideCoachmark({
   steps,
   startDelayMs = 650,
   onStepChange,
+  restartKey,
   onFinished,
 }: FeatureGuideCoachmarkProps) {
   const { theme } = useTheme();
@@ -171,7 +173,7 @@ export default function FeatureGuideCoachmark({
       mounted = false;
       clearTimers();
     };
-  }, [cleanSteps.length, clearTimers, enabled, hideGuide, startDelayMs, storageKey]);
+  }, [cleanSteps.length, clearTimers, enabled, hideGuide, restartKey, startDelayMs, storageKey]);
 
   const jumpToNextMeasurableStep = useCallback(() => {
     if (activeIndex < cleanSteps.length - 1) {
