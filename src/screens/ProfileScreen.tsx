@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
   Image,
@@ -29,6 +29,7 @@ import {
   SectionTitle,
 } from '../components/Common';
 import ChildrenProfilesModal from '../components/ChildrenProfilesModal';
+import FeatureGuideCoachmark from '../components/FeatureGuideCoachmark';
 
 type BackupPayload = {
   backupType: 'JOMHEALTHY_BACKUP';
@@ -260,6 +261,9 @@ export default function ProfileScreen() {
   const { t, language } = useLanguage();
   const { themeName, setThemeName, theme, themes } = useTheme();
   const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
+  const themeGuideRef = useRef<View>(null);
+  const childrenGuideRef = useRef<View>(null);
+  const backupGuideRef = useRef<View>(null);
   const childProfile = useChildProfile() as any;
 
   const {
@@ -563,21 +567,23 @@ export default function ProfileScreen() {
           title={t('profile')}
           subtitle={t('manageAccount')}
           right={
-            <Pressable
-              style={({ pressed }) => [
-                styles.themeAvatarTrigger,
-                pressed && styles.themeAvatarTriggerPressed,
-              ]}
-              onPress={() => setShowThemePicker(true)}
-              accessibilityRole="button"
-              accessibilityLabel={getText('Choose app theme', '选择应用主题', 'Pilih tema aplikasi')}
-            >
-              <Ionicons
-                name="color-palette-outline"
-                size={25}
-                color={theme.colors.primaryDark}
-              />
-            </Pressable>
+            <View ref={themeGuideRef} collapsable={false}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.themeAvatarTrigger,
+                  pressed && styles.themeAvatarTriggerPressed,
+                ]}
+                onPress={() => setShowThemePicker(true)}
+                accessibilityRole="button"
+                accessibilityLabel={getText('Choose app theme', '选择应用主题', 'Pilih tema aplikasi')}
+              >
+                <Ionicons
+                  name="color-palette-outline"
+                  size={25}
+                  color={theme.colors.primaryDark}
+                />
+              </Pressable>
+            </View>
           }
         />
 
@@ -610,12 +616,14 @@ export default function ProfileScreen() {
 
             </View>
 
-            <PrimaryButton
-              title={t('manageChildren')}
-              icon="settings"
-              onPress={() => setShowChildren(true)}
-              style={{ marginTop: 14 }}
-            />
+            <View ref={childrenGuideRef} collapsable={false}>
+              <PrimaryButton
+                title={t('manageChildren')}
+                icon="settings"
+                onPress={() => setShowChildren(true)}
+                style={{ marginTop: 14 }}
+              />
+            </View>
           </Card>
           {activeChild && tags.length > 0 && (
             <Card>
@@ -633,9 +641,10 @@ export default function ProfileScreen() {
             </Card>
           )}
 
-          <Card>
-            <Pressable
-              style={styles.settingRow}
+          <View ref={backupGuideRef} collapsable={false}>
+            <Card>
+              <Pressable
+                style={styles.settingRow}
               onPress={exportAllDataToLocal}
               disabled={exportingData}
             >
@@ -695,7 +704,8 @@ export default function ProfileScreen() {
                 size={18}
               />
             </Pressable>
-          </Card>
+            </Card>
+          </View>
 
           <SectionTitle title={getText('Saved Recipes', '收藏食谱', 'Resipi Tersimpan')} />
 
@@ -757,6 +767,49 @@ export default function ProfileScreen() {
           )}
         </View>
       </Screen>
+
+      <FeatureGuideCoachmark
+        guideKey="profile_core"
+        enabled={!showThemePicker && !showImportGuide && !showChildren}
+        steps={[
+          {
+            key: 'theme-switch',
+            anchorRef: themeGuideRef,
+            icon: 'color-palette-outline',
+            placement: 'bottom',
+            title: getText('Change the whole app style here', '在这里切换整个 App 风格', 'Tukar gaya keseluruhan aplikasi di sini'),
+            description: getText(
+              'When you want a different visual mood, open the theme selector from this icon. The chosen style applies across pages.',
+              '当你想换一种视觉风格时，点这里打开主题选择。选中的风格会应用到所有页面。',
+              'Apabila anda mahu gaya visual berbeza, buka pemilih tema di sini. Tema dipakai pada semua halaman.'
+            ),
+          },
+          {
+            key: 'children-management',
+            anchorRef: childrenGuideRef,
+            icon: 'people-outline',
+            placement: 'bottom',
+            title: getText('Manage child profiles from one place', '在一个入口管理小孩档案', 'Urus profil anak dari satu tempat'),
+            description: getText(
+              'Use this button to add, switch or update child profiles. Meal plans and nutrition views follow the active child.',
+              '通过这个按钮添加、切换或更新小孩档案。膳食计划和营养展示都会跟随当前小孩。',
+              'Gunakan butang ini untuk menambah, menukar atau mengemas kini profil anak. Pelan makanan dan paparan nutrisi mengikut anak aktif.'
+            ),
+          },
+          {
+            key: 'local-backup',
+            anchorRef: backupGuideRef,
+            icon: 'download-outline',
+            placement: 'top',
+            title: getText('Back up or move local data when needed', '需要时备份或迁移本地数据', 'Sandarkan atau pindahkan data tempatan apabila perlu'),
+            description: getText(
+              'Export creates a JSON backup on the phone. Import restores it later, which is useful when changing devices or testing.',
+              '导出会生成本地 JSON 备份，导入可以之后恢复，适合换设备或测试时使用。',
+              'Eksport menghasilkan sandaran JSON tempatan. Import memulihkannya kemudian, sesuai apabila menukar peranti atau menguji.'
+            ),
+          },
+        ]}
+      />
 
       <Modal
         visible={showThemePicker}

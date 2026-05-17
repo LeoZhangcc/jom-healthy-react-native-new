@@ -43,6 +43,7 @@ import { FileText, X, ExternalLink } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FloatingAIChat from "../components/FloatingAIChat";
 import { useActivity } from '../context/PhysicalActivityContext';
+import FeatureGuideCoachmark from '../components/FeatureGuideCoachmark';
 
 type FoodHistoryItem = {
   query: string;
@@ -388,6 +389,14 @@ export default function HomeScreen() {
   const { language, t } = useLanguage();
   const { themeName, theme } = useTheme();
   const { styles } = useHomeStyles();
+  const searchGuideRef = useRef<View>(null);
+  const createProfileGuideRef = useRef<View>(null);
+  const aiMealGuideRef = useRef<View>(null);
+  const healthCheckGuideRef = useRef<View>(null);
+  const hydrationGuideRef = useRef<View>(null);
+  const activityGuideRef = useRef<View>(null);
+  const growthGuideRef = useRef<View>(null);
+  const insightsGuideRef = useRef<View>(null);
   const {
     activeChild,
     nutritionProgress,
@@ -772,7 +781,8 @@ export default function HomeScreen() {
 
         <View style={styles.body}>
           {/* Search */}
-          <Card>
+          <View ref={searchGuideRef} collapsable={false}>
+            <Card>
             <View style={styles.searchWrap}>
               <Ionicons
                 name="search"
@@ -902,7 +912,8 @@ export default function HomeScreen() {
                 </ScrollView>
               </>
             )}
-          </Card>
+            </Card>
+          </View>
 
           {/* Child Profile */}
           {!activeChild ? (
@@ -919,11 +930,13 @@ export default function HomeScreen() {
                 'Anda masih boleh guna carian makanan, gambaran pertumbuhan dan panduan kesihatan. Cipta profil untuk pelan makanan peribadi.'
               )}
               action={
-                <PrimaryButton
-                  title={getText('Create Profile', '创建档案', 'Cipta Profil')}
-                  icon="add"
-                  onPress={() => setShowAddChild(true)}
-                />
+                <View ref={createProfileGuideRef} collapsable={false}>
+                  <PrimaryButton
+                    title={getText('Create Profile', '创建档案', 'Cipta Profil')}
+                    icon="add"
+                    onPress={() => setShowAddChild(true)}
+                  />
+                </View>
               }
             />
           ) : (
@@ -963,29 +976,33 @@ export default function HomeScreen() {
                 </View>
 
                 <View style={styles.profileActions}>
-                  <Pressable
-                    style={styles.mealPlanButton}
-                    onPress={() => openAiMealPlanModal({ startDate: new Date() })}
-                  >
-                    <Ionicons name="sparkles" size={16} color="#FFFFFF" />
-                    <Text style={styles.mealPlanButtonText}>
-                      {getText('AI Meal Plan', 'AI 膳食计划', 'Pelan Makanan AI')}
-                    </Text>
-                  </Pressable>
+                  <View ref={aiMealGuideRef} collapsable={false} style={{ flex: 1 }}>
+                    <Pressable
+                      style={styles.mealPlanButton}
+                      onPress={() => openAiMealPlanModal({ startDate: new Date() })}
+                    >
+                      <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                      <Text style={styles.mealPlanButtonText}>
+                        {getText('AI Meal Plan', 'AI 膳食计划', 'Pelan Makanan AI')}
+                      </Text>
+                    </Pressable>
+                  </View>
 
-                  <Pressable
-                    style={styles.checkHealthButton}
-                    onPress={() => navigation.navigate('HealthCheck')}
-                  >
-                    <Ionicons
-                      name="pulse"
-                      size={17}
-                      color={theme.colors.primaryDark}
-                    />
-                    <Text style={styles.checkHealthButtonText}>
-                      {t('checkHealth')}
-                    </Text>
-                  </Pressable>
+                  <View ref={healthCheckGuideRef} collapsable={false} style={{ flex: 1 }}>
+                    <Pressable
+                      style={styles.checkHealthButton}
+                      onPress={() => navigation.navigate('HealthCheck')}
+                    >
+                      <Ionicons
+                        name="pulse"
+                        size={17}
+                        color={theme.colors.primaryDark}
+                      />
+                      <Text style={styles.checkHealthButtonText}>
+                        {t('checkHealth')}
+                      </Text>
+                    </Pressable>
+                  </View>
                 </View>
               </Card>
 
@@ -998,13 +1015,14 @@ export default function HomeScreen() {
             const progressPercent = Math.min((todayWaterIntake / dailyWaterGoal) * 100, 100) || 0;
 
             return (
-              <Pressable 
-                onPress={() => navigation.navigate('Hydration')}
-                style={({ pressed }) => [
-                  styles.newHydrationCard,
-                  pressed && { transform: [{ scale: 0.98 }] } // Shrink effect on press
-                ]}
-              >
+              <View ref={hydrationGuideRef} collapsable={false}>
+                <Pressable 
+                  onPress={() => navigation.navigate('Hydration')}
+                  style={({ pressed }) => [
+                    styles.newHydrationCard,
+                    pressed && { transform: [{ scale: 0.98 }] } // Shrink effect on press
+                  ]}
+                >
                 <View style={styles.newHydrationTopRow}>
                   {/* Left Side: Icon & Titles */}
                   <View style={styles.newHydrationLeft}>
@@ -1061,14 +1079,16 @@ export default function HomeScreen() {
                     /> 
                   </View>
                 </View>
-              </Pressable>
+                </Pressable>
+              </View>
             );
           })()}
 
           {/* --- RESTORED PHYSICAL ACTIVITY CARD --- */}
           {activeChild && (
-            <Pressable onPress={() => navigation.navigate('PhysicalActivity')}>
-              <Card style={styles.newActivityCard}>
+            <View ref={activityGuideRef} collapsable={false}>
+              <Pressable onPress={() => navigation.navigate('PhysicalActivity')}>
+                <Card style={styles.newActivityCard}>
               <View style={styles.cardTopRow}>
                 {/* Left Icon Section */}
                 <View style={styles.iconContainer}>
@@ -1109,15 +1129,17 @@ export default function HomeScreen() {
                   ]} 
                 /> 
               </View>
-              </Card>
-            </Pressable>
+                </Card>
+              </Pressable>
+            </View>
           )}
           
           {/* Growth Overview */}
-          <Pressable
-            style={styles.growthOverviewCard}
-            onPress={() => navigation.navigate('Growth')}
-          >
+          <View ref={growthGuideRef} collapsable={false}>
+            <Pressable
+              style={styles.growthOverviewCard}
+              onPress={() => navigation.navigate('Growth')}
+            >
             <View style={styles.growthHeaderRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={styles.growthTitle}>{t('growthOverview')}</Text>
@@ -1185,15 +1207,17 @@ export default function HomeScreen() {
                     'Cipta profil untuk jejak pertumbuhan'
                   )}
             </Text>
-          </Pressable>
+            </Pressable>
+          </View>
 
           {/* Health Insights */} 
-          <Text style={styles.localSectionTitle}>{t('healthInsights')}</Text>
+          <View ref={insightsGuideRef} collapsable={false}>
+            <Text style={styles.localSectionTitle}>{t('healthInsights')}</Text>
 
-          {topicsLoading ? (
-             <ActivityIndicator size="small" color={theme.colors.primaryDark} style={{ paddingVertical: 20 }} />
-          ) : (
-            <ScrollView
+            {topicsLoading ? (
+               <ActivityIndicator size="small" color={theme.colors.primaryDark} style={{ paddingVertical: 20 }} />
+            ) : (
+              <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.displayTopicsScroll}
@@ -1231,8 +1255,9 @@ export default function HomeScreen() {
                   </View>
                 </Pressable>
               ))}
-            </ScrollView>
-          )}
+              </ScrollView>
+            )}
+          </View>
         </View>
       </Screen>
 
@@ -1288,6 +1313,116 @@ export default function HomeScreen() {
       <AddChildModal
         visible={showAddChild}
         onClose={() => setShowAddChild(false)}
+      />
+
+      <FeatureGuideCoachmark
+        guideKey="home_guest_core"
+        enabled={!activeChild && !showLanguage && !showAddChild && !showTopicModal}
+        steps={[
+          {
+            key: 'food-search',
+            anchorRef: searchGuideRef,
+            icon: 'search-outline',
+            placement: 'bottom',
+            title: getText('Start by searching a food', '先从搜索食物开始', 'Mulakan dengan mencari makanan'),
+            description: getText(
+              'When you want to understand a meal or ingredient, type its name here. JomHealthy will show matching foods and nutrition details.',
+              '当你想了解某个食物或食材时，在这里输入名称。JomHealthy 会返回匹配结果和营养信息。',
+              'Apabila anda ingin memahami hidangan atau bahan, taip namanya di sini. JomHealthy akan menunjukkan padanan dan maklumat nutrisi.'
+            ),
+          },
+          {
+            key: 'create-profile',
+            anchorRef: createProfileGuideRef,
+            icon: 'person-add-outline',
+            placement: 'top',
+            title: getText('Create a child profile when you are ready', '准备好后创建儿童档案', 'Cipta profil anak apabila anda bersedia'),
+            description: getText(
+              'Profiles unlock personalized nutrition targets, AI meal plans and health suggestions for each child.',
+              '儿童档案会开启个性化营养目标、AI 膳食计划和健康建议。',
+              'Profil membuka sasaran nutrisi peribadi, pelan makanan AI dan cadangan kesihatan untuk setiap anak.'
+            ),
+          },
+        ]}
+      />
+
+      <FeatureGuideCoachmark
+        guideKey="home_profile_core"
+        enabled={!!activeChild && !showLanguage && !showAddChild && !showTopicModal}
+        steps={[
+          {
+            key: 'ai-meal-plan',
+            anchorRef: aiMealGuideRef,
+            icon: 'sparkles-outline',
+            placement: 'bottom',
+            title: getText('Generate a plan for this child', '为当前小孩生成膳食计划', 'Jana pelan untuk anak ini'),
+            description: getText(
+              'This uses the selected child profile and nutrition needs to create a daily meal plan. It is the fastest path from needs to meals.',
+              '这里会结合当前儿童档案和营养需求生成每日膳食计划，是从“需求”到“餐食”的最快入口。',
+              'Fungsi ini menggunakan profil anak dan keperluan nutrisi untuk menjana pelan makanan harian.'
+            ),
+          },
+          {
+            key: 'health-check',
+            anchorRef: healthCheckGuideRef,
+            icon: 'pulse-outline',
+            placement: 'bottom',
+            title: getText('Check growth and health context', '补充成长与健康信息', 'Semak konteks tumbesaran dan kesihatan'),
+            description: getText(
+              'Use Health Check to record growth details. The home page can then show more meaningful status and recommendations.',
+              '使用健康检查记录成长信息，首页就能展示更有参考价值的状态和建议。',
+              'Gunakan Health Check untuk merekod maklumat tumbesaran supaya cadangan menjadi lebih bermakna.'
+            ),
+          },
+          {
+            key: 'hydration',
+            anchorRef: hydrationGuideRef,
+            icon: 'water-outline',
+            placement: 'top',
+            title: getText('Track daily hydration in context', '结合日常场景记录饮水', 'Jejak hidrasi harian mengikut situasi'),
+            description: getText(
+              'Tap this card when the child drinks water or beverages. It helps the dashboard reflect today’s real routine.',
+              '当小孩喝水或饮品时点这里记录，让首页真正反映今天的生活情况。',
+              'Ketik kad ini apabila anak minum air atau minuman supaya papan pemuka mencerminkan rutin sebenar hari ini.'
+            ),
+          },
+          {
+            key: 'physical-activity',
+            anchorRef: activityGuideRef,
+            icon: 'walk-outline',
+            placement: 'top',
+            title: getText('Record daily movement next', '接着记录每天的运动', 'Rekod pergerakan harian seterusnya'),
+            description: getText(
+              'Use this card to log activity minutes. It helps you connect nutrition planning with the child’s daily energy use.',
+              '通过这里记录运动时长，把营养安排和小孩当天的活动量联系起来。',
+              'Gunakan kad ini untuk merekod minit aktiviti supaya perancangan nutrisi berkait dengan penggunaan tenaga harian anak.'
+            ),
+          },
+          {
+            key: 'growth-overview',
+            anchorRef: growthGuideRef,
+            icon: 'trending-up-outline',
+            placement: 'top',
+            title: getText('Review growth trends over time', '查看一段时间内的成长趋势', 'Semak trend tumbesaran dari semasa ke semasa'),
+            description: getText(
+              'Growth Overview brings recent measurements together so you can open the detailed chart when you want more context.',
+              'Growth Overview 会汇总近期记录，需要更详细背景时可以从这里进入图表页。',
+              'Growth Overview menghimpunkan rekod terkini supaya anda boleh membuka carta terperinci apabila perlukan konteks tambahan.'
+            ),
+          },
+          {
+            key: 'health-insights',
+            anchorRef: insightsGuideRef,
+            icon: 'bulb-outline',
+            placement: 'top',
+            title: getText('Use health insights for practical follow-up', '用健康建议完成下一步行动', 'Gunakan health insights untuk tindakan susulan'),
+            description: getText(
+              'These cards explain useful topics in context, such as habits, diet and reports, so the dashboard leads to action instead of just numbers.',
+              '这里会结合当前场景展示习惯、饮食和报告等健康内容，让首页不只是数字，而是能继续行动。',
+              'Kad ini menerangkan topik seperti tabiat, diet dan laporan mengikut konteks supaya papan pemuka membawa kepada tindakan, bukan sekadar angka.'
+            ),
+          },
+        ]}
       />
 
 </>

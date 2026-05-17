@@ -29,6 +29,7 @@ import {
   Screen,
   SectionTitle,
 } from '../components/Common';
+import FeatureGuideCoachmark from '../components/FeatureGuideCoachmark';
 
 const SHOPPING_LIST_STORAGE_KEY = 'JOMHEALTHY_SHOPPING_LIST_BY_OWNER_V1';
 const ALL_OWNER_KEY = 'all';
@@ -724,6 +725,10 @@ export default function ShoppingScreen() {
   const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   const navigation = useNavigation<any>();
   const { language } = useLanguage();
+  const ownerSelectorGuideRef = useRef<View>(null);
+  const supermarketGuideRef = useRef<View>(null);
+  const emptyMealGuideRef = useRef<View>(null);
+  const shoppingProgressGuideRef = useRef<View>(null);
   const childProfile = useChildProfile() as any;
   const {
     activeChild,
@@ -1260,20 +1265,22 @@ export default function ShoppingScreen() {
           }
           icon="cart"
           right={
-            <Pressable
-              style={[styles.headerOwnerButton, theme.key !== 'classic' && styles.headerOwnerButtonEditorial]}
-              onPress={() => setShowOwnerDropdown(true)}
-            >
-              <Ionicons
-                name={isAllSelected ? 'people' : 'person'}
-                size={16}
-                color={theme.key !== 'classic' ? theme.colors.primaryDark : '#FFFFFF'}
-              />
-              <Text style={[styles.headerOwnerText, theme.key !== 'classic' && styles.headerOwnerTextEditorial]} numberOfLines={1}>
-                {selectedOwnerLabel}
-              </Text>
-              <Ionicons name="chevron-down" size={14} color={theme.key !== 'classic' ? theme.colors.primaryDark : '#FFFFFF'} />
-            </Pressable>
+            <View ref={ownerSelectorGuideRef} collapsable={false}>
+              <Pressable
+                style={[styles.headerOwnerButton, theme.key !== 'classic' && styles.headerOwnerButtonEditorial]}
+                onPress={() => setShowOwnerDropdown(true)}
+              >
+                <Ionicons
+                  name={isAllSelected ? 'people' : 'person'}
+                  size={16}
+                  color={theme.key !== 'classic' ? theme.colors.primaryDark : '#FFFFFF'}
+                />
+                <Text style={[styles.headerOwnerText, theme.key !== 'classic' && styles.headerOwnerTextEditorial]} numberOfLines={1}>
+                  {selectedOwnerLabel}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={theme.key !== 'classic' ? theme.colors.primaryDark : '#FFFFFF'} />
+              </Pressable>
+            </View>
           }
         />
 
@@ -1281,8 +1288,9 @@ export default function ShoppingScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.body}
         >
-          <Card>
-            <View style={styles.supermarketHeader}>
+          <View ref={supermarketGuideRef} collapsable={false}>
+            <Card>
+              <View style={styles.supermarketHeader}>
               <View style={styles.supermarketIconBox}>
                 <Ionicons
                   name="storefront"
@@ -1313,7 +1321,8 @@ export default function ShoppingScreen() {
                 <Text style={styles.grabButtonText}>{getText('Open GrabMart', '打开 GrabMart', 'Buka GrabMart')}</Text>
               </Pressable>
             </View>
-          </Card>
+            </Card>
+          </View>
 
           {totalCount === 0 ? (
             <EmptyState
@@ -1325,17 +1334,20 @@ export default function ShoppingScreen() {
               }
               subtitle={getText('Add recipes to your Meal Plan first. Ingredients will automatically appear here.', '先把食谱加入膳食计划，食材会自动出现在这里。', 'Tambah resipi ke Pelan Makanan dahulu. Bahan akan muncul secara automatik di sini.')}
               action={
-                <PrimaryButton
-                  title={getText('Go to Meal Plan', '前往膳食计划', 'Pergi ke Pelan Makanan')}
-                  icon="restaurant"
-                  onPress={() => navigation.navigate('Meal')}
-                />
+                <View ref={emptyMealGuideRef} collapsable={false}>
+                  <PrimaryButton
+                    title={getText('Go to Meal Plan', '前往膳食计划', 'Pergi ke Pelan Makanan')}
+                    icon="restaurant"
+                    onPress={() => navigation.navigate('Meal')}
+                  />
+                </View>
               }
             />
           ) : (
             <>
-              <Card>
-                <View style={styles.progressHeader}>
+              <View ref={shoppingProgressGuideRef} collapsable={false}>
+                <Card>
+                  <View style={styles.progressHeader}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cardTitle}>{getText('Shopping List', '购物清单', 'Senarai Beli-belah')}</Text>
                     <Text style={styles.cardSub}>
@@ -1384,7 +1396,8 @@ export default function ShoppingScreen() {
                     <Text style={styles.dangerButtonText}>{getText('Clear Checked', '清除已勾选', 'Kosongkan Yang Ditanda')}</Text>
                   </Pressable> */}
                 </View>
-              </Card>
+                </Card>
+              </View>
 
               {categoryOrder
                 .filter((category) => grouped[category]?.length)
@@ -1471,6 +1484,62 @@ export default function ShoppingScreen() {
           )}
         </ScrollView>
       </Screen>
+
+      <FeatureGuideCoachmark
+        guideKey="shopping_core"
+        enabled={!showOwnerDropdown && !showSupermarkets}
+        steps={[
+          {
+            key: 'owner-selector',
+            anchorRef: ownerSelectorGuideRef,
+            icon: 'people-outline',
+            placement: 'bottom',
+            title: getText('Switch shopping lists by child', '按小孩切换购物清单', 'Tukar senarai beli-belah mengikut anak'),
+            description: getText(
+              'Meal plans are stored per child. Use this selector when you want to see one child’s ingredients or the combined family list.',
+              '膳食计划会按小孩保存。用这里查看某一个小孩的食材，或合并后的家庭购物清单。',
+              'Pelan makanan disimpan mengikut anak. Gunakan pilihan ini untuk melihat bahan seorang anak atau senarai keluarga gabungan.'
+            ),
+          },
+          totalCount === 0
+            ? {
+                key: 'meal-plan-first',
+                anchorRef: emptyMealGuideRef,
+                icon: 'restaurant-outline',
+                placement: 'top',
+                title: getText('Shopping starts from the meal plan', '购物清单从膳食计划开始', 'Senarai beli-belah bermula daripada pelan makanan'),
+                description: getText(
+                  'There are no ingredients yet because no meal plan has been added. Go to Meal first, then items will appear here automatically.',
+                  '现在还没有食材，是因为还没有加入膳食计划。先去 Meal 页面安排餐食，食材会自动汇总到这里。',
+                  'Belum ada bahan kerana tiada pelan makanan ditambah. Pergi ke Meal dahulu dan item akan muncul secara automatik di sini.'
+                ),
+              }
+            : {
+                key: 'progress-card',
+                anchorRef: shoppingProgressGuideRef,
+                icon: 'checkbox-outline',
+                placement: 'bottom',
+                title: getText('Check items while you shop', '购物时逐项勾选', 'Tanda item semasa membeli-belah'),
+                description: getText(
+                  'This progress card helps you track what has been collected. Tap ingredients below to mark them done.',
+                  '这张进度卡会统计你已经准备了多少食材。下方食材点一下即可标记完成。',
+                  'Kad kemajuan ini menunjukkan item yang sudah dikumpulkan. Ketik bahan di bawah untuk menandakannya selesai.'
+                ),
+              },
+          {
+            key: 'nearby-supermarket',
+            anchorRef: supermarketGuideRef,
+            icon: 'storefront-outline',
+            placement: 'top',
+            title: getText('Move from list to real purchasing', '从清单直接进入真实采购', 'Bergerak daripada senarai ke pembelian sebenar'),
+            description: getText(
+              'Use nearby supermarkets or GrabMart when you are ready to buy ingredients for the plan.',
+              '准备采购时，可以在这里找附近超市，或直接打开 GrabMart。',
+              'Gunakan pasar raya berdekatan atau GrabMart apabila anda bersedia membeli bahan.'
+            ),
+          },
+        ]}
+      />
 
       <Modal
         visible={showOwnerDropdown}

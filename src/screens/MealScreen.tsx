@@ -25,6 +25,7 @@ import { useChildProfile } from '../context/ChildProfileContext';
 import { useAiMealPlanGeneration } from '../context/AiMealPlanGenerationContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import FeatureGuideCoachmark from '../components/FeatureGuideCoachmark';
 
 type Ingredient = {
   ingredientId?: number;
@@ -1046,6 +1047,10 @@ export default function MealScreen() {
   const { language } = useLanguage();
   const { themeName, theme } = useTheme();
   const { styles } = useMealStyles();
+  const recipeSearchGuideRef = useRef<View>(null);
+  const dateGuideRef = useRef<View>(null);
+  const generatePlanGuideRef = useRef<View>(null);
+  const savedRecipeGuideRef = useRef<View>(null);
   const { openAiMealPlanModal, isGeneratingMealPlan, lastGeneratedAt } = useAiMealPlanGeneration();
   const { activeChild, getOwnerKey, nutritionNeeds, savedRecipes = [] } = useChildProfile();
   const ownerKey = getOwnerKey();
@@ -1118,6 +1123,7 @@ export default function MealScreen() {
   }, [calendarDays]);
 
   const totals = useMemo(() => getMealPlanTotals(selectedDayPlan), [selectedDayPlan]);
+  const hasMealsForSelectedDay = SLOT_ORDER.some((slot) => (selectedDayPlan[slot]?.length || 0) > 0);
 
   const setDateCardRef = useCallback((dateKey: string, node: any) => {
     if (node) {
@@ -1715,8 +1721,9 @@ export default function MealScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
       >
-        <View style={styles.searchOuterCard}>
-          <View style={styles.searchInnerCard}>
+        <View ref={recipeSearchGuideRef} collapsable={false}>
+          <View style={styles.searchOuterCard}>
+            <View style={styles.searchInnerCard}>
             <Ionicons name="search" size={20} color="#63B987" />
             <TextInput
               value={keyword}
@@ -1752,9 +1759,11 @@ export default function MealScreen() {
               )}
             </View>
           )}
+          </View>
         </View>
 
-        <View style={styles.dateContainer}>
+        <View ref={dateGuideRef} collapsable={false}>
+          <View style={styles.dateContainer}>
           <View style={styles.dateTopRow}>
             <View>
               <Text style={styles.dateTitle}>{selectedDate.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
@@ -1843,6 +1852,7 @@ export default function MealScreen() {
               </Pressable>
             </View>
           )}
+          </View>
         </View>
 
         <View style={styles.nutritionCard}>
@@ -1865,10 +1875,12 @@ export default function MealScreen() {
             <Text style={styles.planTitle}>{getText('Meal Plan', '膳食计划', 'Pelan Makanan')}</Text>
 
             <View style={styles.planHeaderActions}>
-              <Pressable style={styles.savedRecipeButton} onPress={() => setShowSavedRecipePicker(true)}>
-                <Ionicons name="bookmark-outline" size={15} color={theme.colors.primaryDark} />
-                <Text style={styles.savedRecipeButtonText}>{getText('Saved Recipes', '收藏食谱', 'Resipi Tersimpan')}</Text>
-              </Pressable>
+              <View ref={savedRecipeGuideRef} collapsable={false}>
+                <Pressable style={styles.savedRecipeButton} onPress={() => setShowSavedRecipePicker(true)}>
+                  <Ionicons name="bookmark-outline" size={15} color={theme.colors.primaryDark} />
+                  <Text style={styles.savedRecipeButtonText}>{getText('Saved Recipes', '收藏食谱', 'Resipi Tersimpan')}</Text>
+                </Pressable>
+              </View>
 
               <Pressable style={styles.clearPlanButton} onPress={clearSelectedDayPlan}>
                 <Ionicons name="trash-outline" size={15} color="#EF4444" />
@@ -1886,7 +1898,7 @@ export default function MealScreen() {
               <Text style={styles.generatingTitle}>{getText('Generating your meal plan...', '正在生成你的膳食计划...', 'Sedang menjana pelan makanan anda...')}</Text>
               <Text style={styles.generatingText}>{getText('AI is choosing suitable recipes based on the child profile, nutrition targets and your food preference.', 'AI 正在根据儿童档案、营养目标和食物偏好选择合适的食谱。', 'AI sedang memilih resipi yang sesuai berdasarkan profil kanak-kanak, sasaran nutrisi dan pilihan makanan anda.')}</Text>
             </View>
-          ) : SLOT_ORDER.some((slot) => (selectedDayPlan[slot]?.length || 0) > 0) ? (
+          ) : hasMealsForSelectedDay ? (
             SLOT_ORDER
               .filter((slot) => (selectedDayPlan[slot]?.length || 0) > 0)
               .map((slot) => renderMealSlotSection(slot, selectedDayPlan[slot] as MealRecipe[]))
@@ -1895,14 +1907,84 @@ export default function MealScreen() {
               <Text style={styles.emptyMealPlanEmoji}>🍽️</Text>
               <Text style={styles.emptyMealPlanTitle}>{getText('No meals added yet', '还没有添加餐食', 'Belum ada hidangan')}</Text>
               <Text style={styles.emptyMealPlanText}>{getText('Tap the button below to generate an AI meal plan, or search recipes above.', '点击下面按钮生成 AI 膳食计划，或在上方搜索食谱。', 'Ketik butang di bawah untuk menjana pelan makanan AI, atau cari resipi di atas.')}</Text>
-              <Pressable style={styles.generatePlanButton} onPress={() => openAiMealPlanModal({ startDate: selectedDate })}>
-                <Ionicons name="sparkles" size={17} color="#FFFFFF" />
-                <Text style={styles.generatePlanButtonText}>{getText('Generate Meal Plan', '生成膳食计划', 'Jana Pelan Makanan')}</Text>
-              </Pressable>
+              <View ref={generatePlanGuideRef} collapsable={false}>
+                <Pressable style={styles.generatePlanButton} onPress={() => openAiMealPlanModal({ startDate: selectedDate })}>
+                  <Ionicons name="sparkles" size={17} color="#FFFFFF" />
+                  <Text style={styles.generatePlanButtonText}>{getText('Generate Meal Plan', '生成膳食计划', 'Jana Pelan Makanan')}</Text>
+                </Pressable>
+              </View>
             </View>
           )}
         </View>
       </ScrollView>
+
+      <FeatureGuideCoachmark
+        guideKey="meal_plan_core"
+        enabled={!showCalendar && !showMealSlotPicker && !showSavedRecipePicker}
+        steps={[
+          {
+            key: 'recipe-search',
+            anchorRef: recipeSearchGuideRef,
+            icon: 'search-outline',
+            placement: 'bottom',
+            title: getText('Search recipes when you need a specific dish', '需要具体菜品时先搜索食谱', 'Cari resipi apabila anda perlukan hidangan tertentu'),
+            description: getText(
+              'Use this search when you already have an idea in mind. You can view the recipe, watch a tutorial or add it to a meal slot.',
+              '当你已经有想吃的菜时，从这里搜索。搜索结果可查看详情、观看教学，或直接加入餐次。',
+              'Gunakan carian ini apabila anda sudah ada idea hidangan. Anda boleh lihat resipi, tonton tutorial atau tambah ke slot makanan.'
+            ),
+          },
+          {
+            key: 'date-strip',
+            anchorRef: dateGuideRef,
+            icon: 'calendar-outline',
+            placement: 'bottom',
+            title: getText('Meal plans are organized by date', '膳食计划按日期管理', 'Pelan makanan disusun mengikut tarikh'),
+            description: getText(
+              'Swipe across days, open the calendar and manage the plan for the date that matters right now.',
+              '左右滑动日期，或打开日历，专门管理你当前要安排的那一天。',
+              'Leret antara hari atau buka kalendar untuk mengurus pelan pada tarikh yang anda perlukan.'
+            ),
+          },
+          hasMealsForSelectedDay
+            ? {
+                key: 'saved-recipes',
+                anchorRef: savedRecipeGuideRef,
+                icon: 'bookmark-outline',
+                placement: 'top',
+                title: getText('Reuse recipes you have already saved', '复用你已经收藏的食谱', 'Guna semula resipi yang telah disimpan'),
+                description: getText(
+                  'When you find a reliable recipe, save it once and add it back into future meal plans from here.',
+                  '遇到合适食谱时可以先收藏，以后在这里快速重新加入新的膳食计划。',
+                  'Apabila anda jumpa resipi yang sesuai, simpan dahulu dan tambah semula ke pelan akan datang dari sini.'
+                ),
+              }
+            : {
+                key: 'generate-plan',
+                anchorRef: generatePlanGuideRef,
+                icon: 'sparkles-outline',
+                placement: 'top',
+                title: getText('No plan yet? Generate one from the current date', '还没有计划？从当前日期直接生成', 'Belum ada pelan? Jana terus daripada tarikh semasa'),
+                description: getText(
+                  'This button creates an AI meal plan for the selected day or date range. It is useful when starting from a blank page.',
+                  '这个按钮会从当前日期生成 AI 膳食计划，适合你还没有安排任何餐食的时候。',
+                  'Butang ini menjana pelan makanan AI untuk tarikh atau julat yang dipilih apabila anda bermula dari kosong.'
+                ),
+              },
+          {
+            key: 'copy-meal-plan',
+            anchorRef: dateGuideRef,
+            icon: 'copy-outline',
+            placement: 'bottom',
+            title: getText('Long-press a date to copy a meal plan', '长按日期即可复制膳食计划', 'Tekan lama tarikh untuk menyalin pelan makanan'),
+            description: getText(
+              'After one day is planned, long-press that date in the date strip or calendar, then choose one or more target dates to reuse it.',
+              '当某一天已经安排好餐食后，长按日期条或日历里的日期，再选择一个或多个目标日期，就能快速复用这份计划。',
+              'Selepas satu hari dirancang, tekan lama tarikh pada jalur tarikh atau kalendar, kemudian pilih satu atau lebih tarikh sasaran untuk menggunakannya semula.'
+            ),
+          },
+        ]}
+      />
 
       <Modal visible={showSavedRecipePicker} transparent animationType="fade" onRequestClose={closeSavedRecipePicker}>
         <Pressable style={styles.savedRecipeBackdrop} onPress={closeSavedRecipePicker}>
