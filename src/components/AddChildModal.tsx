@@ -22,6 +22,9 @@ import { Card, Chip, IconButton, PrimaryButton } from './Common';
 import ChildAvatar, { CHILD_AVATAR_OPTIONS } from './ChildAvatar';
 import TagInput from './TagInput';
 
+// 💡 引入记录存储函数
+import { saveHealthRecord } from '../utils/storage';
+
 type Child = {
   id: number;
   avatar: string;
@@ -255,40 +258,70 @@ export default function AddChildModal({
     return Math.max(0, age || 7);
   };
 
-  const save = () => {
+  // 💡 修复：修改后的保存函数，同步生成初始的健康测量记录
+  const save = async () => {
     if (!valid) return;
 
     const parsedBirthday = birthdayDate;
-
     if (!parsedBirthday) return;
 
     const h = Number(height) / 100;
     const w = Number(weight);
     const bmiValue = w / (h * h);
+    const finalBmi = Number(bmiValue.toFixed(1));
+    const statusResult = bmiValue < 14 ? 'Underweight' : bmiValue < 18 ? 'Normal' : 'Overweight';
+
+    const childAge = calculateAge(parsedBirthday);
 
     const child = {
       id: childToEdit?.id || Date.now(),
       nickname: nickname.trim(),
       avatar: selectedAvatar,
       avatarImageUri: avatarImageUri || undefined,
-      age: calculateAge(parsedBirthday),
+      age: childAge,
       height: Number(height),
       weight: Number(weight),
       gender,
-      bmi: Number(bmiValue.toFixed(1)),
-      status:
-        bmiValue < 14
-          ? 'Underweight'
-          : bmiValue < 18
-            ? 'Normal'
-            : 'Overweight',
+      bmi: finalBmi,
+      status: statusResult,
       birthday: formatBirthday(parsedBirthday),
       preferences: [],
       allergies,
       restrictions,
     };
 
+    // 1. 保存档案信息到 Context
     childToEdit ? updateChild(child as any) : addChild(child as any);
+
+    // 2. 💡核心改动：如果是“新增档案（而非修改）”，且有效，则自动将身高体重写入历史记录
+    if (!childToEdit) {
+      // 计算月龄用于图表
+      const today = new Date();
+      const mDiff = today.getMonth() - parsedBirthday.getMonth();
+      const yDiff = today.getFullYear() - parsedBirthday.getFullYear();
+      const ageInMonths = yDiff * 12 + mDiff;
+
+      const initialRecord = {
+        id: Date.now().toString() + "_init",
+        date: new Date().toISOString(),
+        nickname: nickname.trim(),
+        ageText: `${childAge} ${getText('Years', '岁', 'Tahun')}`,
+        ageInMonths: ageInMonths,
+        height: Number(height),
+        weight: Number(weight),
+        gender: gender === 'boy' ? 1 : 2,
+        bmiValue: finalBmi,
+        status: statusResult,
+        adviceText: getText(
+          "Initial baseline measurement based on the created profile.",
+          "这是根据您刚才创建档案时填写的身高体重，自动生成的初始健康基线数据。",
+          "Ukuran asas awal berdasarkan profil yang baru dicipta."
+        )
+      };
+
+      // 写入本地存储
+      await saveHealthRecord(initialRecord).catch(e => console.error("初始化历史记录失败:", e));
+    }
 
     onSuccess?.();
     onClose();
