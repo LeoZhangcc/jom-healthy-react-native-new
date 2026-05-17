@@ -14,6 +14,7 @@ import {
   Linking,
   TouchableOpacity, 
   FlatList,
+  LayoutChangeEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -43,7 +44,7 @@ import { FileText, X, ExternalLink } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FloatingAIChat from "../components/FloatingAIChat";
 import { useActivity } from '../context/PhysicalActivityContext';
-import FeatureGuideCoachmark from '../components/FeatureGuideCoachmark';
+import FeatureGuideCoachmark, { FeatureGuideStep } from '../components/FeatureGuideCoachmark';
 
 type FoodHistoryItem = {
   query: string;
@@ -388,6 +389,7 @@ export default function HomeScreen() {
   const { themeName, theme } = useTheme();
   const { styles } = useHomeStyles();
   
+  const homeScrollRef = useRef<ScrollView>(null);
   const searchGuideRef = useRef<View>(null);
   const createProfileGuideRef = useRef<View>(null);
   const aiMealGuideRef = useRef<View>(null);
@@ -396,6 +398,8 @@ export default function HomeScreen() {
   const activityGuideRef = useRef<View>(null);
   const growthGuideRef = useRef<View>(null);
   const insightsGuideRef = useRef<View>(null);
+  const homeBodyYRef = useRef(0);
+  const guideSectionYRef = useRef<Record<string, number>>({});
   
   const {
     activeChild,
@@ -490,6 +494,35 @@ export default function HomeScreen() {
 
     return localizedLabel || item.fallbackLabel || item.query || '';
   };
+
+  const setGuideSectionLayout = useCallback(
+    (key: string) => (event: LayoutChangeEvent) => {
+      guideSectionYRef.current[key] = event.nativeEvent.layout.y;
+    },
+    []
+  );
+
+  const handleHomeBodyLayout = useCallback((event: LayoutChangeEvent) => {
+    homeBodyYRef.current = event.nativeEvent.layout.y;
+  }, []);
+
+  const handleHomeGuideStepChange = useCallback((step: FeatureGuideStep) => {
+    if (step.key !== 'growth-overview' && step.key !== 'health-insights') {
+      return;
+    }
+
+    const sectionY = guideSectionYRef.current[step.key];
+    if (typeof sectionY !== 'number') {
+      return 120;
+    }
+
+    homeScrollRef.current?.scrollTo({
+      y: Math.max(homeBodyYRef.current + sectionY - 96, 0),
+      animated: true,
+    });
+
+    return 420;
+  }, []);
 
   const getFoodImageUrl = (item: any) => {
     const candidate =
@@ -799,7 +832,7 @@ export default function HomeScreen() {
 
   return (
     <>
-      <Screen padded={false}>
+      <Screen padded={false} scrollRef={homeScrollRef}>
         <AnimatedHomeHeader
           title={t('appName')}
           subtitle={t('tagline')}
@@ -813,7 +846,7 @@ export default function HomeScreen() {
           }
         />
 
-        <View style={styles.body}>
+        <View style={styles.body} onLayout={handleHomeBodyLayout}>
           {/* Search */}
           <View ref={searchGuideRef} collapsable={false}>
             <Card>
@@ -1156,7 +1189,11 @@ export default function HomeScreen() {
           </View>
           
           {/* 成长概览入口卡片及微型折线图 (Growth Overview) */}
-          <View ref={growthGuideRef} collapsable={false}>
+          <View
+            ref={growthGuideRef}
+            collapsable={false}
+            onLayout={setGuideSectionLayout('growth-overview')}
+          >
             <Pressable
               style={styles.growthOverviewCard}
               onPress={() => navigation.navigate('Growth')}
@@ -1232,7 +1269,11 @@ export default function HomeScreen() {
           </View>
 
           {/* 健康建议与洞察列表 (Health Insights) */} 
-          <View ref={insightsGuideRef} collapsable={false}>
+          <View
+            ref={insightsGuideRef}
+            collapsable={false}
+            onLayout={setGuideSectionLayout('health-insights')}
+          >
             <Text style={styles.localSectionTitle}>{t('healthInsights')}</Text>
 
             {topicsLoading ? (
@@ -1384,6 +1425,7 @@ export default function HomeScreen() {
       <FeatureGuideCoachmark
         guideKey="home_profile_core"
         enabled={!!activeChild && !showLanguage && !showAddChild && !showTopicModal}
+        onStepChange={handleHomeGuideStepChange}
         steps={[
           {
             key: 'ai-meal-plan',

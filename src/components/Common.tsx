@@ -21,10 +21,18 @@ function useCommonStyles() {
   return { styles, theme };
 }
 
-export function Screen({ children, padded = true }: PropsWithChildren<{ padded?: boolean }>) {
+export function Screen({
+  children,
+  padded = true,
+  scrollRef,
+}: PropsWithChildren<{ padded?: boolean; scrollRef?: React.RefObject<ScrollView | null> }>) {
   const { styles } = useCommonStyles();
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={[styles.content, padded && styles.padded]}>
+    <ScrollView
+      ref={scrollRef}
+      style={styles.screen}
+      contentContainerStyle={[styles.content, padded && styles.padded]}
+    >
       {children}
     </ScrollView>
   );

@@ -31,6 +31,7 @@ type FeatureGuideCoachmarkProps = {
   enabled?: boolean;
   steps: FeatureGuideStep[];
   startDelayMs?: number;
+  onStepChange?: (step: FeatureGuideStep, index: number) => number | void;
   onFinished?: () => void;
 };
 
@@ -64,6 +65,7 @@ export default function FeatureGuideCoachmark({
   enabled = true,
   steps,
   startDelayMs = 650,
+  onStepChange,
   onFinished,
 }: FeatureGuideCoachmarkProps) {
   const { theme } = useTheme();
@@ -218,18 +220,30 @@ export default function FeatureGuideCoachmark({
   useEffect(() => {
     if (!visible || !currentStep) return;
 
+    let cancelled = false;
     measureAttemptRef.current = 0;
     setTargetRect(null);
-    clearTimers();
-    measureTimerRef.current = setTimeout(measureCurrentTarget, 80);
+
+    if (measureTimerRef.current) {
+      clearTimeout(measureTimerRef.current);
+      measureTimerRef.current = null;
+    }
+
+    const requestedDelay = onStepChange?.(currentStep, activeIndex);
+    const delayMs = typeof requestedDelay === 'number' ? requestedDelay : 80;
+
+    measureTimerRef.current = setTimeout(() => {
+      if (!cancelled) measureCurrentTarget();
+    }, delayMs);
 
     return () => {
+      cancelled = true;
       if (measureTimerRef.current) {
         clearTimeout(measureTimerRef.current);
         measureTimerRef.current = null;
       }
     };
-  }, [activeIndex, clearTimers, currentStep, measureCurrentTarget, visible, viewportWidth, viewportHeight]);
+  }, [activeIndex, currentStep, measureCurrentTarget, onStepChange, visible, viewportWidth, viewportHeight]);
 
   const bubbleWidth = Math.min(Math.max(viewportWidth - SIDE_MARGIN * 2, 280), 380);
   const resolvedBubbleHeight = bubbleHeight || DEFAULT_BUBBLE_HEIGHT;

@@ -616,12 +616,15 @@ export default function ProfileScreen() {
 
             </View>
 
-            <View ref={childrenGuideRef} collapsable={false}>
+            <View
+              ref={childrenGuideRef}
+              collapsable={false}
+              style={styles.manageChildrenGuideTarget}
+            >
               <PrimaryButton
                 title={t('manageChildren')}
                 icon="settings"
                 onPress={() => setShowChildren(true)}
-                style={{ marginTop: 14 }}
               />
             </View>
           </Card>
@@ -1146,6 +1149,10 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   profileInfo: {
     flex: 1,
     minWidth: 0,
+  },
+
+  manageChildrenGuideTarget: {
+    marginTop: 14,
   },
 
   name: {
