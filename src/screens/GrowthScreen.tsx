@@ -10,7 +10,6 @@ import {
   TouchableOpacity, 
   View 
 } from 'react-native';
-// 💡 修复1：引入了 Polygon 用于 iOS 面积渲染
 import Svg, { Circle, Line, Polyline, Polygon, Text as SvgText } from 'react-native-svg';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { CheckSquare, Square, Trash2 } from 'lucide-react-native';
@@ -25,7 +24,9 @@ import { HealthRecord, deleteHealthRecords, loadHealthRecords } from '../utils/s
 const BASE_URL = "https://jom-healthy-java.onrender.com";
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// SVG 数据点类型定义
+// ===================================================================
+// SVG chart component: supports horizontal scrolling and fixed Y-axis
+// ===================================================================
 type Point = { 
   label: string; 
   value: number; 
@@ -34,14 +35,12 @@ type Point = {
   neg1?: number; 
 };
 
-// 提取统一样式
 function useGrowthStyles() {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
   return { styles, theme };
 }
 
-// 核心图表渲染组件
 function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: string, showWhoLines: boolean }) {
   const { t } = useLanguage();
   const { styles, theme } = useGrowthStyles();
@@ -58,53 +57,58 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
     );
   }
 
-  // 提取最大最小值用于刻度计算
+  // 1. Extract all visible values to calculate the Y-axis scale.
   const values = data.flatMap((d) => 
     showWhoLines && d.sd1 && d.neg1 ? [d.value, d.sd1, d.neg1] : [d.value]
   );
   const rawMin = Math.min(...values);
   const rawMax = Math.max(...values);
   
+  // Leave 10% vertical buffer space.
   const valuePadding = (rawMax - rawMin) * 0.1 || 1;
   const min = rawMin - valuePadding;
   const max = rawMax + valuePadding;
 
+  // 💡 判断是否为单点数据
   const isSingle = data.length === 1;
 
-  // X轴坐标计算与图表宽度延展
+  // 2. Dynamically calculate X-axis layout
   const chartViewportWidth = SCREEN_WIDTH - 40 - yAxisWidth - 20; 
   const maxVisiblePoints = 8;
   const pointSpacing = chartViewportWidth / (maxVisiblePoints - 1);
   
+  // 💡 修复：定义左右两端水平留白，加大到 30（原本是15），防止第一个日期文字被左侧截断
+  const horizontalPadding = 30; 
+
+  // 如果只有一个点，宽度就是屏幕可视宽度；否则根据点数动态延伸
   const dynamicWidth = isSingle 
     ? chartViewportWidth 
-    : Math.max(chartViewportWidth, (data.length - 1) * pointSpacing + 15 * 2);
+    : Math.max(chartViewportWidth, (data.length - 1) * pointSpacing + horizontalPadding * 2);
 
-  const xOffset = isSingle ? dynamicWidth / 2 : 15; 
+  // 如果只有一个点，让点居中；如果是多个点，靠左排列并加上留白
+  const xOffset = isSingle ? dynamicWidth / 2 : horizontalPadding; 
   const x = (i: number) => xOffset + i * pointSpacing;
   const y = (v: number) => containerHeight - bottomPadding - ((v - min) * (containerHeight - bottomPadding - topPadding)) / Math.max(1, max - min);
 
-  // 用户个人折线路径
   const points = data.map((d, i) => `${x(i)},${y(d.value)}`).join(' ');
 
   const hasSd0 = showWhoLines && data.some(d => d.sd0 !== undefined);
   const hasSd1 = showWhoLines && data.some(d => d.sd1 !== undefined);
   const hasNeg1 = showWhoLines && data.some(d => d.neg1 !== undefined);
 
-  // 单点延伸处理（铺满背景）
+  // 💡 视觉魔法：如果只有一个点，我们克隆这个点，并在 X 轴首尾相连，让背景铺满整个屏幕
   const whoRenderData = isSingle ? [data[0], data[0]] : data;
   const whoX = (i: number) => isSingle ? (i === 0 ? 0 : dynamicWidth) : x(i);
 
-  // 基线坐标生成
   const sd0Points = hasSd0 ? whoRenderData.map((d, i) => `${whoX(i)},${y(d.sd0 ?? d.value)}`).join(' ') : '';
   const sd1Points = hasSd1 ? whoRenderData.map((d, i) => `${whoX(i)},${y(d.sd1 ?? d.value)}`).join(' ') : '';
   const neg1Points = hasNeg1 ? whoRenderData.map((d, i) => `${whoX(i)},${y(d.neg1 ?? d.value)}`).join(' ') : '';
   
-  // 健康区上下边界拼接
+  // 3. 计算健康区域 (中间绿色)
   const healthyTop = hasSd1 ? whoRenderData.map((d, i) => `${whoX(i)},${y(d.sd1 ?? d.value)}`).join(' ') : '';
   const healthyBottom = hasNeg1 ? whoRenderData.map((d, i) => `${whoX(i)},${y(d.neg1 ?? d.value)}`).reverse().join(' ') : '';
 
-  // 风险区闭合路径生成
+  // 4. 计算风险区域的多边形阴影 (浅黄色背景) - 使用 whoX 替代原来的 x
   const riskTopArea = hasSd1 ? 
     whoRenderData.map((d, i) => `${whoX(i)},${y(d.sd1 ?? d.value)}`).join(' ') + ` ${dynamicWidth},${y(max)} 0,${y(max)}` : '';
   
@@ -115,7 +119,7 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
     <View style={styles.chartWrap}>
       <View style={{ flexDirection: 'row', height: containerHeight }}>
         
-        {/* 左侧固定 Y 轴 */}
+        {/* =================  Left side fixed Y-axis ================= */}
         <View style={styles.yAxisContainer}>
           <Text style={styles.yAxisUnit}>{unit}</Text>
           <Text style={[styles.yAxisLabel, { top: topPadding - 6 }]}>{max.toFixed(1)}</Text>
@@ -125,12 +129,11 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
           <View style={styles.yAxisTick} />
         </View>
 
-        {/* 右侧可滚动 SVG 图表 */}
+        {/* ================= Right side horizontal scrolling area ================= */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
           <Svg width={dynamicWidth} height={containerHeight}>
             <Line x1={0} y1={containerHeight - bottomPadding} x2={dynamicWidth} y2={containerHeight - bottomPadding} stroke="#E5E7EB" strokeWidth="1" />
 
-            {/* 💡 修复2：iOS 兼容性处理，使用 Polygon 替代 Polyline，使用 fillOpacity 替代 rgba */}
             {riskTopArea ? (
               <Polygon points={riskTopArea} fill="#F59E0B" fillOpacity="0.12" stroke="none" />
             ) : null}
@@ -147,11 +150,9 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
             {sd0Points ? <Polyline points={sd0Points} fill="none" stroke="#3B82F6" strokeWidth="2" strokeDasharray="4 4" /> : null}
             {neg1Points ? <Polyline points={neg1Points} fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeDasharray="4 4" /> : null}
 
-            {/* 用户折线与圆点 */}
             <Polyline points={points} fill="none" stroke={theme.colors.primaryDark} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
             {data.map((d, i) => <Circle key={`pt-${i}`} cx={x(i)} cy={y(d.value)} r="4.5" fill={theme.colors.primaryDark} stroke="#FFFFFF" strokeWidth="1.5" />)}
             
-            {/* 底部 X 轴标签 */}
             {data.map((d, i) => (
               <SvgText key={`lbl-${i}`} x={x(i)} y={containerHeight - 10} fontSize="10" textAnchor="middle" fill="#9CA3AF" fontWeight="600">
                 {d.label}
@@ -161,7 +162,7 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
         </ScrollView>
       </View>
       
-      {/* 底部系统图例 */}
+      {/* ================= Bottom legend ================= */}
       {showWhoLines && (
         <View style={styles.legendContainer}>
           <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} /><Text style={styles.legendText}>{t('optimal')}</Text></View>
@@ -173,6 +174,9 @@ function SimpleLineChart({ data, unit, showWhoLines }: { data: Point[]; unit: st
   );
 }
 
+// ==========================================
+// Main page logic: data fetching and record management
+// ==========================================
 type SegmentType = "HEIGHT" | "WEIGHT" | "BMI";
 
 export default function GrowthScreen() {
@@ -180,12 +184,10 @@ export default function GrowthScreen() {
   const { t, language } = useLanguage();
   const { styles, theme } = useGrowthStyles();
   
-  // 💡 修复3：解构引入 syncLatestHealthRecord 函数，用于删除后同步回滚个人档案
   const { activeChild, syncLatestHealthRecord } = useChildProfile();
   
   const getText = (en: string, zh: string, ms: string) => language === 'zh' ? zh : language === 'ms' ? ms : en;
 
-  // 💡 修复：新增列表状态三语翻译辅助函数
   const getStatusLabel = (status?: string | null) => {
     const value = String(status || 'Normal').toLowerCase();
     if (value.includes('under')) return getText('Underweight', '偏瘦', 'Kurang Berat');
@@ -241,7 +243,6 @@ export default function GrowthScreen() {
     }
   };
 
-  // 💡 修复4：删除后同步刷新全局儿童的最新身高体重 BMI 数据
   const handleSingleDelete = (id: string) => {
     Alert.alert(
       getText('Delete Record', '删除记录', 'Padam Rekod'), getText('Are you sure you want to delete this record?', '您确定要删除这条记录吗？', 'Adakah anda pasti mahu memadam rekod ini?'),
@@ -483,5 +484,4 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
 
   emptyState: { alignItems: 'center', padding: 32, backgroundColor: themeColors.card, borderRadius: 20, borderWidth: 1, borderColor: themeColors.border, borderStyle: 'dashed' },
   emptyStateText: { color: themeColors.muted, fontWeight: '600' },
-
 });
