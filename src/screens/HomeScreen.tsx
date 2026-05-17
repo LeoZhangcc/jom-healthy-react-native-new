@@ -1044,11 +1044,20 @@ export default function HomeScreen() {
               <View style={styles.profileActions}>
                 <View ref={aiMealGuideRef} collapsable={false} style={{ flex: 1 }}>
                   <Pressable
-                    style={styles.mealPlanButton}
+                    style={[
+                      styles.mealPlanButton,
+                      language === 'ms' && styles.profileActionButtonMalay,
+                    ]}
                     onPress={() => openAiMealPlanModal({ startDate: new Date() })}
                   >
                     <Ionicons name="sparkles" size={16} color="#FFFFFF" />
-                    <Text style={styles.mealPlanButtonText}>
+                    <Text
+                      style={[
+                        styles.mealPlanButtonText,
+                        language === 'ms' && styles.profileActionButtonTextMalay,
+                      ]}
+                      numberOfLines={language === 'ms' ? 2 : undefined}
+                    >
                       {getText('AI Meal Plan', 'AI 膳食计划', 'Pelan Makanan AI')}
                     </Text>
                   </Pressable>
@@ -1057,7 +1066,10 @@ export default function HomeScreen() {
                 {/* 进入健康检查 (BMI 测试) 页面按钮 */}
                 <View ref={healthCheckGuideRef} collapsable={false} style={{ flex: 1 }}>
                   <Pressable
-                    style={styles.checkHealthButton}
+                    style={[
+                      styles.checkHealthButton,
+                      language === 'ms' && styles.profileActionButtonMalay,
+                    ]}
                     onPress={() => navigation.navigate('HealthCheck')}
                   >
                     <Ionicons
@@ -1065,7 +1077,13 @@ export default function HomeScreen() {
                       size={17}
                       color={theme.colors.primaryDark}
                     />
-                    <Text style={styles.checkHealthButtonText}>
+                    <Text
+                      style={[
+                        styles.checkHealthButtonText,
+                        language === 'ms' && styles.profileActionButtonTextMalay,
+                      ]}
+                      numberOfLines={language === 'ms' ? 2 : undefined}
+                    >
                       {t('checkHealth')}
                     </Text>
                   </Pressable>
@@ -1939,6 +1957,20 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   },
 
   // 运动记录卡片 (Physical Activity) 相关样式
+  profileActionButtonMalay: {
+    height: 'auto',
+    minHeight: 52,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+
+  profileActionButtonTextMalay: {
+    flexShrink: 1,
+    fontSize: 13,
+    lineHeight: 17,
+    textAlign: 'center',
+  },
+
   newActivityCard: {
     backgroundColor: themeColors.card,
     borderRadius: 24,

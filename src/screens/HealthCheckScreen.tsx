@@ -63,7 +63,7 @@ export default function HealthCheckScreen() {
       setBirthday("");
     } else {
       setSelectedChildId(child.id);
-      setGender(child.gender === 'boy' ? 1 : 0);
+      setGender(child.gender === 'boy' ? 1 : 2);
       setBirthday(child.birthday || "");
     }
     setBmi(null); 
@@ -319,10 +319,10 @@ export default function HealthCheckScreen() {
                   <Text style={[styles.genderBtnText, gender === 1 ? styles.textBoyActive : styles.textInactive]}>{getText('👦 Boy', '👦 男孩', '👦 Lelaki')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  onPress={() => { setGender(0); setBmi(null); setAdviceText(""); }} 
-                  style={[styles.genderBtn, gender === 0 ? styles.genderGirlActive : styles.genderInactive]}
+                  onPress={() => { setGender(2); setBmi(null); setAdviceText(""); }} 
+                  style={[styles.genderBtn, gender === 2 ? styles.genderGirlActive : styles.genderInactive]}
                 >
-                  <Text style={[styles.genderBtnText, gender === 0 ? styles.textGirlActive : styles.textInactive]}>{getText('👧 Girl', '👧 女孩', '👧 Perempuan')}</Text>
+                  <Text style={[styles.genderBtnText, gender === 2 ? styles.textGirlActive : styles.textInactive]}>{getText('👧 Girl', '👧 女孩', '👧 Perempuan')}</Text>
                 </TouchableOpacity>
               </View>
             )}

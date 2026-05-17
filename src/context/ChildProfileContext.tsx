@@ -368,7 +368,7 @@ export function ChildProfileProvider({ children: childrenProp }: { children: Rea
     const heightCm = Number(childToRefresh.height);
     const weightKg = Number(childToRefresh.weight);
     const ageMonths = calculateChildAgeMonths(childToRefresh);
-    const gender = childToRefresh.gender === 'boy' ? 1 : 0;
+    const gender = childToRefresh.gender === 'boy' ? 1 : 2;
 
     if (
       !Number.isFinite(heightCm) ||
