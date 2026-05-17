@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -44,6 +45,7 @@ type TargetRect = {
 };
 
 const STORAGE_PREFIX = 'JOMHEALTHY_FEATURE_GUIDE_DONE_V1:';
+const RESTART_SIGNAL_KEY = 'JOMHEALTHY_FEATURE_GUIDE_RESTART_SIGNAL_V1';
 const DEFAULT_BUBBLE_HEIGHT = 236;
 const SIDE_MARGIN = 14;
 
@@ -79,6 +81,7 @@ export default function FeatureGuideCoachmark({
   const [activeIndex, setActiveIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
   const [bubbleHeight, setBubbleHeight] = useState(0);
+  const [globalRestartKey, setGlobalRestartKey] = useState<string | null>(null);
   const startTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const measureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const measureAttemptRef = useRef(0);
@@ -99,6 +102,26 @@ export default function FeatureGuideCoachmark({
 
   const currentStep = cleanSteps[activeIndex];
   const storageKey = `${STORAGE_PREFIX}${guideKey}`;
+
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+
+      AsyncStorage.getItem(RESTART_SIGNAL_KEY)
+        .then((signal) => {
+          if (mounted && signal) {
+            setGlobalRestartKey(signal);
+          }
+        })
+        .catch((error) => {
+          console.log('Load feature guide restart signal failed:', error);
+        });
+
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
 
   const clearTimers = useCallback(() => {
     if (startTimerRef.current) {
@@ -173,7 +196,7 @@ export default function FeatureGuideCoachmark({
       mounted = false;
       clearTimers();
     };
-  }, [cleanSteps.length, clearTimers, enabled, hideGuide, restartKey, startDelayMs, storageKey]);
+  }, [cleanSteps.length, clearTimers, enabled, globalRestartKey, hideGuide, restartKey, startDelayMs, storageKey]);
 
   const jumpToNextMeasurableStep = useCallback(() => {
     if (activeIndex < cleanSteps.length - 1) {

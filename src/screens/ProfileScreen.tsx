@@ -42,6 +42,7 @@ type BackupPayload = {
 const BACKUP_TYPE = 'JOMHEALTHY_BACKUP';
 const BACKUP_VERSION = 1;
 const FEATURE_GUIDE_STORAGE_PREFIX = 'JOMHEALTHY_FEATURE_GUIDE_DONE_V1:';
+const FEATURE_GUIDE_RESTART_SIGNAL_KEY = 'JOMHEALTHY_FEATURE_GUIDE_RESTART_SIGNAL_V1';
 
 function createBackupFileName() {
   const now = new Date();
@@ -562,6 +563,8 @@ export default function ProfileScreen() {
   };
 
   const replayHomeGuide = async () => {
+    const replayGuideToken = String(Date.now());
+
     try {
       const keys = await AsyncStorage.getAllKeys();
       const guideKeys = keys.filter((key) =>
@@ -571,12 +574,13 @@ export default function ProfileScreen() {
       if (guideKeys.length > 0) {
         await AsyncStorage.multiRemove(guideKeys);
       }
+
+      await AsyncStorage.setItem(FEATURE_GUIDE_RESTART_SIGNAL_KEY, replayGuideToken);
     } catch (error) {
       console.log('Reset feature guide state failed:', error);
     } finally {
       navigation.navigate('MainTabs', {
         screen: 'Home',
-        params: { replayGuideToken: Date.now() },
       });
     }
   };
