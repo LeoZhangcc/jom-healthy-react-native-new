@@ -356,7 +356,7 @@ export default function HydrationScreen({ navigation }: any) {
                   onPress={handleDecrement} 
                   style={({pressed}) => [styles.stepperBtn, pressed && styles.stepperBtnPressed]}
                 >
-                  <Ionicons name="remove" size={28} color="#6B7280" />
+                  <Ionicons name="remove" size={28} color="#3B82F6" />
                 </Pressable>
 
                 <View style={styles.amountInputWrap}>
