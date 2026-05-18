@@ -357,7 +357,7 @@ export default function ProfileScreen() {
       key: 'classic' as const,
       icon: 'leaf-outline' as const,
       title: getText('Classic Green', '经典绿色', 'Hijau Klasik'),
-      subtitle: getText('Keep the original JomHealthy look.', '保留现在的 JomHealthy 主题。', 'Kekalkan gaya asal JomHealthy.'),
+      subtitle: getText('JomHealthy original theme.', 'JomHealthy原始主题', 'Tema asal JomHealthy.'),
     },
     {
       key: 'light' as const,

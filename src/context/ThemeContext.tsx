@@ -136,11 +136,11 @@ function normalizeThemeName(value?: string | null): ThemeName {
   if (value === 'classic' || value === 'light' || value === 'green') {
     return value;
   }
-  return 'classic';
+  return 'light';
 }
 
 export function ThemeProvider({ children }: PropsWithChildren) {
-  const [themeName, setThemeNameState] = useState<ThemeName>('classic');
+  const [themeName, setThemeNameState] = useState<ThemeName>('light');
   const [isThemeLoaded, setIsThemeLoaded] = useState(false);
 
   useEffect(() => {
