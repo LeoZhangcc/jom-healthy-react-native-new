@@ -1995,16 +1995,37 @@ export default function MealScreen() {
               <View
                 ref={savedRecipeGuideRef}
                 collapsable={false}
+                style={styles.planHeaderActionItem}
               >
                 <Pressable style={styles.savedRecipeButton} onPress={() => setShowSavedRecipePicker(true)}>
                   <Ionicons name="bookmark-outline" size={15} color={theme.colors.primaryDark} />
-                  <Text style={styles.savedRecipeButtonText}>{getText('Saved Recipes', '收藏食谱', 'Resipi Tersimpan')}</Text>
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={normalizeLanguageCode(language) === 'ms' ? 0.72 : 0.86}
+                    style={[
+                      styles.savedRecipeButtonText,
+                      normalizeLanguageCode(language) === 'ms' && styles.planHeaderButtonTextMalay,
+                    ]}
+                  >
+                    {getText('Saved Recipes', '收藏食谱', 'Resipi Tersimpan')}
+                  </Text>
                 </Pressable>
               </View>
 
               <Pressable style={styles.clearPlanButton} onPress={clearSelectedDayPlan}>
                 <Ionicons name="trash-outline" size={15} color="#EF4444" />
-                <Text style={styles.clearPlanButtonText}>{getText('Clear All', '全部清空', 'Kosongkan Semua')}</Text>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={normalizeLanguageCode(language) === 'ms' ? 0.72 : 0.86}
+                  style={[
+                    styles.clearPlanButtonText,
+                    normalizeLanguageCode(language) === 'ms' && styles.planHeaderButtonTextMalay,
+                  ]}
+                >
+                  {getText('Clear All', '全部清空', 'Kosongkan Semua')}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -2696,12 +2717,14 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   ringTarget: { marginTop: 2, fontSize: 12, color: themeColors.muted, fontWeight: '600' },
   planWrapper: { backgroundColor: themeColors.card, borderRadius: 28, padding: 18, shadowColor: themeColors.shadow, shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   planHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
-  planHeaderActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexShrink: 1, minWidth: 0, flexWrap: 'wrap' },
-  savedRecipeButton: { height: 34, maxWidth: 124, borderRadius: 17, backgroundColor: themeColors.primaryLight, borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, flexShrink: 1, overflow: 'hidden' },
+  planHeaderActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexShrink: 1, minWidth: 0, flexWrap: 'nowrap' },
+  planHeaderActionItem: { width: 124, flexShrink: 0 },
+  savedRecipeButton: { height: 34, width: 124, borderRadius: 17, backgroundColor: themeColors.primaryLight, borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, overflow: 'hidden' },
   savedRecipeButtonText: { color: themeColors.primaryDark, fontSize: 11, lineHeight: 13, fontWeight: '900', flexShrink: 1, minWidth: 0 },
   planTitle: { flex: 1, minWidth: 0, fontSize: 18, fontWeight: '900', color: '#111827' },
-  clearPlanButton: { height: 34, maxWidth: 118, borderRadius: 17, backgroundColor: '#FEF2F2', paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, flexShrink: 1, overflow: 'hidden' },
+  clearPlanButton: { height: 34, width: 104, borderRadius: 17, backgroundColor: '#FEF2F2', paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, flexShrink: 0, overflow: 'hidden' },
   clearPlanButtonText: { color: '#EF4444', fontSize: 11, lineHeight: 13, fontWeight: '900', flexShrink: 1, minWidth: 0 },
+  planHeaderButtonTextMalay: { fontSize: 9, lineHeight: 11 },
   aiHint: { marginTop: 3, fontSize: 12, color: themeColors.muted, fontWeight: '700' },
   refreshButton: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center', backgroundColor: themeColors.card },
   refreshButtonGenerating: { backgroundColor: themeColors.primaryLight, borderColor: '#BBF7D0' },
