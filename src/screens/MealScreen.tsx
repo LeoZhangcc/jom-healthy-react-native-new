@@ -145,6 +145,9 @@ const DEFAULT_TARGETS = {
   fat: 28,
 };
 
+const MALAYSIA_RNI_2017_URL =
+  'https://hq.moh.gov.my/nutrition/wp-content/uploads/2023/12/FA-Buku-RNI.pdf';
+
 const STATUS_COLORS: Record<CalendarNutritionStatus, string> = {
   tooMuch: '#FF6B6B',
   good: '#18C37E',
@@ -1107,6 +1110,7 @@ export default function MealScreen() {
   const [mealToAdd, setMealToAdd] = useState<MealRecipe | null>(null);
   const [showMealSlotPicker, setShowMealSlotPicker] = useState(false);
   const [showSavedRecipePicker, setShowSavedRecipePicker] = useState(false);
+  const [showRniInfoModal, setShowRniInfoModal] = useState(false);
 
   const selectedKey = formatDateKey(selectedDate);
   const todayKey = formatDateKey(today);
@@ -1607,6 +1611,36 @@ export default function MealScreen() {
     });
   };
 
+  const openMalaysiaRni2017Reference = async () => {
+    try {
+      const supported = await Linking.canOpenURL(MALAYSIA_RNI_2017_URL);
+
+      if (!supported) {
+        Alert.alert(
+          getText('Unable to open link', '无法打开链接', 'Tidak dapat membuka pautan'),
+          getText(
+            'Please try again later.',
+            '请稍后重试。',
+            'Sila cuba lagi kemudian.'
+          )
+        );
+        return;
+      }
+
+      await Linking.openURL(MALAYSIA_RNI_2017_URL);
+    } catch (error) {
+      console.log('Open Malaysia RNI 2017 reference failed:', error);
+      Alert.alert(
+        getText('Unable to open link', '无法打开链接', 'Tidak dapat membuka pautan'),
+        getText(
+          'Please try again later.',
+          '请稍后重试。',
+          'Sila cuba lagi kemudian.'
+        )
+      );
+    }
+  };
+
   const openYoutube = async (url?: string | null) => {
     if (!url) {
       Alert.alert(getText('No Tutorial', '没有教程', 'Tiada Tutorial'), getText('This recipe does not have a tutorial link.', '这个食谱没有教程链接。', 'Resipi ini tiada pautan tutorial.'));
@@ -1917,17 +1951,40 @@ export default function MealScreen() {
 
         <View style={styles.nutritionCard}>
           <View style={styles.nutritionHeaderRow}>
-            <View>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.nutritionTitle}>{getText("Today's Nutrition", '今日营养', 'Nutrisi Hari Ini')}</Text>
               <Text style={styles.nutritionSubtitle}>{activeChild ? getText('Targets loaded from child profile', '目标来自儿童档案', 'Sasaran daripada profil kanak-kanak') : getText('Guest default targets', '访客默认目标', 'Sasaran lalai tetamu')}</Text>
             </View>
-            <Text style={styles.nutritionProgressText}>{getText('Progress', '进度', 'Kemajuan')}</Text>
+            <Pressable
+              style={styles.rniInfoIconButton}
+              onPress={() => setShowRniInfoModal(true)}
+              accessibilityRole="button"
+              accessibilityLabel={getText(
+                'Learn how nutrition targets are calculated',
+                '查看营养目标计算依据',
+                'Lihat cara sasaran nutrisi dikira'
+              )}
+              hitSlop={8}
+            >
+              <Text style={styles.rniInfoIconText}>💡</Text>
+            </Pressable>
           </View>
           <View style={styles.ringRow}>
             <NutritionRing label={getText('Carbs', '碳水', 'Karbo')} value={totals.carbs} target={currentTargets.carbs} color="#F39B5F" language={language} />
             <NutritionRing label={getText('Protein', '蛋白质', 'Protein')} value={totals.protein} target={currentTargets.protein} color="#72C3E6" language={language} />
             <NutritionRing label={getText('Fat', '脂肪', 'Lemak')} value={totals.fat} target={currentTargets.fat} color="#56B277" language={language} />
           </View>
+        </View>
+
+        <View style={styles.healthGuidanceNote}>
+          <Ionicons name="medical-outline" size={15} color={theme.colors.primaryDark} />
+          <Text style={styles.healthGuidanceNoteText}>
+            {getText(
+              'For general meal-planning guidance only. Consult a qualified professional for medical or special dietary concerns.',
+              '仅供一般膳食规划参考。如涉及疾病或特殊饮食需求，请咨询合格专业人士。',
+              'Untuk panduan perancangan makanan umum sahaja. Rujuk profesional bertauliah bagi kebimbangan perubatan atau diet khas.'
+            )}
+          </Text>
         </View>
 
         <View style={styles.planWrapper}>
@@ -1952,8 +2009,16 @@ export default function MealScreen() {
             </View>
           </View>
 
-          <Text style={styles.planShoppingText}>☑ {getText('View ingredients in Shopping', '在购物清单查看食材', 'Lihat bahan di Shopping')}</Text>
-          <View style={styles.preferenceBanner}><Text style={styles.preferenceBannerText}>✓ {getText('Meals adapted to preferences', '餐食已根据偏好调整', 'Hidangan disesuaikan dengan pilihan')}</Text></View>
+          {hasMealsForSelectedDay && (
+            <>
+              <View style={styles.preferenceBanner}>
+                <Text style={styles.preferenceBannerText}>
+                  ✓ {getText('Meals adapted to preferences', '餐食已根据偏好调整', 'Hidangan disesuaikan dengan pilihan')}
+                </Text>
+              </View>
+              <Text style={styles.planShoppingText}>☑ {getText('View ingredients in Shopping', '在购物清单查看食材', 'Lihat bahan di Shopping')}</Text>
+            </>
+          )}
 
           {isGeneratingMealPlan ? (
             <View style={styles.generatingCard}>
@@ -2051,6 +2116,66 @@ export default function MealScreen() {
           return (order[a.key] || 99) - (order[b.key] || 99);
         })}
       />
+
+      <Modal visible={showRniInfoModal} transparent animationType="fade" onRequestClose={() => setShowRniInfoModal(false)}>
+        <Pressable style={styles.rniInfoModalBackdrop} onPress={() => setShowRniInfoModal(false)}>
+          <Pressable style={styles.rniInfoModalCard} onPress={() => {}}>
+            <View style={styles.rniInfoModalHeader}>
+              <View style={styles.rniInfoModalBulb}>
+                <Text style={styles.rniInfoModalBulbText}>💡</Text>
+              </View>
+
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.rniInfoModalTitle}>
+                  {getText(
+                    'Nutrition Target Reference',
+                    '营养目标计算依据',
+                    'Rujukan Sasaran Nutrisi'
+                  )}
+                </Text>
+                <Text style={styles.rniInfoModalSubtitle}>
+                  {getText(
+                    'Today’s Nutrition targets are calculated using Recommended Nutrient Intakes (RNIs) for Malaysia 2017.',
+                    '今日营养目标根据 Recommended Nutrient Intakes (RNIs) for Malaysia 2017 计算。',
+                    'Sasaran Nutrisi Hari Ini dikira berdasarkan Recommended Nutrient Intakes (RNIs) for Malaysia 2017.'
+                  )}
+                </Text>
+              </View>
+
+              <Pressable style={styles.rniInfoModalClose} onPress={() => setShowRniInfoModal(false)}>
+                <Ionicons name="close" size={19} color="#64748B" />
+              </Pressable>
+            </View>
+
+            <View style={styles.rniInfoModalNote}>
+              <Ionicons name="information-circle-outline" size={18} color={theme.colors.primaryDark} />
+              <Text style={styles.rniInfoModalNoteText}>
+                {getText(
+                  'Open the official reference document to review the Malaysian RNI 2017 source.',
+                  '点击下方按钮可查看 Malaysia RNI 2017 官方参考资料。',
+                  'Tekan butang di bawah untuk melihat dokumen rasmi Malaysia RNI 2017.'
+                )}
+              </Text>
+            </View>
+
+            <Pressable
+              style={styles.rniInfoModalOpenButton}
+              onPress={async () => {
+                await openMalaysiaRni2017Reference();
+              }}
+            >
+              <Ionicons name="open-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.rniInfoModalOpenButtonText}>
+                {getText(
+                  'Open Malaysia RNI 2017 PDF',
+                  '打开 Malaysia RNI 2017 PDF',
+                  'Buka PDF Malaysia RNI 2017'
+                )}
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal visible={showSavedRecipePicker} transparent animationType="fade" onRequestClose={closeSavedRecipePicker}>
         <Pressable style={styles.savedRecipeBackdrop} onPress={closeSavedRecipePicker}>
@@ -2447,10 +2572,121 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   dateLegendDot: { width: 8, height: 8, borderRadius: 4 },
   dateLegendText: { fontSize: 11, color: themeColors.muted, fontWeight: '700' },
   nutritionCard: { backgroundColor: themeColors.card, borderRadius: 28, padding: 18, shadowColor: themeColors.shadow, shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  nutritionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  healthGuidanceNote: { marginTop: 10, borderRadius: 18, backgroundColor: themeColors.surfaceAlt, borderWidth: 1, borderColor: themeColors.border, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  healthGuidanceNoteText: { flex: 1, minWidth: 0, color: themeColors.muted, fontSize: 11, lineHeight: 17, fontWeight: '700' },
+  nutritionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
   nutritionTitle: { fontSize: 18, fontWeight: '900', color: '#1F2937' },
   nutritionSubtitle: { marginTop: 3, color: themeColors.muted, fontSize: 12, fontWeight: '600' },
   nutritionProgressText: { fontSize: 15, color: '#6B7280', fontWeight: '600' },
+  rniInfoIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: themeColors.primaryLight,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
+  },
+  rniInfoIconText: {
+    fontSize: 20,
+  },
+  rniInfoModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.48)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+  },
+  rniInfoModalCard: {
+    width: '100%',
+    maxWidth: 430,
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
+    padding: 18,
+    shadowColor: '#000000',
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 10,
+  },
+  rniInfoModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  rniInfoModalBulb: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  rniInfoModalBulbText: {
+    fontSize: 22,
+  },
+  rniInfoModalTitle: {
+    color: '#0F172A',
+    fontSize: 17,
+    lineHeight: 23,
+    fontWeight: '900',
+  },
+  rniInfoModalSubtitle: {
+    marginTop: 4,
+    color: '#475569',
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
+  },
+  rniInfoModalClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  rniInfoModalNote: {
+    marginTop: 16,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    backgroundColor: themeColors.primaryLight,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  rniInfoModalNoteText: {
+    flex: 1,
+    minWidth: 0,
+    color: themeColors.primaryDark,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  rniInfoModalOpenButton: {
+    marginTop: 16,
+    minHeight: 48,
+    borderRadius: 18,
+    backgroundColor: themeColors.primaryDark,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+  },
+  rniInfoModalOpenButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '900',
+  },
   ringRow: { marginTop: 16, flexDirection: 'row', justifyContent: 'space-around' },
   ringBlock: { alignItems: 'center', flex: 1 },
   ringWrap: { width: 86, height: 86, alignItems: 'center', justifyContent: 'center' },

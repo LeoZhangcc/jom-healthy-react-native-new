@@ -884,6 +884,44 @@ export default function ProfileScreen() {
             </Card>
           </View>
 
+          <Card>
+            <Pressable
+              style={[styles.settingRow, styles.settingRowLast]}
+              onPress={() => navigation.navigate('PrivacySafety')}
+            >
+              <View style={styles.settingIcon}>
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  color={theme.colors.primaryDark}
+                  size={20}
+                />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.settingTitle}>
+                  {getText(
+                    'Privacy, Safety & Responsible Use',
+                    '隐私、安全与责任使用',
+                    'Privasi, Keselamatan & Penggunaan Bertanggungjawab'
+                  )}
+                </Text>
+                <Text style={styles.meta}>
+                  {getText(
+                    'Health disclaimer, AI limits, data use, location and backups.',
+                    '查看健康免责声明、AI 边界、数据使用、定位与备份说明。',
+                    'Lihat penafian kesihatan, had AI, penggunaan data, lokasi dan sandaran.'
+                  )}
+                </Text>
+              </View>
+
+              <Ionicons
+                name="chevron-forward"
+                color={theme.colors.muted}
+                size={18}
+              />
+            </Pressable>
+          </Card>
+
           <SectionTitle title={getText('Saved Recipes', '收藏食谱', 'Resipi Tersimpan')} />
 
           {savedRecipes.length === 0 ? (

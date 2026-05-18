@@ -825,6 +825,17 @@ export function AiMealPlanGenerationProvider({
                 )}
               </Text>
 
+              <View style={styles.modalSafetyNote}>
+                <Ionicons name="information-circle-outline" size={16} color={theme.colors.primaryDark} />
+                <Text style={styles.modalSafetyNoteText}>
+                  {getText(
+                    'AI meal plans support daily planning only. Review allergens, portion sizes and suitability before use.',
+                    'AI 膳食计划仅用于日常规划辅助。使用前请检查过敏原、份量与适用性。',
+                    'Pelan makanan AI hanya menyokong perancangan harian. Semak alergen, saiz hidangan dan kesesuaian sebelum digunakan.'
+                  )}
+                </Text>
+              </View>
+
               <View style={styles.daySelectorRow}>
                 {[1, 2, 3, 4, 5, 6, 7].map((day) => (
                   <Pressable
@@ -985,6 +996,28 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
     color: themeColors.muted,
     fontSize: 12,
     fontWeight: '700',
+  },
+
+  modalSafetyNote: {
+    marginTop: 10,
+    borderRadius: 16,
+    backgroundColor: themeColors.primaryLight,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+
+  modalSafetyNoteText: {
+    flex: 1,
+    minWidth: 0,
+    color: themeColors.primaryDark,
+    fontSize: 11,
+    lineHeight: 17,
+    fontWeight: '800',
   },
 
   daySelectorRow: {
