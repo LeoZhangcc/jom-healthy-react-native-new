@@ -80,10 +80,20 @@ function AnimatedHomeHeader({
 }) {
   const insets = useSafeAreaInsets();
   const { themeName } = useTheme();
+  const { language } = useLanguage();
   const { styles, theme } = useHomeStyles();
   const heartScale = useRef(new Animated.Value(1)).current;
   const haloScale = useRef(new Animated.Value(0.86)).current;
   const haloOpacity = useRef(new Animated.Value(0.18)).current;
+  const getText = (en: string, zh: string, ms: string) => {
+    if (language === 'zh') return zh;
+    if (language === 'ms') return ms;
+    return en;
+  };
+  const displaySubtitle =
+    language === 'ms' && subtitle
+      ? 'Jaga kesihatan anak hari ini ✨'
+      : subtitle;
 
   useEffect(() => {
     if (themeName !== 'classic') return;
@@ -184,7 +194,16 @@ function AnimatedHomeHeader({
         <View style={styles.editorialTitleRow}>
           <View style={styles.editorialTitleWrap}>
             <Text style={styles.editorialTitle}>{title}</Text>
-            {!!subtitle && <Text style={styles.editorialSubtitle}>{subtitle}</Text>}
+            {!!displaySubtitle && (
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit={language === 'ms'}
+                minimumFontScale={0.82}
+                style={[styles.editorialSubtitle, language === 'ms' && styles.editorialSubtitleMalay]}
+              >
+                {displaySubtitle}
+              </Text>
+            )}
           </View>
 
           <View style={styles.editorialHeaderActionSlot}>{right}</View>
@@ -193,15 +212,21 @@ function AnimatedHomeHeader({
         <View style={styles.editorialChipRow}>
           <View style={styles.editorialInfoChip}>
             <Ionicons name="sparkles-outline" size={14} color={theme.colors.primaryDark} />
-            <Text style={styles.editorialInfoChipText}>AI Meal Plan</Text>
+            <Text style={styles.editorialInfoChipText}>
+              {getText('AI Meal Plan', 'AI 膳食计划', 'Pelan AI')}
+            </Text>
           </View>
           <View style={styles.editorialInfoChip}>
             <Ionicons name="fitness-outline" size={14} color={theme.colors.primaryDark} />
-            <Text style={styles.editorialInfoChipText}>Family Health</Text>
+            <Text style={styles.editorialInfoChipText}>
+              {getText('Family Health', '家庭健康', 'Kesihatan')}
+            </Text>
           </View>
           <View style={styles.editorialInfoChip}>
             <Ionicons name="leaf-outline" size={14} color={theme.colors.primaryDark} />
-            <Text style={styles.editorialInfoChipText}>Daily Care</Text>
+            <Text style={styles.editorialInfoChipText}>
+              {getText('Daily Care', '日常护理', 'Jagaan Harian')}
+            </Text>
           </View>
         </View>
       </View>
@@ -237,7 +262,16 @@ function AnimatedHomeHeader({
 
         <View style={{ flex: 1 }}>
           <Text style={styles.animatedHeaderTitle}>{title}</Text>
-          {!!subtitle && <Text style={styles.animatedHeaderSubtitle}>{subtitle}</Text>}
+          {!!displaySubtitle && (
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit={language === 'ms'}
+              minimumFontScale={0.82}
+              style={styles.animatedHeaderSubtitle}
+            >
+              {displaySubtitle}
+            </Text>
+          )}
         </View>
 
         {right}
@@ -1622,6 +1656,11 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     fontWeight: '600',
+  },
+
+  editorialSubtitleMalay: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 
   editorialChipRow: {
