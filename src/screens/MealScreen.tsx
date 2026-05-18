@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -25,7 +26,7 @@ import { useChildProfile } from '../context/ChildProfileContext';
 import { useAiMealPlanGeneration } from '../context/AiMealPlanGenerationContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import FeatureGuideCoachmark from '../components/FeatureGuideCoachmark';
+import FeatureGuideCoachmark, { FeatureGuideStep } from '../components/FeatureGuideCoachmark';
 
 type Ingredient = {
   ingredientId?: number;
@@ -1051,6 +1052,9 @@ export default function MealScreen() {
   const dateGuideRef = useRef<View>(null);
   const generatePlanGuideRef = useRef<View>(null);
   const savedRecipeGuideRef = useRef<View>(null);
+  const mealScrollRef = useRef<ScrollView>(null);
+  const mealContentRef = useRef<View>(null);
+  const mealContentYRef = useRef(0);
   const { openAiMealPlanModal, isGeneratingMealPlan, lastGeneratedAt } = useAiMealPlanGeneration();
   const { activeChild, getOwnerKey, nutritionNeeds, savedRecipes = [] } = useChildProfile();
   const ownerKey = getOwnerKey();
@@ -1058,6 +1062,7 @@ export default function MealScreen() {
   const locale = normalizeLanguageCode(language) === 'zh' ? 'zh-CN' : normalizeLanguageCode(language) === 'ms' ? 'ms-MY' : 'en-US';
 
   const { width: SCREEN_WIDTH } = Dimensions.get('window');
+  const { height: viewportHeight } = useWindowDimensions();
   // Card container: padded by 16 left/right (content) + 14 left/right (dateContainer) = 60 total horizontal padding
   // Available width = SCREEN_WIDTH - 60
   // We want to fit exactly 7 cards. The gap is 6 (6 gaps = 36 total). So total width = 7 * cardWidth + 36.
@@ -1167,6 +1172,52 @@ export default function MealScreen() {
       year: 'numeric',
     });
   }, [locale]);
+
+  const handleMealGuideStepChange = useCallback((step: FeatureGuideStep) => {
+    const anchor = step.anchorRef.current;
+    const content = mealContentRef.current;
+
+    if (
+      !anchor ||
+      !content ||
+      typeof anchor.measureInWindow !== 'function' ||
+      typeof anchor.measureLayout !== 'function'
+    ) {
+      return 120;
+    }
+
+    anchor.measureInWindow((_x, screenY, _width, height) => {
+      const viewportPadding = 72;
+      const targetTop = screenY;
+      const targetBottom = screenY + height;
+      const visibleTop = Math.max(targetTop, viewportPadding);
+      const visibleBottom = Math.min(targetBottom, viewportHeight - viewportPadding);
+      const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+      const visibleRatio = visibleHeight / Math.max(1, Math.min(height, viewportHeight));
+      const isBarelyVisible = visibleHeight < 40 || visibleRatio < 0.5;
+
+      if (!isBarelyVisible) {
+        return;
+      }
+
+      anchor.measureLayout(
+        content,
+        (_x, y) => {
+          mealScrollRef.current?.scrollTo({
+            y: Math.max(mealContentYRef.current + y - viewportHeight * 0.32, 0),
+            animated: true,
+          });
+        },
+        () => {
+          if (step.key === 'recipe-search') {
+            mealScrollRef.current?.scrollTo({ y: 0, animated: true });
+          }
+        }
+      );
+    });
+
+    return 520;
+  }, [viewportHeight]);
 
   const loadStoredMealPlans = useCallback(async () => {
     try {
@@ -1702,7 +1753,7 @@ export default function MealScreen() {
   );
 
   return (
-    <Screen padded={false}>
+    <Screen padded={false} scrollRef={mealScrollRef}>
       {themeName === 'green' ? (
         <MealEditorialHeader
           title={getText('Meal Plan', '膳食计划', 'Pelan Makanan')}
@@ -1716,12 +1767,18 @@ export default function MealScreen() {
         />
       )}
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
+      <View
+        ref={mealContentRef}
+        collapsable={false}
+        style={styles.content}
+        onLayout={(event) => {
+          mealContentYRef.current = event.nativeEvent.layout.y;
+        }}
       >
-        <View ref={recipeSearchGuideRef} collapsable={false}>
+        <View
+          ref={recipeSearchGuideRef}
+          collapsable={false}
+        >
           <View style={styles.searchOuterCard}>
             <View style={styles.searchInnerCard}>
             <Ionicons name="search" size={20} color="#63B987" />
@@ -1762,7 +1819,10 @@ export default function MealScreen() {
           </View>
         </View>
 
-        <View ref={dateGuideRef} collapsable={false}>
+        <View
+          ref={dateGuideRef}
+          collapsable={false}
+        >
           <View style={styles.dateContainer}>
           <View style={styles.dateTopRow}>
             <View>
@@ -1875,7 +1935,10 @@ export default function MealScreen() {
             <Text style={styles.planTitle}>{getText('Meal Plan', '膳食计划', 'Pelan Makanan')}</Text>
 
             <View style={styles.planHeaderActions}>
-              <View ref={savedRecipeGuideRef} collapsable={false}>
+              <View
+                ref={savedRecipeGuideRef}
+                collapsable={false}
+              >
                 <Pressable style={styles.savedRecipeButton} onPress={() => setShowSavedRecipePicker(true)}>
                   <Ionicons name="bookmark-outline" size={15} color={theme.colors.primaryDark} />
                   <Text style={styles.savedRecipeButtonText}>{getText('Saved Recipes', '收藏食谱', 'Resipi Tersimpan')}</Text>
@@ -1907,7 +1970,10 @@ export default function MealScreen() {
               <Text style={styles.emptyMealPlanEmoji}>🍽️</Text>
               <Text style={styles.emptyMealPlanTitle}>{getText('No meals added yet', '还没有添加餐食', 'Belum ada hidangan')}</Text>
               <Text style={styles.emptyMealPlanText}>{getText('Tap the button below to generate an AI meal plan, or search recipes above.', '点击下面按钮生成 AI 膳食计划，或在上方搜索食谱。', 'Ketik butang di bawah untuk menjana pelan makanan AI, atau cari resipi di atas.')}</Text>
-              <View ref={generatePlanGuideRef} collapsable={false}>
+              <View
+                ref={generatePlanGuideRef}
+                collapsable={false}
+              >
                 <Pressable style={styles.generatePlanButton} onPress={() => openAiMealPlanModal({ startDate: selectedDate })}>
                   <Ionicons name="sparkles" size={17} color="#FFFFFF" />
                   <Text style={styles.generatePlanButtonText}>{getText('Generate Meal Plan', '生成膳食计划', 'Jana Pelan Makanan')}</Text>
@@ -1916,12 +1982,13 @@ export default function MealScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
+      </View>
 
       <FeatureGuideCoachmark
         guideKey="meal_plan_core"
         enabled={!showCalendar && !showMealSlotPicker && !showSavedRecipePicker}
-        steps={[
+        onStepChange={handleMealGuideStepChange}
+        steps={([
           {
             key: 'recipe-search',
             anchorRef: recipeSearchGuideRef,
@@ -1946,20 +2013,8 @@ export default function MealScreen() {
               'Leret antara hari atau buka kalendar untuk mengurus pelan pada tarikh yang anda perlukan.'
             ),
           },
-          hasMealsForSelectedDay
+          !hasMealsForSelectedDay
             ? {
-                key: 'saved-recipes',
-                anchorRef: savedRecipeGuideRef,
-                icon: 'bookmark-outline',
-                placement: 'top',
-                title: getText('Reuse recipes you have already saved', '复用你已经收藏的食谱', 'Guna semula resipi yang telah disimpan'),
-                description: getText(
-                  'When you find a reliable recipe, save it once and add it back into future meal plans from here.',
-                  '遇到合适食谱时可以先收藏，以后在这里快速重新加入新的膳食计划。',
-                  'Apabila anda jumpa resipi yang sesuai, simpan dahulu dan tambah semula ke pelan akan datang dari sini.'
-                ),
-              }
-            : {
                 key: 'generate-plan',
                 anchorRef: generatePlanGuideRef,
                 icon: 'sparkles-outline',
@@ -1970,7 +2025,8 @@ export default function MealScreen() {
                   '这个按钮会从当前日期生成 AI 膳食计划，适合你还没有安排任何餐食的时候。',
                   'Butang ini menjana pelan makanan AI untuk tarikh atau julat yang dipilih apabila anda bermula dari kosong.'
                 ),
-              },
+              }
+            : null,
           {
             key: 'copy-meal-plan',
             anchorRef: dateGuideRef,
@@ -1983,7 +2039,17 @@ export default function MealScreen() {
               'Selepas satu hari dirancang, tekan lama tarikh pada jalur tarikh atau kalendar, kemudian pilih satu atau lebih tarikh sasaran untuk menggunakannya semula.'
             ),
           },
-        ]}
+        ].filter(Boolean) as FeatureGuideStep[]).sort((a, b) => {
+          const order: Record<string, number> = {
+            'recipe-search': 1,
+            'date-strip': 2,
+            'copy-meal-plan': 3,
+            'saved-recipes': 4,
+            'generate-plan': 4,
+          };
+
+          return (order[a.key] || 99) - (order[b.key] || 99);
+        })}
       />
 
       <Modal visible={showSavedRecipePicker} transparent animationType="fade" onRequestClose={closeSavedRecipePicker}>
@@ -2394,7 +2460,7 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   ringTarget: { marginTop: 2, fontSize: 12, color: themeColors.muted, fontWeight: '600' },
   planWrapper: { backgroundColor: themeColors.card, borderRadius: 28, padding: 18, shadowColor: themeColors.shadow, shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   planHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
-  planHeaderActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexShrink: 1, minWidth: 0 },
+  planHeaderActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexShrink: 1, minWidth: 0, flexWrap: 'wrap' },
   savedRecipeButton: { height: 34, maxWidth: 124, borderRadius: 17, backgroundColor: themeColors.primaryLight, borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, flexShrink: 1, overflow: 'hidden' },
   savedRecipeButtonText: { color: themeColors.primaryDark, fontSize: 11, lineHeight: 13, fontWeight: '900', flexShrink: 1, minWidth: 0 },
   planTitle: { flex: 1, minWidth: 0, fontSize: 18, fontWeight: '900', color: '#111827' },

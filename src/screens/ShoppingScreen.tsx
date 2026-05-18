@@ -11,6 +11,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,7 +30,7 @@ import {
   Screen,
   SectionTitle,
 } from '../components/Common';
-import FeatureGuideCoachmark from '../components/FeatureGuideCoachmark';
+import FeatureGuideCoachmark, { FeatureGuideStep } from '../components/FeatureGuideCoachmark';
 
 const SHOPPING_LIST_STORAGE_KEY = 'JOMHEALTHY_SHOPPING_LIST_BY_OWNER_V1';
 const ALL_OWNER_KEY = 'all';
@@ -729,6 +730,10 @@ export default function ShoppingScreen() {
   const supermarketGuideRef = useRef<View>(null);
   const emptyMealGuideRef = useRef<View>(null);
   const shoppingProgressGuideRef = useRef<View>(null);
+  const shoppingScrollRef = useRef<ScrollView>(null);
+  const shoppingContentRef = useRef<View>(null);
+  const shoppingContentYRef = useRef(0);
+  const { height: viewportHeight } = useWindowDimensions();
   const childProfile = useChildProfile() as any;
   const {
     activeChild,
@@ -759,6 +764,52 @@ export default function ShoppingScreen() {
     if (language === 'ms') return ms;
     return en;
   };
+
+  const handleShoppingGuideStepChange = useCallback((step: FeatureGuideStep) => {
+    const anchor = step.anchorRef.current;
+    const content = shoppingContentRef.current;
+
+    if (
+      !anchor ||
+      !content ||
+      typeof anchor.measureInWindow !== 'function' ||
+      typeof anchor.measureLayout !== 'function'
+    ) {
+      return 120;
+    }
+
+    anchor.measureInWindow((_x, screenY, _width, height) => {
+      const viewportPadding = 72;
+      const targetTop = screenY;
+      const targetBottom = screenY + height;
+      const visibleTop = Math.max(targetTop, viewportPadding);
+      const visibleBottom = Math.min(targetBottom, viewportHeight - viewportPadding);
+      const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+      const visibleRatio = visibleHeight / Math.max(1, Math.min(height, viewportHeight));
+      const isBarelyVisible = visibleHeight < 40 || visibleRatio < 0.5;
+
+      if (!isBarelyVisible) {
+        return;
+      }
+
+      anchor.measureLayout(
+        content,
+        (_layoutX, y) => {
+          shoppingScrollRef.current?.scrollTo({
+            y: Math.max(shoppingContentYRef.current + y - viewportHeight * 0.32, 0),
+            animated: true,
+          });
+        },
+        () => {
+          if (step.key === 'owner-selector') {
+            shoppingScrollRef.current?.scrollTo({ y: 0, animated: true });
+          }
+        }
+      );
+    });
+
+    return 520;
+  }, [viewportHeight]);
 
   const nearbyMapRegion = useMemo(() => {
     if (!nearbyUserLocation) return null;
@@ -1247,7 +1298,7 @@ export default function ShoppingScreen() {
 
   return (
     <>
-      <Screen padded={false}>
+      <Screen padded={false} scrollRef={shoppingScrollRef}>
         <Header
           title={getText('Shopping', '购物清单', 'Senarai Beli-belah')}
           subtitle={
@@ -1284,9 +1335,13 @@ export default function ShoppingScreen() {
           }
         />
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.body}
+        <View
+          ref={shoppingContentRef}
+          collapsable={false}
+          style={styles.body}
+          onLayout={(event) => {
+            shoppingContentYRef.current = event.nativeEvent.layout.y;
+          }}
         >
           <View ref={supermarketGuideRef} collapsable={false}>
             <Card>
@@ -1482,12 +1537,13 @@ export default function ShoppingScreen() {
                 ))}
             </>
           )}
-        </ScrollView>
+        </View>
       </Screen>
 
       <FeatureGuideCoachmark
         guideKey="shopping_core"
         enabled={!showOwnerDropdown && !showSupermarkets}
+        onStepChange={handleShoppingGuideStepChange}
         steps={[
           {
             key: 'owner-selector',

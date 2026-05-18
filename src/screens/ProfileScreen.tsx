@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   Image,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,7 +30,7 @@ import {
   SectionTitle,
 } from '../components/Common';
 import ChildrenProfilesModal from '../components/ChildrenProfilesModal';
-import FeatureGuideCoachmark from '../components/FeatureGuideCoachmark';
+import FeatureGuideCoachmark, { FeatureGuideStep } from '../components/FeatureGuideCoachmark';
 
 type BackupPayload = {
   backupType: 'JOMHEALTHY_BACKUP';
@@ -43,6 +44,17 @@ const BACKUP_TYPE = 'JOMHEALTHY_BACKUP';
 const BACKUP_VERSION = 1;
 const FEATURE_GUIDE_STORAGE_PREFIX = 'JOMHEALTHY_FEATURE_GUIDE_DONE_V1:';
 const FEATURE_GUIDE_RESTART_SIGNAL_KEY = 'JOMHEALTHY_FEATURE_GUIDE_RESTART_SIGNAL_V1';
+const FEATURE_GUIDE_KEYS_BY_PAGE = {
+  Home: [
+    `${FEATURE_GUIDE_STORAGE_PREFIX}home_guest_core`,
+    `${FEATURE_GUIDE_STORAGE_PREFIX}home_profile_core`,
+  ],
+  Meal: [`${FEATURE_GUIDE_STORAGE_PREFIX}meal_plan_core`],
+  Shopping: [`${FEATURE_GUIDE_STORAGE_PREFIX}shopping_core`],
+  Profile: [`${FEATURE_GUIDE_STORAGE_PREFIX}profile_core`],
+};
+
+type GuideReplayTarget = 'all' | keyof typeof FEATURE_GUIDE_KEYS_BY_PAGE;
 
 function createBackupFileName() {
   const now = new Date();
@@ -266,6 +278,10 @@ export default function ProfileScreen() {
   const themeGuideRef = useRef<View>(null);
   const childrenGuideRef = useRef<View>(null);
   const backupGuideRef = useRef<View>(null);
+  const profileScrollRef = useRef<ScrollView>(null);
+  const profileContentRef = useRef<View>(null);
+  const profileContentYRef = useRef(0);
+  const { height: viewportHeight } = useWindowDimensions();
   const childProfile = useChildProfile() as any;
 
   const {
@@ -278,6 +294,8 @@ export default function ProfileScreen() {
   const [showChildren, setShowChildren] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [showImportGuide, setShowImportGuide] = useState(false);
+  const [showGuideReplayPicker, setShowGuideReplayPicker] = useState(false);
+  const [profileGuideRestartKey, setProfileGuideRestartKey] = useState(0);
   const [exportingData, setExportingData] = useState(false);
   const [importingData, setImportingData] = useState(false);
 
@@ -287,6 +305,52 @@ export default function ProfileScreen() {
     if (language === 'ms') return ms;
     return en;
   };
+
+  const handleProfileGuideStepChange = useCallback((step: FeatureGuideStep) => {
+    const anchor = step.anchorRef.current;
+    const content = profileContentRef.current;
+
+    if (
+      !anchor ||
+      !content ||
+      typeof anchor.measureInWindow !== 'function' ||
+      typeof anchor.measureLayout !== 'function'
+    ) {
+      return 120;
+    }
+
+    anchor.measureInWindow((_x, screenY, _width, height) => {
+      const viewportPadding = 72;
+      const targetTop = screenY;
+      const targetBottom = screenY + height;
+      const visibleTop = Math.max(targetTop, viewportPadding);
+      const visibleBottom = Math.min(targetBottom, viewportHeight - viewportPadding);
+      const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+      const visibleRatio = visibleHeight / Math.max(1, Math.min(height, viewportHeight));
+      const isBarelyVisible = visibleHeight < 40 || visibleRatio < 0.5;
+
+      if (!isBarelyVisible) {
+        return;
+      }
+
+      anchor.measureLayout(
+        content,
+        (_layoutX, y) => {
+          profileScrollRef.current?.scrollTo({
+            y: Math.max(profileContentYRef.current + y - viewportHeight * 0.32, 0),
+            animated: true,
+          });
+        },
+        () => {
+          if (step.key === 'theme-switch') {
+            profileScrollRef.current?.scrollTo({ y: 0, animated: true });
+          }
+        }
+      );
+    });
+
+    return 520;
+  }, [viewportHeight]);
 
   const themeOptions = [
     {
@@ -562,14 +626,16 @@ export default function ProfileScreen() {
     }
   };
 
-  const replayHomeGuide = async () => {
+  const replayFeatureGuide = async (target: GuideReplayTarget) => {
     const replayGuideToken = String(Date.now());
 
     try {
-      const keys = await AsyncStorage.getAllKeys();
-      const guideKeys = keys.filter((key) =>
-        key.startsWith(FEATURE_GUIDE_STORAGE_PREFIX)
-      );
+      const guideKeys =
+        target === 'all'
+          ? (await AsyncStorage.getAllKeys()).filter((key) =>
+              key.startsWith(FEATURE_GUIDE_STORAGE_PREFIX)
+            )
+          : FEATURE_GUIDE_KEYS_BY_PAGE[target];
 
       if (guideKeys.length > 0) {
         await AsyncStorage.multiRemove(guideKeys);
@@ -579,15 +645,59 @@ export default function ProfileScreen() {
     } catch (error) {
       console.log('Reset feature guide state failed:', error);
     } finally {
+      setShowGuideReplayPicker(false);
+
+      if (target === 'Profile') {
+        setProfileGuideRestartKey(Number(replayGuideToken));
+      }
+
       navigation.navigate('MainTabs', {
-        screen: 'Home',
+        screen: target === 'all' ? 'Home' : target,
       });
     }
   };
 
+  const guideReplayOptions: Array<{
+    key: GuideReplayTarget;
+    icon: keyof typeof Ionicons.glyphMap;
+    title: string;
+    subtitle: string;
+  }> = [
+    {
+      key: 'all',
+      icon: 'sparkles-outline',
+      title: getText('All pages', '所有页面', 'Semua halaman'),
+      subtitle: getText('Start again from Home.', '从首页重新开始。', 'Mula semula dari Home.'),
+    },
+    {
+      key: 'Home',
+      icon: 'home-outline',
+      title: getText('Home', '首页', 'Home'),
+      subtitle: getText('Replay the Home walkthrough.', '重新查看首页引导。', 'Lihat semula panduan Home.'),
+    },
+    {
+      key: 'Meal',
+      icon: 'restaurant-outline',
+      title: getText('Meal', '膳食', 'Makanan'),
+      subtitle: getText('Replay the Meal page guide.', '重新查看膳食页引导。', 'Lihat semula panduan Meal.'),
+    },
+    {
+      key: 'Shopping',
+      icon: 'cart-outline',
+      title: getText('Shopping', '购物', 'Beli-belah'),
+      subtitle: getText('Replay the Shopping page guide.', '重新查看购物页引导。', 'Lihat semula panduan Shopping.'),
+    },
+    {
+      key: 'Profile',
+      icon: 'person-outline',
+      title: getText('Profile', '个人页', 'Profil'),
+      subtitle: getText('Replay this Profile guide.', '重新查看个人页引导。', 'Lihat semula panduan Profil.'),
+    },
+  ];
+
   return (
     <>
-      <Screen padded={false}>
+      <Screen padded={false} scrollRef={profileScrollRef}>
         <Header
           title={t('profile')}
           subtitle={t('manageAccount')}
@@ -612,7 +722,14 @@ export default function ProfileScreen() {
           }
         />
 
-        <View style={styles.body}>
+        <View
+          ref={profileContentRef}
+          collapsable={false}
+          style={styles.body}
+          onLayout={(event) => {
+            profileContentYRef.current = event.nativeEvent.layout.y;
+          }}
+        >
           <Card>
             <View style={styles.profileRow}>
               <ChildAvatar
@@ -735,7 +852,7 @@ export default function ProfileScreen() {
 
             <Pressable
               style={[styles.settingRow, styles.settingRowLast]}
-              onPress={replayHomeGuide}
+              onPress={() => setShowGuideReplayPicker(true)}
             >
               <View style={styles.settingIcon}>
                 <Ionicons
@@ -751,9 +868,9 @@ export default function ProfileScreen() {
                 </Text>
                 <Text style={styles.meta}>
                   {getText(
-                    'Jump to Home and start the walkthrough again',
-                    '跳到首页并重新开始引导',
-                    'Pergi ke Home dan mula panduan semula'
+                    'Choose all pages or one page to replay.',
+                    '选择所有页面或其中一个页面重新查看。',
+                    'Pilih semua halaman atau satu halaman untuk dimainkan semula.'
                   )}
                 </Text>
               </View>
@@ -830,7 +947,9 @@ export default function ProfileScreen() {
 
       <FeatureGuideCoachmark
         guideKey="profile_core"
-        enabled={!showThemePicker && !showImportGuide && !showChildren}
+        enabled={!showThemePicker && !showImportGuide && !showChildren && !showGuideReplayPicker}
+        restartKey={profileGuideRestartKey}
+        onStepChange={handleProfileGuideStepChange}
         steps={[
           {
             key: 'theme-switch',
@@ -870,6 +989,66 @@ export default function ProfileScreen() {
           },
         ]}
       />
+
+      <Modal
+        visible={showGuideReplayPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowGuideReplayPicker(false)}
+      >
+        <Pressable
+          style={styles.guideReplayOverlay}
+          onPress={() => setShowGuideReplayPicker(false)}
+        >
+          <Pressable
+            style={styles.guideReplaySheet}
+            onPress={(event) => event.stopPropagation()}
+          >
+            <View style={styles.guideReplayHeader}>
+              <View style={styles.guideReplayHeaderIcon}>
+                <Ionicons name="refresh-circle-outline" size={20} color={theme.colors.primaryDark} />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.guideReplayTitle}>
+                  {getText('Replay beginner guide', '重新查看新手教程', 'Lihat semula panduan pemula')}
+                </Text>
+                <Text style={styles.guideReplaySubtitle}>
+                  {getText('Choose where to restart the walkthrough.', '选择要重新开始引导的位置。', 'Pilih tempat untuk mula semula panduan.')}
+                </Text>
+              </View>
+
+              <Pressable
+                style={({ pressed }) => [styles.guideReplayClose, pressed && styles.themeAvatarTriggerPressed]}
+                onPress={() => setShowGuideReplayPicker(false)}
+              >
+                <Ionicons name="close" size={17} color={theme.colors.muted} />
+              </Pressable>
+            </View>
+
+            <View style={styles.guideReplayList}>
+              {guideReplayOptions.map((option) => (
+                <Pressable
+                  key={option.key}
+                  style={({ pressed }) => [styles.guideReplayOption, pressed && styles.themeAvatarTriggerPressed]}
+                  onPress={() => replayFeatureGuide(option.key)}
+                >
+                  <View style={styles.guideReplayOptionIcon}>
+                    <Ionicons name={option.icon} size={18} color={theme.colors.primaryDark} />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.guideReplayOptionTitle}>{option.title}</Text>
+                    <Text style={styles.guideReplayOptionSubtitle}>{option.subtitle}</Text>
+                  </View>
+
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />
+                </Pressable>
+              ))}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={showThemePicker}
@@ -1157,6 +1336,106 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   themePickerList: {
     marginTop: 13,
     gap: 10,
+  },
+
+  guideReplayOverlay: {
+    flex: 1,
+    backgroundColor: themeColors.overlay,
+    justifyContent: 'flex-end',
+    padding: 16,
+  },
+
+  guideReplaySheet: {
+    width: '100%',
+    backgroundColor: themeColors.card,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    padding: 16,
+    shadowColor: themeColors.shadow,
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 12,
+  },
+
+  guideReplayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+
+  guideReplayHeaderIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    backgroundColor: themeColors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  guideReplayTitle: {
+    color: themeColors.text,
+    fontSize: 17,
+    fontWeight: '900',
+  },
+
+  guideReplaySubtitle: {
+    marginTop: 3,
+    color: themeColors.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '600',
+  },
+
+  guideReplayClose: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: themeColors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  guideReplayList: {
+    marginTop: 14,
+    gap: 10,
+  },
+
+  guideReplayOption: {
+    minHeight: 64,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    backgroundColor: themeColors.surfaceAlt,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+  },
+
+  guideReplayOptionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: themeColors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  guideReplayOptionTitle: {
+    color: themeColors.text,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+
+  guideReplayOptionSubtitle: {
+    marginTop: 2,
+    color: themeColors.muted,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '600',
   },
 
   themePickerOption: {

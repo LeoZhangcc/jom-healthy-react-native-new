@@ -4,13 +4,17 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -48,6 +52,7 @@ const STORAGE_PREFIX = 'JOMHEALTHY_FEATURE_GUIDE_DONE_V1:';
 const RESTART_SIGNAL_KEY = 'JOMHEALTHY_FEATURE_GUIDE_RESTART_SIGNAL_V1';
 const DEFAULT_BUBBLE_HEIGHT = 236;
 const SIDE_MARGIN = 14;
+const TARGET_GAP = 18;
 
 function isMalay(language?: string | null) {
   const lang = String(language || '').toLowerCase();
@@ -74,6 +79,7 @@ export default function FeatureGuideCoachmark({
 }: FeatureGuideCoachmarkProps) {
   const { theme } = useTheme();
   const { language } = useLanguage();
+  const insets = useSafeAreaInsets();
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
   const colors = theme.colors;
   const [visible, setVisible] = useState(false);
@@ -85,6 +91,8 @@ export default function FeatureGuideCoachmark({
   const startTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const measureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const measureAttemptRef = useRef(0);
+  const pulseScale = useRef(new Animated.Value(0.82)).current;
+  const pulseOpacity = useRef(new Animated.Value(0.38)).current;
 
   const getText = useCallback(
     (en: string, zh: string, ms: string) => {
@@ -141,6 +149,52 @@ export default function FeatureGuideCoachmark({
     setTargetRect(null);
     setBubbleHeight(0);
   }, [clearTimers]);
+
+  useEffect(() => {
+    if (!visible || !targetRect) {
+      pulseScale.stopAnimation();
+      pulseOpacity.stopAnimation();
+      return;
+    }
+
+    pulseScale.setValue(0.82);
+    pulseOpacity.setValue(0.38);
+
+    const pulse = Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(pulseScale, {
+            toValue: 1.18,
+            duration: 900,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseScale, {
+            toValue: 0.82,
+            duration: 900,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.timing(pulseOpacity, {
+            toValue: 0.08,
+            duration: 900,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseOpacity, {
+            toValue: 0.38,
+            duration: 900,
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
+    );
+
+    pulse.start();
+
+    return () => {
+      pulse.stop();
+    };
+  }, [pulseOpacity, pulseScale, targetRect, visible]);
 
   const finishGuide = useCallback(async () => {
     try {
@@ -270,30 +324,74 @@ export default function FeatureGuideCoachmark({
     };
   }, [activeIndex, currentStep, measureCurrentTarget, onStepChange, visible, viewportWidth, viewportHeight]);
 
-  const bubbleWidth = Math.min(Math.max(viewportWidth - SIDE_MARGIN * 2, 280), 380);
+  const topBoundary = Math.max(SIDE_MARGIN, insets.top + 8);
+  const bottomBoundary = Math.max(SIDE_MARGIN, insets.bottom + 14);
+  const usableHeight = Math.max(220, viewportHeight - topBoundary - bottomBoundary);
+  const bubbleWidth = Math.min(Math.max(viewportWidth - SIDE_MARGIN * 2, 260), 380);
   const resolvedBubbleHeight = bubbleHeight || DEFAULT_BUBBLE_HEIGHT;
+  const maxBubbleHeight = Math.max(180, usableHeight);
+  const layoutBubbleHeight = Math.min(resolvedBubbleHeight, maxBubbleHeight);
   const targetCenterX = targetRect ? targetRect.x + targetRect.width / 2 : viewportWidth / 2;
-  const bubbleLeft = clamp(targetCenterX - bubbleWidth / 2, SIDE_MARGIN, viewportWidth - bubbleWidth - SIDE_MARGIN);
+  const bubbleLeft = clamp(
+    targetCenterX - bubbleWidth / 2,
+    SIDE_MARGIN,
+    Math.max(SIDE_MARGIN, viewportWidth - bubbleWidth - SIDE_MARGIN)
+  );
   const preferredPlacement = currentStep?.placement || 'auto';
-  const fitsBelow = targetRect
-    ? targetRect.y + targetRect.height + 18 + resolvedBubbleHeight <= viewportHeight - SIDE_MARGIN
-    : true;
-  const fitsAbove = targetRect ? targetRect.y - 18 - resolvedBubbleHeight >= SIDE_MARGIN : false;
-  const placeAbove =
-    preferredPlacement === 'top' ||
-    (preferredPlacement === 'auto' && !fitsBelow && fitsAbove);
+  const spaceAbove = targetRect ? Math.max(0, targetRect.y - topBoundary - TARGET_GAP) : 0;
+  const spaceBelow = targetRect
+    ? Math.max(0, viewportHeight - bottomBoundary - (targetRect.y + targetRect.height + TARGET_GAP))
+    : usableHeight;
+  const fitsAbove = targetRect ? spaceAbove >= layoutBubbleHeight : false;
+  const fitsBelow = targetRect ? spaceBelow >= layoutBubbleHeight : true;
+  const placeAbove = targetRect
+    ? preferredPlacement === 'top' && fitsAbove
+      ? true
+      : preferredPlacement === 'bottom' && fitsBelow
+        ? false
+        : fitsAbove && !fitsBelow
+          ? true
+          : !fitsAbove && fitsBelow
+            ? false
+            : spaceAbove > spaceBelow
+    : false;
 
   const bubbleTop = targetRect
     ? placeAbove
-      ? clamp(targetRect.y - resolvedBubbleHeight - 18, SIDE_MARGIN, viewportHeight - resolvedBubbleHeight - SIDE_MARGIN)
-      : clamp(targetRect.y + targetRect.height + 18, SIDE_MARGIN, viewportHeight - resolvedBubbleHeight - SIDE_MARGIN)
-    : Math.max(SIDE_MARGIN, (viewportHeight - resolvedBubbleHeight) / 2);
+      ? clamp(
+          targetRect.y - layoutBubbleHeight - TARGET_GAP,
+          topBoundary,
+          Math.max(topBoundary, viewportHeight - bottomBoundary - layoutBubbleHeight)
+        )
+      : clamp(
+          targetRect.y + targetRect.height + TARGET_GAP,
+          topBoundary,
+          Math.max(topBoundary, viewportHeight - bottomBoundary - layoutBubbleHeight)
+        )
+    : clamp(
+        (viewportHeight - layoutBubbleHeight) / 2,
+        topBoundary,
+        Math.max(topBoundary, viewportHeight - bottomBoundary - layoutBubbleHeight)
+      );
 
   const arrowLeft = clamp(targetCenterX - bubbleLeft - 10, 24, bubbleWidth - 40);
-  const highlightTop = targetRect ? Math.max(targetRect.y - 8, 6) : 0;
-  const highlightLeft = targetRect ? Math.max(targetRect.x - 8, 6) : 0;
-  const highlightWidth = targetRect ? Math.min(targetRect.width + 16, viewportWidth - highlightLeft - 6) : 0;
-  const highlightHeight = targetRect ? Math.min(targetRect.height + 16, viewportHeight - highlightTop - 6) : 0;
+  const targetPulseSize = targetRect
+    ? clamp(Math.min(targetRect.width, targetRect.height, 72), 34, 54)
+    : 54;
+  const targetPulseLeft = targetRect
+    ? clamp(
+        targetCenterX - targetPulseSize / 2,
+        8,
+        Math.max(8, viewportWidth - targetPulseSize - 8)
+      )
+    : 0;
+  const targetPulseTop = targetRect
+    ? clamp(
+        targetRect.y + targetRect.height / 2 - targetPulseSize / 2,
+        topBoundary,
+        Math.max(topBoundary, viewportHeight - bottomBoundary - targetPulseSize)
+      )
+    : 0;
 
   const goBack = useCallback(() => {
     if (activeIndex <= 0) return;
@@ -324,20 +422,31 @@ export default function FeatureGuideCoachmark({
   const isLastStep = activeIndex === cleanSteps.length - 1;
 
   return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={finishGuide}>
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      statusBarTranslucent={Platform.OS === 'android'}
+      navigationBarTranslucent={Platform.OS === 'android'}
+      onRequestClose={finishGuide}
+    >
       <View style={styles.overlay}>
         {targetRect && (
-          <View
+          <Animated.View
             pointerEvents="none"
             style={[
-              styles.highlight,
+              styles.targetPulse,
               {
-                top: highlightTop,
-                left: highlightLeft,
-                width: highlightWidth,
-                height: highlightHeight,
+                top: targetPulseTop,
+                left: targetPulseLeft,
+                width: targetPulseSize,
+                height: targetPulseSize,
+                borderRadius: targetPulseSize / 2,
                 borderColor: colors.primaryDark,
+                backgroundColor: colors.primaryLight,
                 shadowColor: colors.primaryDark,
+                opacity: pulseOpacity,
+                transform: [{ scale: pulseScale }],
               },
             ]}
           />
@@ -350,6 +459,7 @@ export default function FeatureGuideCoachmark({
               width: bubbleWidth,
               left: bubbleLeft,
               top: bubbleTop,
+              maxHeight: maxBubbleHeight,
               backgroundColor: colors.card,
               borderColor: colors.border,
               shadowColor: colors.shadow,
@@ -376,12 +486,17 @@ export default function FeatureGuideCoachmark({
             ]}
           />
 
+          <ScrollView
+            bounces={false}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.bubbleContent}
+          >
           <View style={styles.bubbleHeader}>
             <View style={[styles.iconWrap, { backgroundColor: colors.primaryLight }]}> 
               <Ionicons name={currentStep.icon || 'sparkles-outline'} size={18} color={colors.primaryDark} />
             </View>
 
-            <View style={{ flex: 1 }}>
+            <View style={styles.titleWrap}>
               <Text style={[styles.stepMeta, { color: colors.primaryDark }]}> 
                 {getText('Context Guide', '场景引导', 'Panduan Konteks')} · {activeIndex + 1}/{cleanSteps.length}
               </Text>
@@ -443,6 +558,7 @@ export default function FeatureGuideCoachmark({
               </Pressable>
             </View>
           </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -454,25 +570,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
-  highlight: {
+  targetPulse: {
     position: 'absolute',
-    borderWidth: 2.5,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    shadowOpacity: 0.24,
+    borderWidth: 2,
+    shadowOpacity: 0.18,
     shadowRadius: 18,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
   },
   bubble: {
     position: 'absolute',
     borderRadius: 24,
     borderWidth: 1,
-    padding: 16,
+    overflow: 'hidden',
     shadowOpacity: 0.16,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 12 },
     elevation: 18,
+  },
+  bubbleContent: {
+    padding: 16,
   },
   arrow: {
     position: 'absolute',
@@ -484,8 +601,12 @@ const styles = StyleSheet.create({
   },
   bubbleHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
+  },
+  titleWrap: {
+    flex: 1,
+    minWidth: 0,
   },
   iconWrap: {
     width: 40,
@@ -518,6 +639,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
+    flexWrap: 'wrap',
   },
   skipButton: {
     height: 42,
@@ -537,6 +659,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     flexShrink: 1,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
   },
   secondaryButton: {
     height: 42,

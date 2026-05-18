@@ -515,13 +515,16 @@ export default function HomeScreen() {
     }
 
     anchor.measureInWindow((_screenX, screenY, _width, height) => {
-      const edgeMargin = 80;
+      const viewportPadding = 72;
       const targetTop = screenY;
       const targetBottom = screenY + height;
-      const isNearViewportEdge =
-        targetTop < edgeMargin || targetBottom > viewportHeight - edgeMargin;
+      const visibleTop = Math.max(targetTop, viewportPadding);
+      const visibleBottom = Math.min(targetBottom, viewportHeight - viewportPadding);
+      const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+      const visibleRatio = visibleHeight / Math.max(1, Math.min(height, viewportHeight));
+      const isBarelyVisible = visibleHeight < 40 || visibleRatio < 0.5;
 
-      if (!isNearViewportEdge) {
+      if (!isBarelyVisible) {
         return;
       }
 
@@ -529,7 +532,7 @@ export default function HomeScreen() {
         body,
         (_x, y) => {
           homeScrollRef.current?.scrollTo({
-            y: Math.max(homeBodyYRef.current + y - 96, 0),
+            y: Math.max(homeBodyYRef.current + y - viewportHeight * 0.32, 0),
             animated: true,
           });
         },
