@@ -223,21 +223,37 @@ export default function GrowthScreen() {
       }
 
       const stored = await loadHealthRecords();
-      const childRecords = stored.filter(record => record.nickname === activeChild.nickname);
-      const sortedRecords = childRecords.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      const childRecords = stored.filter(
+        record => record.nickname === activeChild.nickname
+      );
+
+      const sortedRecords = childRecords.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+
       setRecords(sortedRecords);
 
       if (selectedTab === "BMI" && sortedRecords.length > 0) {
-        const genderInt = activeChild.gender === 'boy' ? 1 : 2; 
-        
-        const response = await fetch(`${BASE_URL}/api/bmi/who-standards?type=MONTH&gender=${genderInt}`);
+
+        // 修正性别逻辑：女孩传 0
+        const genderInt = activeChild.gender === 'boy' ? 1 : 0;
+
+        const url =
+          `${BASE_URL}/api/bmi/who-standards?type=MONTH&gender=${genderInt}`;
+
+        const response = await fetch(url);
+
         const data = await response.json();
+
         setWhoData(data);
+
       } else {
         setWhoData(null);
       }
+
     } catch (error) {
-      console.error("Fetch Error:", error);
+      console.error(error);
     } finally {
       setLoading(false);
     }
