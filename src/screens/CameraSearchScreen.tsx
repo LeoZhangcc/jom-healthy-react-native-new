@@ -41,7 +41,7 @@ export default function CameraSearchScreen() {
       } as any);
 
       const response = await fetch(
-        'https://my-food-api-53af.onrender.com/predict',
+        'https://foodregmodel.onrender.com/predict',
         {
           method: 'POST',
           body: formData,
