@@ -55,7 +55,6 @@ export default function HydrationScreen({ navigation }: any) {
     { id: 'Juice', emoji: '🧃', title: t('juice') || 'Juice', amountValue: 150 },
     { id: 'Soft Drink', emoji: '🥤', title: t('softDrink') || 'Soft Drink', amountValue: 250 },
     { id: 'Coffee & Tea', emoji: '☕', title: t('coffeeTea') || 'Coffee & Tea', amountValue: 250 },
-    { id: 'Alcohol', emoji: '🍷', title: t('alcohol') || 'Alcohol', amountValue: 150 },
   ], [t, language]); // added language dependency so it refreshes when language changes
 
   const [amount, setAmount] = useState(200);
@@ -132,10 +131,29 @@ export default function HydrationScreen({ navigation }: any) {
     }
   };
 
+  const handleInputBlur = () => {
+    const parsed = parseInt(customAmount);
+    // Sanitize values on text input defocus
+    if (isNaN(parsed) || parsed < 1) {
+      setCustomAmount(String(amount));
+    } else if (parsed > 2000) {
+      setCustomAmount('2000');
+      setAmount(2000);
+    } else {
+      setCustomAmount(String(parsed)); // Strips leading zeros like "0250" -> "250"
+      setAmount(parsed);
+    }
+  };
+
   const handleCustomAmountChange = (value: string) => {
-    setCustomAmount(value);
-    const numValue = parseInt(value);
-    if (!isNaN(numValue) && numValue >= 1 && numValue <= 1000) setAmount(numValue);
+    // Strip out non-numeric characters just in case
+    const cleanValue = value.replace(/[^0-9]/g, '');
+    setCustomAmount(cleanValue);
+    
+    const numValue = parseInt(cleanValue);
+    if (!isNaN(numValue) && numValue >= 1 && numValue <= 2000) {
+      setAmount(numValue);
+    }
   };
 
   const handleDrinkCardClick = (drink: any) => {
@@ -360,9 +378,17 @@ export default function HydrationScreen({ navigation }: any) {
                 </Pressable>
 
                 <View style={styles.amountInputWrap}>
-                  <Text style={styles.stepperValue}>{customAmount}</Text>
-                  <Text style={styles.stepperUnit}>{unitText}</Text>
-                </View>
+                <TextInput
+                  style={styles.stepperValue}
+                  value={customAmount}
+                  onChangeText={handleCustomAmountChange}
+                  onBlur={handleInputBlur}
+                  keyboardType="number-pad"
+                  returnKeyType="done"
+                  selectTextOnFocus={true}
+                />
+                <Text style={styles.stepperUnit}>{unitText}</Text>
+              </View>
 
                 <Pressable 
                   onPress={handleIncrement} 
@@ -370,14 +396,6 @@ export default function HydrationScreen({ navigation }: any) {
                 >
                   <Ionicons name="add" size={28} color="#3B82F6" />
                 </Pressable>
-              </View>
-
-              <View style={styles.quickAddRow}>
-                {[100, 200, 250].map((val) => (
-                  <Pressable key={val} onPress={() => handleQuickAdd(val)} style={[styles.quickAddBtn, amount === val && styles.quickAddBtnActive]}>
-                    <Text style={[styles.quickAddText, amount === val && styles.quickAddTextActive]}>{val} {unitText}</Text>
-                  </Pressable>
-                ))}
               </View>
 
               <Pressable onPress={handleLog} style={({ pressed }) => [styles.logBtn, pressed && styles.btnPressed]}>
