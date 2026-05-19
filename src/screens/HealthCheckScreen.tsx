@@ -63,8 +63,20 @@ export default function HealthCheckScreen() {
       setBirthday("");
     } else {
       setSelectedChildId(child.id);
-      setGender(child.gender === 'boy' ? 1 : 2);
-      setBirthday(child.birthday || "");
+      // 严格对齐后端，男孩为 1，女孩为 0
+      setGender(child.gender === 'boy' ? 1 : 0); 
+      
+      // 强制清洗现有档案的日期，剔除时分秒，转化为干净的 YYYY/MM/DD
+      if (child.birthday) {
+        const d = new Date(child.birthday);
+        if (!isNaN(d.getTime())) {
+           setBirthday(formatBirthday(d));
+        } else {
+           setBirthday(child.birthday.split('T')[0].replace(/-/g, '/'));
+        }
+      } else {
+        setBirthday("");
+      }
     }
     setBmi(null); 
     setAdviceText(""); 
@@ -138,8 +150,50 @@ export default function HealthCheckScreen() {
   const calculateBMI = async () => {
     if (!isFormValid) return;
     
-    const h = Number(height) / 100;
-    const w = Number(weight);
+    const hNum = Number(height);
+    const wNum = Number(weight);
+
+    // 👉 极限情况防呆校验：身高 (30-250cm)
+    if (hNum < 30 || hNum > 250) {
+      Alert.alert(
+        getText('Invalid Height', '身高数值异常', 'Tinggi Tidak Sah'),
+        getText('Please enter a valid height (30 - 250 cm).', '请输入合理的身高区间（30 - 250 cm）。', 'Sila masukkan tinggi yang sah (30 - 250 cm).')
+      );
+      return;
+    }
+
+    // 👉 极限情况防呆校验：体重 (2-200kg)
+    if (wNum < 2 || wNum > 200) {
+      Alert.alert(
+        getText('Invalid Weight', '体重数值异常', 'Berat Tidak Sah'),
+        getText('Please enter a valid weight (2 - 200 kg).', '请输入合理的体重区间（2 - 200 kg）。', 'Sila masukkan berat yang sah (2 - 200 kg).')
+      );
+      return;
+    }
+
+    // 👉 极限情况防呆校验：年龄不能超过19岁 (228个月)
+    if (birthdayDate) {
+      const today = new Date();
+      const mDiff = today.getMonth() - birthdayDate.getMonth();
+      const yDiff = today.getFullYear() - birthdayDate.getFullYear();
+      const ageMonths = yDiff * 12 + mDiff;
+      
+      if (ageMonths > 228) {
+        Alert.alert(
+          getText('Age Limit Exceeded', '超过系统支持年龄', 'Had Umur Dilebihi'),
+          getText(
+            'Only data for 0-19 years old is supported.', 
+            '由于 WHO 限制，系统仅支持评估 0-19 岁的儿童/青少年。', 
+            'Sistem hanya menyokong penilaian untuk umur 0-19 tahun sahaja.'
+          )
+        );
+        return;
+      }
+    }
+
+    const h = hNum / 100;
+    const w = wNum;
+
     if (h > 0 && w > 0) {
       const value = w / (h * h);
       setBmi(Number(value.toFixed(1)));
@@ -150,7 +204,8 @@ export default function HealthCheckScreen() {
       setAdviceText("");
 
       try {
-        const url = `${BASE_URL}/api/bmi/evaluate?heightCm=${height}&weightKg=${weight}&birthDateStr=${birthday}&gender=${gender}`; 
+        const safeBirthday = encodeURIComponent(birthday.split('T')[0]);
+        const url = `${BASE_URL}/api/bmi/evaluate?heightCm=${height}&weightKg=${weight}&birthDateStr=${safeBirthday}&gender=${gender}`; 
         const response = await fetch(url, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
@@ -304,6 +359,14 @@ export default function HealthCheckScreen() {
           {/* 性别选择区域 */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>{t('gender')}</Text>
+            
+            {/* 👉 新增：无档案单次测试引导提示 */}
+            {!selectedChildId && (
+              <Text style={styles.oneTimeTip}>
+                {getText('No profile? Select gender for a one-time test.', '无档案？可直接选择性别进行单次测试', 'Tiada profil? Pilih jantina untuk ujian sekali.')}
+              </Text>
+            )}
+
             {selectedChildId ? (
               <View style={styles.lockedBox}>
                 <Text style={styles.lockedText}>
@@ -319,10 +382,10 @@ export default function HealthCheckScreen() {
                   <Text style={[styles.genderBtnText, gender === 1 ? styles.textBoyActive : styles.textInactive]}>{getText('👦 Boy', '👦 男孩', '👦 Lelaki')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  onPress={() => { setGender(2); setBmi(null); setAdviceText(""); }} 
-                  style={[styles.genderBtn, gender === 2 ? styles.genderGirlActive : styles.genderInactive]}
+                  onPress={() => { setGender(0); setBmi(null); setAdviceText(""); }} 
+                  style={[styles.genderBtn, gender === 0 ? styles.genderGirlActive : styles.genderInactive]}
                 >
-                  <Text style={[styles.genderBtnText, gender === 2 ? styles.textGirlActive : styles.textInactive]}>{getText('👧 Girl', '👧 女孩', '👧 Perempuan')}</Text>
+                  <Text style={[styles.genderBtnText, gender === 0 ? styles.textGirlActive : styles.textInactive]}>{getText('👧 Girl', '👧 女孩', '👧 Perempuan')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -358,6 +421,7 @@ export default function HealthCheckScreen() {
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'} 
                   maximumDate={new Date()} 
                   onChange={handleBirthdayPickerChange} 
+                  locale={language === 'zh' ? 'zh-Hans' : language === 'ms' ? 'ms-MY' : 'en-US'}
                 />
                 <TextInput 
                   value={birthday} 
@@ -493,6 +557,9 @@ const createStyles = (themeColors: typeof colors) => StyleSheet.create({
   fieldGroup: { marginBottom: 18 },
   label: { color: themeColors.text, fontWeight: '800', marginBottom: 8, fontSize: 14 },
   
+  // 👉 新增的提示文本样式
+  oneTimeTip: { fontSize: 12, color: themeColors.muted, marginBottom: 8, marginTop: -4 },
+
   profileSelectorSection: { paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   profileScroll: { gap: 12, paddingVertical: 4 },
   profileAvatarItem: { alignItems: 'center', width: 64, position: 'relative', opacity: 0.7 },
