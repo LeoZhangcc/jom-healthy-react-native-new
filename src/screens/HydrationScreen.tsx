@@ -166,7 +166,7 @@ export default function HydrationScreen({ navigation }: any) {
     const delayDebounceFn = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const API_URL = `https://jom-healthy-java-drink.onrender.com/api/drinks/search?q=${searchQuery}`;
+        const API_URL = `https://jom-healthy-java-drink-lh18.onrender.com/api/drinks/search?q=${searchQuery}`;
         const response = await fetch(API_URL);
         const data = await response.json();
         setSearchResults(data);
